@@ -8,7 +8,7 @@ import { NextResponse } from 'next/server'
 export async function POST(req: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (\!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { service_template_id, service_date, location_id, church_id } = await req.json()
 
@@ -38,7 +38,7 @@ export async function POST(req: Request) {
     .select('id')
     .single()
 
-  if (occError || \!newOccurrence) {
+  if (occError || !newOccurrence) {
     // Race condition — try fetching existing again
     const { data: raceExisting } = await supabase
       .from('service_occurrences')

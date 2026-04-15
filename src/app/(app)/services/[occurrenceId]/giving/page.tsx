@@ -41,12 +41,12 @@ export default function GivingPage() {
 
     const supabase = createClient()
     supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (\!user) { router.push('/services'); return }
+      if (!user) { router.push('/services'); return }
       const { data: membership } = await supabase
         .from('church_memberships')
         .select('role, church_id')
         .eq('user_id', user.id).eq('is_active', true).single()
-      if (\!membership) return
+      if (!membership) return
       setRole(membership.role as UserRole)
 
       const [entries, srcs] = await Promise.all([
@@ -65,7 +65,7 @@ export default function GivingPage() {
     const parts = v.split('.')
     if (parts.length > 2) v = parts[0] + '.' + parts.slice(1).join('')
     if (parts[1]?.length > 2) v = parts[0] + '.' + parts[1].slice(0, 2)
-    if (v.startsWith('0') && v.length > 1 && \!v.startsWith('0.')) v = v.replace(/^0+/, '')
+    if (v.startsWith('0') && v.length > 1 && !v.startsWith('0.')) v = v.replace(/^0+/, '')
     return v
   }
 
@@ -78,7 +78,7 @@ export default function GivingPage() {
   }
 
   async function doSave() {
-    if (saving || \!amount || currentAmount <= 0) return
+    if (saving || !amount || currentAmount <= 0) return
     setSaving(true)
     setError(null)
 
@@ -98,7 +98,7 @@ export default function GivingPage() {
   }
 
   function handleSave() {
-    if (\!amount || currentAmount <= 0) return
+    if (!amount || currentAmount <= 0) return
     if (isDuplicate()) { setShowDuplicate(true); return }
     doSave()
   }
@@ -223,7 +223,7 @@ export default function GivingPage() {
         {/* E5 — Submit */}
         <button
           onClick={handleSave}
-          disabled={\!amount || currentAmount <= 0 || saving}
+          disabled={!amount || currentAmount <= 0 || saving}
           className="w-full bg-gray-900 text-white rounded-xl py-4 font-medium text-sm hover:bg-gray-700 transition-colors disabled:opacity-40"
         >
           {saving ? 'Saving...' : 'Save — your giving total will update in the dashboard.'}

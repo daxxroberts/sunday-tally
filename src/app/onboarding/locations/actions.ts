@@ -8,7 +8,7 @@ export async function saveLocationsAction(
 ): Promise<{ error?: string }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (\!user) return { error: 'Not authenticated' }
+  if (!user) return { error: 'Not authenticated' }
 
   const { data: membership } = await supabase
     .from('church_memberships')
@@ -17,7 +17,7 @@ export async function saveLocationsAction(
     .eq('is_active', true)
     .single()
 
-  if (\!membership) return { error: 'No church found' }
+  if (!membership) return { error: 'No church found' }
   const churchId = membership.church_id
 
   for (const loc of locations) {
@@ -45,7 +45,7 @@ export async function saveLocationsAction(
 export async function deleteLocationAction(locationId: string): Promise<{ error?: string }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (\!user) return { error: 'Not authenticated' }
+  if (!user) return { error: 'Not authenticated' }
 
   // Check for service_templates references (N26)
   const { data: refs } = await supabase

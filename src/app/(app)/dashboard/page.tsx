@@ -43,12 +43,12 @@ export default function DashboardPage() {
   useEffect(() => {
     const supabase = createClient()
     supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (\!user) return
+      if (!user) return
       const { data: membership } = await supabase
         .from('church_memberships')
         .select('role, church_id, churches(*)')
         .eq('user_id', user.id).eq('is_active', true).single()
-      if (\!membership) return
+      if (!membership) return
       setRole(membership.role as UserRole)
       // @ts-expect-error join
       const ch = membership.churches as Church
@@ -60,7 +60,7 @@ export default function DashboardPage() {
     })
   }, [])
 
-  if (\!church) return null
+  if (!church) return null
 
   return (
     <AppLayout role={role}>
@@ -93,9 +93,9 @@ export default function DashboardPage() {
               const isExpanded = expandedTag === row.tag_code
               const metrics = [
                 { label: 'Attendance', data: row.attendance, show: true },
-                { label: 'Volunteers', data: row.volunteers, show: church.tracks_volunteers && \!\!row.volunteers },
-                { label: 'Stats', data: row.stats, show: church.tracks_responses && \!\!row.stats },
-                { label: 'Giving', data: row.giving, show: church.tracks_giving && \!\!row.giving },
+                { label: 'Volunteers', data: row.volunteers, show: church.tracks_volunteers && !!row.volunteers },
+                { label: 'Stats', data: row.stats, show: church.tracks_responses && !!row.stats },
+                { label: 'Giving', data: row.giving, show: church.tracks_giving && !!row.giving },
               ].filter(m => m.show)
 
               return (
@@ -114,9 +114,9 @@ export default function DashboardPage() {
                     {metrics.map(metric => (
                       <div key={metric.label} className="grid grid-cols-4 gap-2 px-4 py-3 items-center">
                         <span className="text-xs text-gray-500">{metric.label}</span>
-                        <Cell val={metric.data\!.a} />
-                        <Cell val={metric.data\!.b} />
-                        <Cell val={metric.data\!.c} />
+                        <Cell val={metric.data!.a} />
+                        <Cell val={metric.data!.b} />
+                        <Cell val={metric.data!.c} />
                       </div>
                     ))}
                   </div>

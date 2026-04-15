@@ -40,7 +40,7 @@ export default function SettingsSchedulePage() {
   useEffect(() => {
     const supabase = createClient()
     supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (\!user) return
+      if (!user) return
       const { data: membership } = await supabase.from('church_memberships').select('role').eq('user_id', user.id).eq('is_active', true).single()
       if (membership) setRole(membership.role as UserRole)
       const { data: tmpl } = await supabase.from('service_templates').select('display_name').eq('id', templateId).single()
@@ -80,7 +80,7 @@ export default function SettingsSchedulePage() {
 
       <div className="px-4 py-4 space-y-6">
         {/* E6 — Current schedule */}
-        {currentSchedule && \!changingSchedule && (
+        {currentSchedule && !changingSchedule && (
           <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3">
             <p className="text-sm font-medium text-gray-900">{DAYS[currentSchedule.day]}s · {currentSchedule.time} · since {currentSchedule.since}</p>
             <button onClick={() => setChangingSchedule(true)} className="mt-2 text-xs text-blue-600 hover:underline">Change schedule</button>
@@ -88,7 +88,7 @@ export default function SettingsSchedulePage() {
         )}
 
         {/* E7 + new schedule form */}
-        {(\!currentSchedule || changingSchedule) && (
+        {(!currentSchedule || changingSchedule) && (
           <form onSubmit={handleSave} className="space-y-5">
             {changingSchedule && (
               <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">

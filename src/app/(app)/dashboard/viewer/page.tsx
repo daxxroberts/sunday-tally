@@ -37,12 +37,12 @@ export default function ViewerDashboardPage() {
   useEffect(() => {
     const supabase = createClient()
     supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (\!user) return
+      if (!user) return
       const { data: membership } = await supabase
         .from('church_memberships')
         .select('church_id, churches(*)')
         .eq('user_id', user.id).eq('is_active', true).single()
-      if (\!membership) return
+      if (!membership) return
       // @ts-expect-error join
       const ch = membership.churches as Church
       setChurch(ch)
@@ -54,7 +54,7 @@ export default function ViewerDashboardPage() {
     })
   }, [])
 
-  if (\!church) return null
+  if (!church) return null
 
   return (
     <AppLayout role="viewer">
@@ -81,8 +81,8 @@ export default function ViewerDashboardPage() {
               // N76: Volunteers row NEVER shown on D2 (D-026)
               const metrics = [
                 { label: 'Attendance', data: row.attendance, show: true },
-                { label: 'Stats', data: row.stats, show: church.tracks_responses && \!\!row.stats },
-                { label: 'Giving', data: row.giving, show: church.tracks_giving && \!\!row.giving },
+                { label: 'Stats', data: row.stats, show: church.tracks_responses && !!row.stats },
+                { label: 'Giving', data: row.giving, show: church.tracks_giving && !!row.giving },
               ].filter(m => m.show)
 
               return (
@@ -94,9 +94,9 @@ export default function ViewerDashboardPage() {
                     {metrics.map(metric => (
                       <div key={metric.label} className="grid grid-cols-4 gap-2 px-4 py-3 items-center">
                         <span className="text-xs text-gray-500">{metric.label}</span>
-                        <Cell val={metric.data\!.a} />
-                        <Cell val={metric.data\!.b} />
-                        <Cell val={metric.data\!.c} />
+                        <Cell val={metric.data!.a} />
+                        <Cell val={metric.data!.b} />
+                        <Cell val={metric.data!.c} />
                       </div>
                     ))}
                   </div>

@@ -32,14 +32,14 @@ function Toggle({ checked, onChange, label, reason, showImpact }: {
           type="button"
           role="switch"
           aria-checked={checked}
-          onClick={() => onChange(\!checked)}
+          onClick={() => onChange(!checked)}
           className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0 ${checked ? 'bg-gray-900' : 'bg-gray-300'}`}
         >
           <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${checked ? 'translate-x-6' : 'translate-x-1'}`} />
         </button>
       </div>
       {/* E5 — Impact note */}
-      {showImpact && \!checked && (
+      {showImpact && !checked && (
         <p className="mt-1.5 text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5">
           Turning this off hides the section from entry screens. Your existing data is kept.
         </p>
@@ -67,12 +67,12 @@ export default function SettingsTrackingPage() {
   useEffect(() => {
     const supabase = createClient()
     supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (\!user) return
+      if (!user) return
       const { data: membership } = await supabase
         .from('church_memberships')
         .select('role, church_id, churches(tracks_kids_attendance,tracks_youth_attendance,tracks_volunteers,tracks_responses,tracks_giving)')
         .eq('user_id', user.id).eq('is_active', true).single()
-      if (\!membership) return
+      if (!membership) return
       setRole(membership.role as UserRole)
       setChurchId(membership.church_id)
       // @ts-expect-error join
@@ -102,7 +102,7 @@ export default function SettingsTrackingPage() {
     })
   }
 
-  const isDirty = JSON.stringify(flags) \!== JSON.stringify(originalFlags)
+  const isDirty = JSON.stringify(flags) !== JSON.stringify(originalFlags)
 
   return (
     <AppLayout role={role}>
@@ -136,7 +136,7 @@ export default function SettingsTrackingPage() {
         {/* E4 — Save */}
         <button
           onClick={handleSave}
-          disabled={\!isDirty || isPending}
+          disabled={!isDirty || isPending}
           className="w-full bg-gray-900 text-white rounded-xl py-3.5 font-medium text-sm hover:bg-gray-700 transition-colors disabled:opacity-40"
         >
           {saved ? '✓ Saved' : isPending ? 'Saving...' : 'Save — your Sunday screens will update to match.'}

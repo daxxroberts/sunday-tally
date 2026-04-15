@@ -44,7 +44,7 @@ export async function signupAction(data: SignupData): Promise<{ error: string } 
     .select('id')
     .single()
 
-  if (churchError || \!church) {
+  if (churchError || !church) {
     await admin.auth.admin.deleteUser(userId)
     return { error: 'Something went wrong. Try again.' }
   }
@@ -85,13 +85,4 @@ export async function signupAction(data: SignupData): Promise<{ error: string } 
 
   if (memberError) {
     await admin.from('churches').delete().eq('id', churchId)
-    await admin.auth.admin.deleteUser(userId)
-    return { error: 'Something went wrong. Try again.' }
-  }
-
-  // Step 6 — Sign the user in with the regular client
-  const supabase = await createClient()
-  await supabase.auth.signInWithPassword({ email: data.email, password: data.password })
-
-  redirect('/onboarding/church')
-}
+    awa

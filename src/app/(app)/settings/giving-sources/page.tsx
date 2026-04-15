@@ -24,9 +24,9 @@ export default function SettingsGivingSourcesPage() {
   useEffect(() => {
     const supabase = createClient()
     supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (\!user) return
+      if (!user) return
       const { data: membership } = await supabase.from('church_memberships').select('role, church_id').eq('user_id', user.id).eq('is_active', true).single()
-      if (\!membership) return
+      if (!membership) return
       setRole(membership.role as UserRole); setChurchId(membership.church_id)
       const { data } = await supabase.from('giving_sources').select('*').eq('church_id', membership.church_id).eq('is_active', true).order('sort_order')
       setSources(data ?? [])
@@ -41,7 +41,7 @@ export default function SettingsGivingSourcesPage() {
 
   function addSource() {
     const name = newName.trim()
-    if (\!name) return
+    if (!name) return
     startTransition(async () => {
       const supabase = createClient()
       const code = `SOURCE_${name.toUpperCase().replace(/[^A-Z0-9]/g, '_')}_${Date.now()}`
@@ -56,7 +56,7 @@ export default function SettingsGivingSourcesPage() {
       const { data: refs } = await supabase.from('giving_entries').select('id').eq('giving_source_id', id).limit(1)
       if ((refs?.length ?? 0) > 0) { alert('Cannot remove — this source has giving entries.'); return }
       await supabase.from('giving_sources').update({ is_active: false }).eq('id', id)
-      setSources(prev => prev.filter(s => s.id \!== id))
+      setSources(prev => prev.filter(s => s.id !== id))
     })
   }
 
@@ -80,7 +80,7 @@ export default function SettingsGivingSourcesPage() {
           ))}
           <div className="px-4 py-3 flex items-center gap-2">
             <input type="text" value={newName} onChange={e => setNewName(e.target.value)} onKeyDown={e => e.key === 'Enter' && addSource()} placeholder="Add a giving source..." className="flex-1 text-sm border-b border-gray-200 focus:border-gray-900 outline-none py-1 text-gray-900 placeholder-gray-400 bg-transparent" />
-            <button onClick={addSource} disabled={\!newName.trim() || isPending} className="text-sm text-gray-900 font-medium disabled:opacity-40">Add</button>
+            <button onClick={addSource} disabled={!newName.trim() || isPending} className="text-sm text-gray-900 font-medium disabled:opacity-40">Add</button>
           </div>
         </div>
       </div>

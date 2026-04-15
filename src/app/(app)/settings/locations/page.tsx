@@ -24,9 +24,9 @@ export default function SettingsLocationsPage() {
   useEffect(() => {
     const supabase = createClient()
     supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (\!user) return
+      if (!user) return
       const { data: membership } = await supabase.from('church_memberships').select('role, church_id').eq('user_id', user.id).eq('is_active', true).single()
-      if (\!membership) return
+      if (!membership) return
       setRole(membership.role as UserRole)
       const { data: locs } = await supabase.from('church_locations').select('id, name, sort_order').eq('church_id', membership.church_id).eq('is_active', true).order('sort_order')
       if (locs && locs.length > 0) setLocations(locs)
@@ -44,7 +44,7 @@ export default function SettingsLocationsPage() {
   function handleSave(e: React.FormEvent) {
     e.preventDefault()
     const valid = locations.filter(l => l.name.trim())
-    if (\!valid.length) return
+    if (!valid.length) return
     startTransition(async () => {
       const result = await saveLocationsAction(valid.map((l, i) => ({ ...l, sort_order: i + 1 })))
       if (result.error) { setError(result.error); return }

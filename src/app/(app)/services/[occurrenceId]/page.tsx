@@ -86,7 +86,7 @@ export default function OccurrencePage() {
       if (raw) {
         try {
           const parsed = JSON.parse(raw)
-          if (parsed.occurrenceId \!== occurrenceId) {
+          if (parsed.occurrenceId !== occurrenceId) {
             // Update session to this occurrence
             sessionStorage.setItem('sunday_last_active', parsed.serviceDate)
           }
@@ -96,7 +96,7 @@ export default function OccurrencePage() {
 
     const supabase = createClient()
     supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (\!user) return
+      if (!user) return
 
       const { data: membership } = await supabase
         .from('church_memberships')
@@ -105,7 +105,7 @@ export default function OccurrencePage() {
         .eq('is_active', true)
         .single()
 
-      if (\!membership) return
+      if (!membership) return
       setRole(membership.role as UserRole)
       // @ts-expect-error join
       setChurch(membership.churches as Church)
@@ -117,7 +117,7 @@ export default function OccurrencePage() {
         .eq('id', occurrenceId)
         .single()
 
-      if (\!occ) { router.push('/services'); return }
+      if (!occ) { router.push('/services'); return }
 
       setOccurrence({
         id: occ.id,
@@ -153,13 +153,13 @@ export default function OccurrencePage() {
     })
   }, [occurrenceId, router])
 
-  if (\!church || \!occurrence) return null
+  if (!church || !occurrence) return null
 
   const isCancelled = occurrence.status === 'cancelled'
-  const attEntered = summary?.main_attendance \!== null
-  const volEntered = summary?.total_volunteers \!== null
-  const resEntered = summary?.total_responses \!== null
-  const givEntered = summary?.total_giving \!== null
+  const attEntered = summary?.main_attendance !== null
+  const volEntered = summary?.total_volunteers !== null
+  const resEntered = summary?.total_responses !== null
+  const givEntered = summary?.total_giving !== null
 
   const tracked = [
     { label: 'Attendance', entered: attEntered, always: true },
@@ -172,10 +172,10 @@ export default function OccurrencePage() {
   const anyStarted = tracked.some(s => s.entered)
 
   function attSummary() {
-    if (\!summary || summary.main_attendance === null) return 'Tap to enter attendance'
+    if (!summary || summary.main_attendance === null) return 'Tap to enter attendance'
     const parts = [`Main ${summary.main_attendance}`]
-    if (church\!.tracks_kids_attendance && summary.kids_attendance \!== null) parts.push(`Kids ${summary.kids_attendance}`)
-    if (church\!.tracks_youth_attendance && summary.youth_attendance \!== null) parts.push(`Youth ${summary.youth_attendance}`)
+    if (church!.tracks_kids_attendance && summary.kids_attendance !== null) parts.push(`Kids ${summary.kids_attendance}`)
+    if (church!.tracks_youth_attendance && summary.youth_attendance !== null) parts.push(`Youth ${summary.youth_attendance}`)
     return parts.join(' · ')
   }
 
@@ -212,7 +212,7 @@ export default function OccurrencePage() {
         )}
 
         {/* E2 — All-complete banner */}
-        {allComplete && \!isCancelled && (
+        {allComplete && !isCancelled && (
           <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 flex items-center justify-between">
             <p className="text-sm text-green-800 font-medium">All done for {occurrence.service_name}</p>
             <button onClick={() => router.push('/services')} className="text-xs text-green-700 underline">Back</button>
@@ -242,7 +242,7 @@ export default function OccurrencePage() {
         ))}
 
         {/* E5 — Correction note */}
-        {allComplete && \!isCancelled && (
+        {allComplete && !isCancelled && (
           <p className="text-xs text-center text-gray-400 pt-2">Need to correct something? Tap any section.</p>
         )}
 

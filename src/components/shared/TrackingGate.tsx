@@ -15,6 +15,6 @@ interface TrackingGateProps {
 }
 
 export default function TrackingGate({ church, flag, children }: TrackingGateProps) {
-  if (\!church[flag]) return null
+  if (!church[flag]) return null
   return <>{children}</>
 }

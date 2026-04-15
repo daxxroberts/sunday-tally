@@ -29,7 +29,7 @@ export async function getInviteByToken(token: string): Promise<
     .eq('token', token)
     .single()
 
-  if (error || \!data) return { error: 'not_found' }
+  if (error || !data) return { error: 'not_found' }
   if (data.accepted_at) return { error: 'already_accepted' }
   if (data.expires_at && new Date(data.expires_at) < new Date()) return { error: 'expired' }
 
@@ -59,10 +59,10 @@ export async function acceptInviteAction(
 
   // Get current user (viewer arrives already authenticated via magic link)
   const { data: { user } } = await supabase.auth.getUser()
-  if (\!user) return { error: 'Session expired. Please use the link from your email again.' }
+  if (!user) return { error: 'Session expired. Please use the link from your email again.' }
 
   // Set password for non-viewers (N87)
-  if (role \!== 'viewer' && password) {
+  if (role !== 'viewer' && password) {
     const { error: pwError } = await supabase.auth.updateUser({ password })
     if (pwError) return { error: 'Could not set password. Try again.' }
   }
@@ -74,7 +74,7 @@ export async function acceptInviteAction(
 
   if (memberError) {
     // Already a member — still mark invite accepted
-    if (\!memberError.message.includes('duplicate') && \!memberError.message.includes('unique')) {
+    if (!memberError.message.includes('duplicate') && !memberError.message.includes('unique')) {
       return { error: 'Something went wrong joining the church. Try again.' }
     }
   }

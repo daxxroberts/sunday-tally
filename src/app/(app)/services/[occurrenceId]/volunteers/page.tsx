@@ -42,12 +42,12 @@ export default function VolunteersPage() {
 
     const supabase = createClient()
     supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (\!user) { router.push('/services'); return }
+      if (!user) { router.push('/services'); return }
       const { data: membership } = await supabase
         .from('church_memberships')
         .select('role, church_id')
         .eq('user_id', user.id).eq('is_active', true).single()
-      if (\!membership) return
+      if (!membership) return
       setRole(membership.role as UserRole)
 
       const [catResult, entResult] = await Promise.all([
@@ -103,11 +103,11 @@ export default function VolunteersPage() {
   }
 
   function groupTotal(group: AudienceGroupCode) {
-    return entries[group].filter(r => \!r.is_na).reduce((s, r) => s + (parseInt(r.count) || 0), 0)
+    return entries[group].filter(r => !r.is_na).reduce((s, r) => s + (parseInt(r.count) || 0), 0)
   }
 
   const allSubmitted = GROUPS.every(g => sectionState[g] === 'submitted')
-  const anyDirty = GROUPS.some(g => sectionState[g] === 'editing' && entries[g].some(r => r.count \!== '' || r.is_na))
+  const anyDirty = GROUPS.some(g => sectionState[g] === 'editing' && entries[g].some(r => r.count !== '' || r.is_na))
 
   const groupCats = (group: AudienceGroupCode) => categories.filter(c => c.audience_group_code === group)
 
@@ -193,7 +193,7 @@ export default function VolunteersPage() {
                           />
                           <button
                             type="button"
-                            onClick={() => updateEntry(group, row.category_id, { is_na: \!row.is_na, count: row.is_na ? row.count : '' })}
+                            onClick={() => updateEntry(group, row.category_id, { is_na: !row.is_na, count: row.is_na ? row.count : '' })}
                             className={`text-xs px-2 py-1 rounded-md border transition-colors ${row.is_na ? 'bg-gray-200 text-gray-700 border-gray-300' : 'text-gray-400 border-gray-200 hover:border-gray-400'}`}
                           >N/A</button>
                         </div>

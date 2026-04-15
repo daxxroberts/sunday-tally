@@ -45,7 +45,7 @@ function formatDate(dateStr: string) {
 }
 
 function formatTime(time: string | null) {
-  if (\!time) return ''
+  if (!time) return ''
   const [h, m] = time.split(':').map(Number)
   const ampm = h >= 12 ? 'pm' : 'am'
   const hour = h % 12 || 12
@@ -54,9 +54,9 @@ function formatTime(time: string | null) {
 
 function completionStatus(card: OccurrenceCard, church: Church): 'empty' | 'partial' | 'complete' {
   const attended = card.attendance_entered
-  const volunteersOk = \!church.tracks_volunteers || card.volunteers_entered
-  const responsesOk = \!church.tracks_responses || card.responses_entered
-  const givingOk = \!church.tracks_giving || card.giving_entered
+  const volunteersOk = !church.tracks_volunteers || card.volunteers_entered
+  const responsesOk = !church.tracks_responses || card.responses_entered
+  const givingOk = !church.tracks_giving || card.giving_entered
   if (attended && volunteersOk && responsesOk && givingOk) return 'complete'
   if (card.attendance_entered || card.volunteers_entered || card.responses_entered || card.giving_entered) return 'partial'
   return 'empty'
@@ -80,7 +80,7 @@ export default function ServicesPage() {
   useEffect(() => {
     const supabase = createClient()
     supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (\!user) return
+      if (!user) return
 
       const { data: membership } = await supabase
         .from('church_memberships')
@@ -89,7 +89,7 @@ export default function ServicesPage() {
         .eq('is_active', true)
         .single()
 
-      if (\!membership) return
+      if (!membership) return
       setRole(membership.role as UserRole)
       // @ts-expect-error join type
       const churchData = membership.churches as Church
@@ -164,7 +164,7 @@ export default function ServicesPage() {
           const alreadyExists = existingCards.some(
             c => c.service_date === expectedStr && c.service_name === tmpl.display_name
           )
-          if (\!alreadyExists) {
+          if (!alreadyExists) {
             scheduledCards.push({
               type: 'scheduled',
               template_id: tmpl.id,
@@ -188,13 +188,13 @@ export default function ServicesPage() {
   // Group by date
   const grouped = cards.reduce<Record<string, ServiceCard[]>>((acc, card) => {
     const date = card.type === 'existing' ? card.service_date : card.expected_date
-    if (\!acc[date]) acc[date] = []
+    if (!acc[date]) acc[date] = []
     acc[date].push(card)
     return acc
   }, {})
 
   const sortedDates = Object.keys(grouped).sort((a, b) => {
-    if (\!church) return b.localeCompare(a)
+    if (!church) return b.localeCompare(a)
     // Incomplete dates first
     const aComplete = grouped[a].every(c =>
       c.type === 'existing' ? completionStatus(c, church) === 'complete' : false
@@ -202,7 +202,7 @@ export default function ServicesPage() {
     const bComplete = grouped[b].every(c =>
       c.type === 'existing' ? completionStatus(c, church) === 'complete' : false
     )
-    if (aComplete \!== bComplete) return aComplete ? 1 : -1
+    if (aComplete !== bComplete) return aComplete ? 1 : -1
     return b.localeCompare(a)
   })
 
@@ -252,7 +252,7 @@ export default function ServicesPage() {
     }
   }, [router])
 
-  if (\!church) return null
+  if (!church) return null
 
   return (
     <AppLayout role={role}>

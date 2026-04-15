@@ -46,7 +46,7 @@ export default function OnboardingSchedulePage() {
 
   function handleSave(e: React.FormEvent) {
     e.preventDefault()
-    if (\!current || isPending) return
+    if (!current || isPending) return
     setError(null)
 
     startTransition(async () => {
@@ -69,7 +69,7 @@ export default function OnboardingSchedulePage() {
     })
   }
 
-  if (allScheduled && \!current) {
+  if (allScheduled && !current) {
     return (
       <OnboardingLayout step={4} onBack={() => router.push('/onboarding/services')}>
         <div className="text-center py-12">
@@ -83,7 +83,7 @@ export default function OnboardingSchedulePage() {
     )
   }
 
-  if (\!current) {
+  if (!current) {
     return (
       <OnboardingLayout step={4} onBack={() => router.push('/onboarding/services')}>
         <div className="flex items-center justify-center py-12">

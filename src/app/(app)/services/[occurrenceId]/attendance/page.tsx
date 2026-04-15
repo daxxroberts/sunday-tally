@@ -34,7 +34,7 @@ export default function AttendancePage() {
   const [showDirtyPrompt, setShowDirtyPrompt] = useState(false)
   const mainRef = useRef<HTMLInputElement>(null)
 
-  const isDirty = main \!== originalMain || kids \!== originalKids || youth \!== originalYouth
+  const isDirty = main !== originalMain || kids !== originalKids || youth !== originalYouth
 
   useEffect(() => {
     // Restore session
@@ -48,7 +48,7 @@ export default function AttendancePage() {
 
     const supabase = createClient()
     supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (\!user) { router.push('/services'); return }
+      if (!user) { router.push('/services'); return }
 
       const { data: membership } = await supabase
         .from('church_memberships')
@@ -56,7 +56,7 @@ export default function AttendancePage() {
         .eq('user_id', user.id)
         .eq('is_active', true)
         .single()
-      if (\!membership) return
+      if (!membership) return
       setRole(membership.role as UserRole)
       // @ts-expect-error join
       const ch = membership.churches as Church
@@ -70,9 +70,9 @@ export default function AttendancePage() {
         .maybeSingle()
 
       if (existing) {
-        const m = existing.main_attendance \!== null ? String(existing.main_attendance) : ''
-        const k = existing.kids_attendance \!== null ? String(existing.kids_attendance) : ''
-        const y = existing.youth_attendance \!== null ? String(existing.youth_attendance) : ''
+        const m = existing.main_attendance !== null ? String(existing.main_attendance) : ''
+        const k = existing.kids_attendance !== null ? String(existing.kids_attendance) : ''
+        const y = existing.youth_attendance !== null ? String(existing.youth_attendance) : ''
         setMain(m); setOriginalMain(m)
         setKids(k); setOriginalKids(k)
         setYouth(y); setOriginalYouth(y)
@@ -90,7 +90,7 @@ export default function AttendancePage() {
 
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    if (\!user) { setSaving(false); return }
+    if (!user) { setSaving(false); return }
 
     const payload = {
       service_occurrence_id: occurrenceId,
@@ -116,11 +116,11 @@ export default function AttendancePage() {
     router.push(`/services/${occurrenceId}`)
   }
 
-  const displayTotal = (main \!== '' ? parseInt(main) || 0 : 0)
-    + (kids \!== '' && church?.tracks_kids_attendance ? parseInt(kids) || 0 : 0)
-    + (youth \!== '' && church?.tracks_youth_attendance ? parseInt(youth) || 0 : 0)
+  const displayTotal = (main !== '' ? parseInt(main) || 0 : 0)
+    + (kids !== '' && church?.tracks_kids_attendance ? parseInt(kids) || 0 : 0)
+    + (youth !== '' && church?.tracks_youth_attendance ? parseInt(youth) || 0 : 0)
 
-  if (\!church) return null
+  if (!church) return null
 
   // E7 — Confirmation state
   if (saved) {

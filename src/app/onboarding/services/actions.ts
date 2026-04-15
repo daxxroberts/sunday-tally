@@ -18,7 +18,7 @@ export interface TemplateInput {
 export async function saveTemplatesAction(templates: TemplateInput[]): Promise<{ error?: string }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (\!user) return { error: 'Not authenticated' }
+  if (!user) return { error: 'Not authenticated' }
 
   const { data: membership } = await supabase
     .from('church_memberships')
@@ -26,7 +26,7 @@ export async function saveTemplatesAction(templates: TemplateInput[]): Promise<{
     .eq('user_id', user.id)
     .eq('is_active', true)
     .single()
-  if (\!membership) return { error: 'No church found' }
+  if (!membership) return { error: 'No church found' }
   const churchId = membership.church_id
 
   for (const tmpl of templates) {
@@ -57,7 +57,7 @@ export async function saveTemplatesAction(templates: TemplateInput[]): Promise<{
         })
         .select('id')
         .single()
-      if (error || \!data) return { error: 'Failed to create service.' }
+      if (error || !data) return { error: 'Failed to create service.' }
       templateId = data.id
     }
 
@@ -99,7 +99,7 @@ export async function saveTemplatesAction(templates: TemplateInput[]): Promise<{
 export async function getChurchData() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (\!user) return null
+  if (!user) return null
 
   const { data: membership } = await supabase
     .from('church_memberships')
@@ -107,7 +107,7 @@ export async function getChurchData() {
     .eq('user_id', user.id)
     .eq('is_active', true)
     .single()
-  if (\!membership) return null
+  if (!membership) return null
   const churchId = membership.church_id
 
   const [locResult, tagResult, tmplResult] = await Promise.all([

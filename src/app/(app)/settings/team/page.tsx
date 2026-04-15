@@ -39,7 +39,7 @@ export default function SettingsTeamPage() {
 
   function reload() {
     getTeamData().then(data => {
-      if (\!data) return
+      if (!data) return
       setMyRole(data.myRole as UserRole)
       setChurchId(data.churchId)
       // @ts-expect-error join shape
@@ -54,7 +54,7 @@ export default function SettingsTeamPage() {
 
   function handleSend(e: React.FormEvent) {
     e.preventDefault()
-    if (\!email.trim() || isPending) return
+    if (!email.trim() || isPending) return
     setError(null)
     startTransition(async () => {
       const result = await sendInviteAction(email.trim().toLowerCase(), role, churchId)
@@ -65,7 +65,7 @@ export default function SettingsTeamPage() {
   }
 
   function handleRemove(membershipId: string) {
-    if (\!confirm('Remove this person? They\'ll lose access immediately.')) return
+    if (!confirm('Remove this person? They\'ll lose access immediately.')) return
     startTransition(async () => {
       const result = await removeMemberAction(membershipId)
       if (result.error) { alert(result.error); return }
@@ -102,7 +102,7 @@ export default function SettingsTeamPage() {
                     <span className="text-xs text-gray-400">{m.users?.email}</span>
                   </div>
                 </div>
-                {m.role \!== 'owner' && (
+                {m.role !== 'owner' && (
                   <button onClick={() => handleRemove(m.id)} className="text-xs text-gray-400 hover:text-red-500 transition-colors">Remove</button>
                 )}
               </div>
@@ -147,7 +147,7 @@ export default function SettingsTeamPage() {
               ))}
             </div>
             {error && <p className="text-sm text-red-600">{error}</p>}
-            <button type="submit" disabled={\!email.trim() || isPending} className="w-full bg-gray-900 text-white rounded-lg py-3 font-medium text-sm hover:bg-gray-700 disabled:opacity-40">
+            <button type="submit" disabled={!email.trim() || isPending} className="w-full bg-gray-900 text-white rounded-lg py-3 font-medium text-sm hover:bg-gray-700 disabled:opacity-40">
               {isPending ? 'Sending...' : 'Send invite'}
             </button>
           </form>

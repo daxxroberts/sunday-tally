@@ -124,7 +124,7 @@ export default function AuthLoginPage() {
 
           <button
             type="submit"
-            disabled={\!email || \!password || isPending}
+            disabled={!email || !password || isPending}
             className="w-full bg-gray-900 text-white rounded-lg py-3 font-medium text-sm hover:bg-gray-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {isPending ? 'Signing in...' : 'Sign in'}
@@ -166,7 +166,7 @@ export default function AuthLoginPage() {
               )}
               <button
                 type="submit"
-                disabled={\!email || isPending}
+                disabled={!email || isPending}
                 className="w-full bg-gray-900 text-white rounded-lg py-3 font-medium text-sm hover:bg-gray-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {isPending ? 'Sending...' : 'Send me a link'}

@@ -23,9 +23,9 @@ export default function SettingsTagsPage() {
   useEffect(() => {
     const supabase = createClient()
     supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (\!user) return
+      if (!user) return
       const { data: membership } = await supabase.from('church_memberships').select('role, church_id').eq('user_id', user.id).eq('is_active', true).single()
-      if (\!membership) return
+      if (!membership) return
       setRole(membership.role as UserRole); setChurchId(membership.church_id)
       const { data } = await supabase.from('service_tags').select('*').eq('church_id', membership.church_id).eq('is_active', true)
       setTags(data ?? [])
@@ -40,7 +40,7 @@ export default function SettingsTagsPage() {
 
   function addTag() {
     const name = newName.trim()
-    if (\!name) return
+    if (!name) return
     startTransition(async () => {
       const supabase = createClient()
       const code = `TAG_${name.toUpperCase().replace(/[^A-Z0-9]/g, '_')}_${Date.now()}`
@@ -49,7 +49,7 @@ export default function SettingsTagsPage() {
     })
   }
 
-  const primaryTags = tags.filter(t => \!t.effective_start_date && \!t.effective_end_date)
+  const primaryTags = tags.filter(t => !t.effective_start_date && !t.effective_end_date)
   const subtags = tags.filter(t => t.effective_start_date || t.effective_end_date)
 
   return (
@@ -74,7 +74,7 @@ export default function SettingsTagsPage() {
             ))}
             <div className="px-4 py-3 flex items-center gap-2">
               <input type="text" value={newName} onChange={e => setNewName(e.target.value)} onKeyDown={e => e.key === 'Enter' && addTag()} placeholder="Add a tag..." className="flex-1 text-sm border-b border-gray-200 focus:border-gray-900 outline-none py-1 text-gray-900 placeholder-gray-400 bg-transparent" />
-              <button onClick={addTag} disabled={\!newName.trim() || isPending} className="text-sm text-gray-900 font-medium disabled:opacity-40">Add</button>
+              <button onClick={addTag} disabled={!newName.trim() || isPending} className="text-sm text-gray-900 font-medium disabled:opacity-40">Add</button>
             </div>
           </div>
         </div>

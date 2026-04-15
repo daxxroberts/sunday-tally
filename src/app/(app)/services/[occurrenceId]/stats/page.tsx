@@ -48,12 +48,12 @@ export default function StatsPage() {
 
     const supabase = createClient()
     supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (\!user) { router.push('/services'); return }
+      if (!user) { router.push('/services'); return }
       const { data: membership } = await supabase
         .from('church_memberships')
         .select('role, church_id')
         .eq('user_id', user.id).eq('is_active', true).single()
-      if (\!membership) return
+      if (!membership) return
       setRole(membership.role as UserRole)
 
       const [catResult, entResult] = await Promise.all([
@@ -79,7 +79,7 @@ export default function StatsPage() {
 
       // Build service-level entries (D-050: last-write-wins)
       const initialSvc = svc.map(cat => {
-        const ex = entResult.data?.find(e => e.response_category_id === cat.id && \!e.audience_group_code)
+        const ex = entResult.data?.find(e => e.response_category_id === cat.id && !e.audience_group_code)
         return { category_id: cat.id, value: ex ? (ex.is_not_applicable ? '' : String(ex.stat_value ?? '')) : '', is_na: ex?.is_not_applicable ?? false, scope: 'service' }
       })
       setServiceEntries(initialSvc)
@@ -147,15 +147,15 @@ export default function StatsPage() {
   const allSubmitted = allAudienceSubmitted && (serviceCategories.length === 0 || serviceSubmitted)
 
   useEffect(() => {
-    if (allSubmitted && \!showSummary) {
+    if (allSubmitted && !showSummary) {
       // Build summary data (N17: by category_code across groups)
       const totals: Record<string, { name: string; total: number }> = {}
       for (const group of GROUPS) {
         audienceEntries[group].forEach(row => {
           const cat = audienceCategories.find(c => c.id === row.category_id)
-          if (\!cat || row.is_na) return
+          if (!cat || row.is_na) return
           const val = parseInt(row.value) || 0
-          if (\!totals[cat.category_code]) totals[cat.category_code] = { name: cat.category_name, total: 0 }
+          if (!totals[cat.category_code]) totals[cat.category_code] = { name: cat.category_name, total: 0 }
           totals[cat.category_code].total += val
         })
       }
@@ -237,7 +237,7 @@ export default function StatsPage() {
                       <div key={row.category_id} className="px-4 py-3 flex items-center gap-3">
                         <span className="flex-1 text-sm font-medium text-gray-900">{cat?.category_name}</span>
                         <input type="number" inputMode="numeric" min="0" value={row.value} onChange={e => updateAudienceEntry(group, row.category_id, { value: e.target.value })} disabled={row.is_na} placeholder="–" className="w-16 text-right border border-gray-200 rounded-lg px-2 py-1.5 text-sm disabled:opacity-30 focus:outline-none focus:ring-2 focus:ring-gray-900" />
-                        <button type="button" onClick={() => updateAudienceEntry(group, row.category_id, { is_na: \!row.is_na, value: '' })} className={`text-xs px-2 py-1 rounded-md border transition-colors ${row.is_na ? 'bg-gray-200 text-gray-700 border-gray-300' : 'text-gray-400 border-gray-200 hover:border-gray-400'}`}>N/A</button>
+                        <button type="button" onClick={() => updateAudienceEntry(group, row.category_id, { is_na: !row.is_na, value: '' })} className={`text-xs px-2 py-1 rounded-md border transition-colors ${row.is_na ? 'bg-gray-200 text-gray-700 border-gray-300' : 'text-gray-400 border-gray-200 hover:border-gray-400'}`}>N/A</button>
                       </div>
                     )
                   })}
@@ -270,24 +270,10 @@ export default function StatsPage() {
                     <div key={row.category_id} className="px-4 py-3 flex items-center gap-3">
                       <span className="flex-1 text-sm font-medium text-gray-900">{cat?.category_name}</span>
                       <input type="number" inputMode="numeric" min="0" value={row.value} onChange={e => updateServiceEntry(row.category_id, { value: e.target.value })} disabled={row.is_na} placeholder="–" className="w-16 text-right border border-gray-200 rounded-lg px-2 py-1.5 text-sm disabled:opacity-30 focus:outline-none focus:ring-2 focus:ring-gray-900" />
-                      <button type="button" onClick={() => updateServiceEntry(row.category_id, { is_na: \!row.is_na, value: '' })} className={`text-xs px-2 py-1 rounded-md border transition-colors ${row.is_na ? 'bg-gray-200 text-gray-700 border-gray-300' : 'text-gray-400 border-gray-200 hover:border-gray-400'}`}>
+                      <button type="button" onClick={() => updateServiceEntry(row.category_id, { is_na: !row.is_na, value: '' })} className={`text-xs px-2 py-1 rounded-md border transition-colors ${row.is_na ? 'bg-gray-200 text-gray-700 border-gray-300' : 'text-gray-400 border-gray-200 hover:border-gray-400'}`}>
                         Didn&apos;t apply
                       </button>
                     </div>
                   )
                 })}
-                <div className="px-4 py-3">
-                  <button onClick={submitServiceStats} disabled={saving === 'service'} className="w-full bg-gray-900 text-white rounded-lg py-2.5 text-sm font-medium hover:bg-gray-700 disabled:opacity-40">
-                    {saving === 'service' ? 'Saving...' : 'Save Service Stats'}
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {error && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>}
-      </div>
-    </AppLayout>
-  )
-}
+                <

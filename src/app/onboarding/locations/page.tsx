@@ -27,14 +27,14 @@ export default function OnboardingLocationsPage() {
   useEffect(() => {
     const supabase = createClient()
     supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (\!user) return
+      if (!user) return
       const { data: membership } = await supabase
         .from('church_memberships')
         .select('church_id')
         .eq('user_id', user.id)
         .eq('is_active', true)
         .single()
-      if (\!membership) return
+      if (!membership) return
 
       const { data: locs } = await supabase
         .from('church_locations')
@@ -52,7 +52,7 @@ export default function OnboardingLocationsPage() {
 
   // N25: uniqueness check
   function isDuplicate(name: string, idx: number) {
-    return locations.some((l, i) => i \!== idx && l.name.trim().toLowerCase() === name.trim().toLowerCase())
+    return locations.some((l, i) => i !== idx && l.name.trim().toLowerCase() === name.trim().toLowerCase())
   }
 
   function updateName(idx: number, name: string) {
@@ -65,23 +65,23 @@ export default function OnboardingLocationsPage() {
 
   function removeLocation(idx: number) {
     const loc = locations[idx]
-    if (\!loc.id) {
-      setLocations(prev => prev.filter((_, i) => i \!== idx))
+    if (!loc.id) {
+      setLocations(prev => prev.filter((_, i) => i !== idx))
       return
     }
     startTransition(async () => {
-      const result = await deleteLocationAction(loc.id\!)
+      const result = await deleteLocationAction(loc.id!)
       if (result.error) {
-        setDeleteErrors(prev => ({ ...prev, [idx]: result.error\! }))
+        setDeleteErrors(prev => ({ ...prev, [idx]: result.error! }))
       } else {
-        setLocations(prev => prev.filter((_, i) => i \!== idx))
+        setLocations(prev => prev.filter((_, i) => i !== idx))
       }
     })
   }
 
   function handleContinue(e: React.FormEvent) {
     e.preventDefault()
-    if (\!hasValid || isPending) return
+    if (!hasValid || isPending) return
     setError(null)
 
     // Assign sort_order before saving
@@ -161,13 +161,13 @@ export default function OnboardingLocationsPage() {
         {/* E4 — Continue */}
         <button
           type="submit"
-          disabled={\!hasValid || isPending}
+          disabled={!hasValid || isPending}
           className="w-full bg-gray-900 text-white rounded-lg py-3 font-medium text-sm hover:bg-gray-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {isPending ? 'Saving...' : 'Continue — set up your service times next.'}
         </button>
 
-        {\!hasValid && (
+        {!hasValid && (
           <p className="text-xs text-center text-gray-400">Add at least one location to continue.</p>
         )}
       </form>

@@ -36,7 +36,7 @@ export function SundaySessionProvider({ children }: { children: React.ReactNode 
   const restoreSession = useCallback((date: string): SundaySession | null => {
     const key = `sunday_session_${date}`
     const raw = sessionStorage.getItem(key)
-    if (\!raw) return null
+    if (!raw) return null
     try {
       return JSON.parse(raw) as SundaySession
     } catch {
@@ -48,7 +48,7 @@ export function SundaySessionProvider({ children }: { children: React.ReactNode 
   const getSession = (): SundaySession | null => {
     if (typeof window === 'undefined') return null
     const lastActive = sessionStorage.getItem('sunday_last_active')
-    if (\!lastActive) return null
+    if (!lastActive) return null
     return restoreSession(lastActive)
   }
 
@@ -68,7 +68,7 @@ export function SundaySessionProvider({ children }: { children: React.ReactNode 
 
 export function useSundaySession() {
   const ctx = useContext(SundaySessionContext)
-  if (\!ctx) {
+  if (!ctx) {
     throw new Error('useSundaySession must be used within SundaySessionProvider')
   }
   return ctx

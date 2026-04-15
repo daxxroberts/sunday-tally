@@ -17,7 +17,7 @@ export default function OnboardingChurchPage() {
     // Pre-fill from church record (already created in SIGNUP)
     const supabase = createClient()
     supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (\!user) return
+      if (!user) return
       const { data: membership } = await supabase
         .from('church_memberships')
         .select('church_id, churches(name)')
@@ -31,7 +31,7 @@ export default function OnboardingChurchPage() {
 
   function handleContinue(e: React.FormEvent) {
     e.preventDefault()
-    if (\!churchName.trim() || isPending) return
+    if (!churchName.trim() || isPending) return
     startTransition(() => {
       router.push('/onboarding/locations')
     })

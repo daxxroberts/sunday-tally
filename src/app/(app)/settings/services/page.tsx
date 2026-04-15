@@ -22,9 +22,9 @@ export default function SettingsServicesPage() {
   useEffect(() => {
     const supabase = createClient()
     supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (\!user) return
+      if (!user) return
       const { data: membership } = await supabase.from('church_memberships').select('role, church_id').eq('user_id', user.id).eq('is_active', true).single()
-      if (\!membership) return
+      if (!membership) return
       setRole(membership.role as UserRole)
       const { data } = await supabase.from('service_templates').select('id, display_name, is_active, church_locations(name), service_tags(tag_name)').eq('church_id', membership.church_id).eq('is_active', true).order('sort_order')
       setTemplates((data ?? []).map((t: any) => ({
@@ -42,11 +42,11 @@ export default function SettingsServicesPage() {
   }
 
   function deactivate(id: string) {
-    if (\!confirm('Deactivate this service? It won\'t appear on future Sundays. History is kept.')) return
+    if (!confirm('Deactivate this service? It won\'t appear on future Sundays. History is kept.')) return
     startTransition(async () => {
       const supabase = createClient()
       await supabase.from('service_templates').update({ is_active: false }).eq('id', id)
-      setTemplates(prev => prev.filter(t => t.id \!== id))
+      setTemplates(prev => prev.filter(t => t.id !== id))
     })
   }
 

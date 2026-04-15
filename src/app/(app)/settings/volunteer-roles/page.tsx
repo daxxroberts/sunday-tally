@@ -27,9 +27,9 @@ export default function SettingsVolunteerRolesPage() {
   useEffect(() => {
     const supabase = createClient()
     supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (\!user) return
+      if (!user) return
       const { data: membership } = await supabase.from('church_memberships').select('role, church_id').eq('user_id', user.id).eq('is_active', true).single()
-      if (\!membership) return
+      if (!membership) return
       setRole(membership.role as UserRole); setChurchId(membership.church_id)
       const { data } = await supabase.from('volunteer_categories').select('*').eq('church_id', membership.church_id).eq('is_active', true).order('audience_group_code').order('sort_order')
       setCategories(data ?? [])
@@ -44,7 +44,7 @@ export default function SettingsVolunteerRolesPage() {
 
   function addCategory(group: AudienceGroupCode) {
     const name = newName[group].trim()
-    if (\!name) return
+    if (!name) return
     startTransition(async () => {
       const supabase = createClient()
       const code = `${group}_${name.toUpperCase().replace(/[^A-Z0-9]/g, '_')}_${Date.now()}`
@@ -57,7 +57,7 @@ export default function SettingsVolunteerRolesPage() {
     startTransition(async () => {
       const supabase = createClient()
       await supabase.from('volunteer_categories').update({ is_active: false }).eq('id', id)
-      setCategories(prev => prev.filter(c => c.id \!== id))
+      setCategories(prev => prev.filter(c => c.id !== id))
     })
   }
 
@@ -92,7 +92,7 @@ export default function SettingsVolunteerRolesPage() {
                   placeholder="Add a role..."
                   className="flex-1 text-sm border-b border-gray-200 focus:border-gray-900 outline-none py-1 text-gray-900 placeholder-gray-400 bg-transparent"
                 />
-                <button onClick={() => addCategory(group)} disabled={\!newName[group].trim() || isPending} className="text-sm text-gray-900 font-medium disabled:opacity-40">Add</button>
+                <button onClick={() => addCategory(group)} disabled={!newName[group].trim() || isPending} className="text-sm text-gray-900 font-medium disabled:opacity-40">Add</button>
               </div>
             </div>
           </div>

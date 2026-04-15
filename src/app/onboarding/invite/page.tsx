@@ -31,7 +31,7 @@ export default function OnboardingInvitePage() {
 
   useEffect(() => {
     getTeamData().then(data => {
-      if (\!data) return
+      if (!data) return
       setMyRole(data.myRole)
       setChurchId(data.churchId)
       const roleOpts = data.myRole === 'owner' ? ROLE_OPTIONS_OWNER : ROLE_OPTIONS_ADMIN
@@ -43,7 +43,7 @@ export default function OnboardingInvitePage() {
 
   function handleSend(e: React.FormEvent) {
     e.preventDefault()
-    if (\!email.trim() || \!role || \!churchId || isPending) return
+    if (!email.trim() || !role || !churchId || isPending) return
     setError(null)
 
     startTransition(async () => {
@@ -118,7 +118,7 @@ export default function OnboardingInvitePage() {
         {/* E4c — Send */}
         <button
           type="submit"
-          disabled={\!email.trim() || isPending}
+          disabled={!email.trim() || isPending}
           className="w-full bg-gray-900 text-white rounded-lg py-3 font-medium text-sm hover:bg-gray-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {isPending ? 'Sending...' : 'Send invite — they\'ll get an email with instructions.'}

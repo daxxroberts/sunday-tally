@@ -26,7 +26,7 @@ export default function SignupPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (\!isValid || isPending) return
+    if (!isValid || isPending) return
     setError(null)
 
     startTransition(async () => {
@@ -124,7 +124,7 @@ export default function SignupPage() {
             />
             <button
               type="button"
-              onClick={() => setShowPassword(v => \!v)}
+              onClick={() => setShowPassword(v => !v)}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 text-xs"
               tabIndex={-1}
             >
@@ -149,7 +149,7 @@ export default function SignupPage() {
         {/* E6/E7 — Submit / Loading */}
         <button
           type="submit"
-          disabled={\!isValid || isPending}
+          disabled={!isValid || isPending}
           className="w-full bg-gray-900 text-white rounded-lg py-3 font-medium text-sm hover:bg-gray-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {isPending ? (

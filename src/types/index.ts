@@ -159,8 +159,8 @@ export function isOccurrenceComplete(
 ): boolean {
   return (
     flags.attendance_entered &&
-    (\!church.tracks_volunteers || flags.volunteers_entered) &&
-    (\!church.tracks_responses  || flags.responses_entered)  &&
-    (\!church.tracks_giving     || flags.giving_entered)
+    (!church.tracks_volunteers || flags.volunteers_entered) &&
+    (!church.tracks_responses  || flags.responses_entered)  &&
+    (!church.tracks_giving     || flags.giving_entered)
   )
 }

@@ -77,7 +77,7 @@ export async function fetchDashboardData(churchId: string, includeVolunteers: bo
     .lte('service_date', todayStr)
     .order('service_date')
 
-  if (\!occurrences) return []
+  if (!occurrences) return []
 
   // Get unique primary tags
   const primaryTagMap = new Map<string, string>() // tag_code → tag_name
@@ -86,7 +86,7 @@ export async function fetchDashboardData(churchId: string, includeVolunteers: bo
     for (const ot of (occ.service_occurrence_tags ?? [])) {
       // @ts-expect-error join
       const tag = ot.service_tags
-      if (tag && \!tag.effective_start_date && \!tag.effective_end_date) {
+      if (tag && !tag.effective_start_date && !tag.effective_end_date) {
         primaryTagMap.set(tag.tag_code, tag.tag_name)
       }
     }
@@ -95,13 +95,13 @@ export async function fetchDashboardData(churchId: string, includeVolunteers: bo
   function attTotal(occ: typeof occurrences[0]): number | null {
     // @ts-expect-error join
     const ae = occ.attendance_entries?.[0]
-    if (\!ae || ae.main_attendance === null) return null
+    if (!ae || ae.main_attendance === null) return null
     return (ae.main_attendance ?? 0) + (ae.kids_attendance ?? 0) + (ae.youth_attendance ?? 0)
   }
 
   function volTotal(occ: typeof occurrences[0]): number | null {
     // @ts-expect-error join
-    const ve = occ.volunteer_entries?.filter((v: {is_not_applicable: boolean}) => \!v.is_not_applicable) ?? []
+    const ve = occ.volunteer_entries?.filter((v: {is_not_applicable: boolean}) => !v.is_not_applicable) ?? []
     if (ve.length === 0) return null
     // @ts-expect-error join
     return ve.reduce((s: number, v: {volunteer_count: number}) => s + (v.volunteer_count ?? 0), 0)
@@ -109,7 +109,7 @@ export async function fetchDashboardData(churchId: string, includeVolunteers: bo
 
   function statsTotal(occ: typeof occurrences[0]): number | null {
     // @ts-expect-error join
-    const re = occ.response_entries?.filter((r: {is_not_applicable: boolean}) => \!r.is_not_applicable) ?? []
+    const re = occ.response_entries?.filter((r: {is_not_applicable: boolean}) => !r.is_not_applicable) ?? []
     if (re.length === 0) return null
     // @ts-expect-error join
     return re.reduce((s: number, r: {stat_value: number}) => s + (r.stat_value ?? 0), 0)
@@ -140,8 +140,8 @@ export async function fetchDashboardData(churchId: string, includeVolunteers: bo
   function weeklyTotals(tagCode: string, metric: (occ: typeof occurrences[0]) => number | null, from: string, to: string): number[] {
     const byWeek = new Map<string, number>()
     for (const occ of occurrences) {
-      if (\!inRange(occ, from, to)) continue
-      if (\!hasTag(occ, tagCode)) continue
+      if (!inRange(occ, from, to)) continue
+      if (!hasTag(occ, tagCode)) continue
       const val = metric(occ)
       if (val === null) continue
       const wk = weekOf(occ.service_date)
@@ -158,10 +158,10 @@ export async function fetchDashboardData(churchId: string, includeVolunteers: bo
   function weekSum(tagCode: string, metric: (occ: typeof occurrences[0]) => number | null, from: string, to: string): number | null {
     let total = 0; let found = false
     for (const occ of occurrences) {
-      if (\!inRange(occ, from, to)) continue
-      if (\!hasTag(occ, tagCode)) continue
+      if (!inRange(occ, from, to)) continue
+      if (!hasTag(occ, tagCode)) continue
       const val = metric(occ)
-      if (val \!== null) { total += val; found = true }
+      if (val !== null) { total += val; found = true }
     }
     return found ? total : null
   }

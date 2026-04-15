@@ -27,7 +27,7 @@ export default function OnboardingServicesPage() {
 
   useEffect(() => {
     getChurchData().then(data => {
-      if (\!data) return
+      if (!data) return
       setLocations(data.locations)
       setAllTags(data.tags)
       if (data.templates.length > 0) {
@@ -41,7 +41,7 @@ export default function OnboardingServicesPage() {
   }, [])
 
   // D-046: primary tag picker shows only undated tags
-  const primaryTagOptions = allTags.filter(t => \!t.effective_start_date && \!t.effective_end_date)
+  const primaryTagOptions = allTags.filter(t => !t.effective_start_date && !t.effective_end_date)
   const multiCampus = locations.length > 1
 
   const hasValid = templates.some(t => t.display_name.trim() && t.primary_tag_id && t.location_id)
@@ -56,13 +56,13 @@ export default function OnboardingServicesPage() {
   }
 
   function removeTemplate(idx: number) {
-    setTemplates(prev => prev.filter((_, i) => i \!== idx))
+    setTemplates(prev => prev.filter((_, i) => i !== idx))
   }
 
   function handleContinue(e: React.FormEvent) {
     e.preventDefault()
     const valid = templates.filter(t => t.display_name.trim() && t.primary_tag_id && t.location_id)
-    if (\!valid.length || isPending) return
+    if (!valid.length || isPending) return
     setError(null)
 
     const toSave: TemplateInput[] = valid.map((t, i) => ({ ...t, sort_order: i + 1 }))
@@ -141,13 +141,13 @@ export default function OnboardingServicesPage() {
             </div>
 
             {/* E2f — Subtags (optional) */}
-            {allTags.filter(t => t.id \!== tmpl.primary_tag_id).length > 0 && (
+            {allTags.filter(t => t.id !== tmpl.primary_tag_id).length > 0 && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Subtags <span className="text-gray-400 font-normal">(optional) — for campaigns, series, or special groupings.</span>
                 </label>
                 <div className="flex flex-wrap gap-2">
-                  {allTags.filter(t => t.id \!== tmpl.primary_tag_id).map(t => {
+                  {allTags.filter(t => t.id !== tmpl.primary_tag_id).map(t => {
                     const selected = tmpl.subtag_ids.includes(t.id)
                     return (
                       <button
@@ -155,7 +155,7 @@ export default function OnboardingServicesPage() {
                         type="button"
                         onClick={() => updateTemplate(idx, {
                           subtag_ids: selected
-                            ? tmpl.subtag_ids.filter(id => id \!== t.id)
+                            ? tmpl.subtag_ids.filter(id => id !== t.id)
                             : [...tmpl.subtag_ids, t.id]
                         })}
                         className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
@@ -187,7 +187,7 @@ export default function OnboardingServicesPage() {
         {/* E5 — Continue */}
         <button
           type="submit"
-          disabled={\!hasValid || isPending}
+          disabled={!hasValid || isPending}
           className="w-full bg-gray-900 text-white rounded-lg py-3 font-medium text-sm hover:bg-gray-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {isPending ? 'Saving...' : 'Continue — set when these services run next.'}

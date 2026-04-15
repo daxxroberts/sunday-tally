@@ -12,7 +12,7 @@ import { revalidatePath } from 'next/cache'
 export async function getTeamData() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (\!user) return null
+  if (!user) return null
 
   const { data: membership } = await supabase
     .from('church_memberships')
@@ -20,7 +20,7 @@ export async function getTeamData() {
     .eq('user_id', user.id)
     .eq('is_active', true)
     .single()
-  if (\!membership) return null
+  if (!membership) return null
 
   const [membersResult, pendingResult] = await Promise.all([
     supabase
@@ -74,7 +74,7 @@ export async function sendInviteAction(
     const { error } = await admin.auth.admin.inviteUserByEmail(email, {
       redirectTo: inviteUrl,
     })
-    if (error && \!error.message.includes('already registered')) {
+    if (error && !error.message.includes('already registered')) {
       return { error: 'Failed to send invite email.' }
     }
   }
@@ -94,7 +94,7 @@ export async function removeMemberAction(membershipId: string): Promise<{ error?
     .eq('id', membershipId)
     .single()
 
-  if (\!membership) return { error: 'Member not found.' }
+  if (!membership) return { error: 'Member not found.' }
 
   if (membership.role === 'owner') {
     const { data: owners } = await supabase

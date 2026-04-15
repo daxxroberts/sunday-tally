@@ -20,7 +20,7 @@ export async function signInWithPasswordAction(email: string, password: string):
 
   // Read role to route correctly (E6)
   const { data: { user } } = await supabase.auth.getUser()
-  if (\!user) return { error: 'Something went wrong. Try again.' }
+  if (!user) return { error: 'Something went wrong. Try again.' }
 
   const { data: membership } = await supabase
     .from('church_memberships')

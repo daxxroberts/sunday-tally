@@ -79,10 +79,10 @@ export default function InlineEditField({
 
   return (
     <div className={`flex items-center gap-2 group ${className}`}>
-      <span className={`text-gray-900 ${\!value ? 'text-gray-400' : ''}`}>
+      <span className={`text-gray-900 ${!value ? 'text-gray-400' : ''}`}>
         {value || placeholder}
       </span>
-      {\!disabled && (
+      {!disabled && (
         <button
           onClick={startEdit}
           aria-label={`Edit ${ariaLabel || 'field'}`}

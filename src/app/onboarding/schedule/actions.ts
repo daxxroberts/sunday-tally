@@ -6,7 +6,7 @@ import { revalidatePath } from 'next/cache'
 export async function getUnscheduledTemplates() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (\!user) return []
+  if (!user) return []
 
   const { data: membership } = await supabase
     .from('church_memberships')
@@ -14,7 +14,7 @@ export async function getUnscheduledTemplates() {
     .eq('user_id', user.id)
     .eq('is_active', true)
     .single()
-  if (\!membership) return []
+  if (!membership) return []
 
   // Templates with no active schedule version (N31b)
   const { data: templates } = await supabase
@@ -24,7 +24,7 @@ export async function getUnscheduledTemplates() {
     .eq('is_active', true)
     .order('sort_order')
 
-  if (\!templates) return []
+  if (!templates) return []
 
   const unscheduled: { id: string; display_name: string }[] = []
   for (const t of templates) {
@@ -34,7 +34,7 @@ export async function getUnscheduledTemplates() {
       .eq('service_template_id', t.id)
       .eq('is_active', true)
       .limit(1)
-    if (\!active || active.length === 0) unscheduled.push(t)
+    if (!active || active.length === 0) unscheduled.push(t)
   }
   return unscheduled
 }
@@ -47,7 +47,7 @@ export async function saveScheduleAction(
 ): Promise<{ error?: string }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (\!user) return { error: 'Not authenticated' }
+  if (!user) return { error: 'Not authenticated' }
 
   // N29: set effective_end_date on any prior active version
   const today = new Date().toISOString().split('T')[0]

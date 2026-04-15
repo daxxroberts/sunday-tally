@@ -24,9 +24,9 @@ export default function SettingsStatsPage() {
   useEffect(() => {
     const supabase = createClient()
     supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (\!user) return
+      if (!user) return
       const { data: membership } = await supabase.from('church_memberships').select('role, church_id').eq('user_id', user.id).eq('is_active', true).single()
-      if (\!membership) return
+      if (!membership) return
       setRole(membership.role as UserRole); setChurchId(membership.church_id)
       const { data } = await supabase.from('response_categories').select('*').eq('church_id', membership.church_id).eq('is_active', true).order('display_order')
       setCats(data ?? [])
@@ -41,7 +41,7 @@ export default function SettingsStatsPage() {
 
   function addStat() {
     const name = newName.trim()
-    if (\!name) return
+    if (!name) return
     startTransition(async () => {
       const supabase = createClient()
       const code = `CUSTOM_${name.toUpperCase().replace(/[^A-Z0-9]/g, '_')}_${Date.now()}`
@@ -54,7 +54,7 @@ export default function SettingsStatsPage() {
     startTransition(async () => {
       const supabase = createClient()
       await supabase.from('response_categories').update({ is_active: false }).eq('id', id)
-      setCats(prev => prev.filter(c => c.id \!== id))
+      setCats(prev => prev.filter(c => c.id !== id))
     })
   }
 
@@ -72,8 +72,8 @@ export default function SettingsStatsPage() {
           {cats.map(cat => (
             <div key={cat.id} className="px-4 py-3 flex items-center gap-3">
               <div className="flex-1">
-                <InlineEditField value={cat.category_name} onSave={v => saveName(cat.id, v)} aria-label={cat.category_name} disabled={\!cat.is_custom} />
-                <p className="text-xs text-gray-400 mt-0.5">{cat.stat_scope === 'audience' ? 'Per audience' : 'Whole service'} {\!cat.is_custom ? '· Default' : '· Custom'}</p>
+                <InlineEditField value={cat.category_name} onSave={v => saveName(cat.id, v)} aria-label={cat.category_name} disabled={!cat.is_custom} />
+                <p className="text-xs text-gray-400 mt-0.5">{cat.stat_scope === 'audience' ? 'Per audience' : 'Whole service'} {!cat.is_custom ? '· Default' : '· Custom'}</p>
               </div>
               {cat.is_custom && (
                 <button onClick={() => deactivate(cat.id)} className="text-xs text-gray-400 hover:text-red-500 transition-colors">Remove</button>
@@ -87,7 +87,7 @@ export default function SettingsStatsPage() {
                 <option value="audience">Per audience (Main/Kids/Youth)</option>
                 <option value="service">Whole service</option>
               </select>
-              <button onClick={addStat} disabled={\!newName.trim() || isPending} className="text-sm text-gray-900 font-medium disabled:opacity-40 ml-auto">Add</button>
+              <button onClick={addStat} disabled={!newName.trim() || isPending} className="text-sm text-gray-900 font-medium disabled:opacity-40 ml-auto">Add</button>
             </div>
           </div>
         </div>
