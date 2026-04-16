@@ -6,7 +6,7 @@
 // Restoration pointer: sunday_last_active
 // If empty on T2–T5 load: redirect to T1. (D-017, HANDOFF_BRIEF)
 
-import { createContext, useContext, useCallback } from 'react'
+import { createContext, useContext, useCallback, useState } from 'react'
 import type { SundaySession } from '@/types'
 
 interface SundaySessionContextValue {
@@ -14,27 +14,29 @@ interface SundaySessionContextValue {
   setSession: (session: SundaySession) => void
   clearSession: () => void
   restoreSession: (date: string) => SundaySession | null
+  refetchTick: number
+  notifyRefetch: () => void
 }
 
 const SundaySessionContext = createContext<SundaySessionContextValue | null>(null)
 
 export function SundaySessionProvider({ children }: { children: React.ReactNode }) {
   const setSession = useCallback((session: SundaySession) => {
-    const key = `sunday_session_${session.serviceDate}`
+    const key = `sunday_session_${session.occurrenceId}`
     sessionStorage.setItem(key, JSON.stringify(session))
-    sessionStorage.setItem('sunday_last_active', session.serviceDate)
+    sessionStorage.setItem('sunday_last_active_id', session.occurrenceId)
   }, [])
 
   const clearSession = useCallback(() => {
-    const lastActive = sessionStorage.getItem('sunday_last_active')
-    if (lastActive) {
-      sessionStorage.removeItem(`sunday_session_${lastActive}`)
-      sessionStorage.removeItem('sunday_last_active')
+    const lastActiveId = sessionStorage.getItem('sunday_last_active_id')
+    if (lastActiveId) {
+      sessionStorage.removeItem(`sunday_session_${lastActiveId}`)
+      sessionStorage.removeItem('sunday_last_active_id')
     }
   }, [])
 
-  const restoreSession = useCallback((date: string): SundaySession | null => {
-    const key = `sunday_session_${date}`
+  const restoreSession = useCallback((occurrenceId: string): SundaySession | null => {
+    const key = `sunday_session_${occurrenceId}`
     const raw = sessionStorage.getItem(key)
     if (!raw) return null
     try {
@@ -44,21 +46,28 @@ export function SundaySessionProvider({ children }: { children: React.ReactNode 
     }
   }, [])
 
-  // Read session from sessionStorage based on the last active date
-  const getSession = (): SundaySession | null => {
+  // Read session from sessionStorage based on the last active occurrence ID
+  const getSession = (id?: string): SundaySession | null => {
     if (typeof window === 'undefined') return null
-    const lastActive = sessionStorage.getItem('sunday_last_active')
-    if (!lastActive) return null
-    return restoreSession(lastActive)
+    const targetId = id || sessionStorage.getItem('sunday_last_active_id')
+    if (!targetId) return null
+    return restoreSession(targetId)
   }
+
+  const [refetchTick, setRefetchTick] = useState(0)
+  const notifyRefetch = useCallback(() => {
+    setRefetchTick(prev => prev + 1)
+  }, [])
 
   return (
     <SundaySessionContext.Provider
       value={{
-        session: getSession(),
+        session: null, // Component-level restoration is preferred to avoid stale state in header
         setSession,
         clearSession,
         restoreSession,
+        refetchTick,
+        notifyRefetch,
       }}
     >
       {children}

@@ -10,6 +10,7 @@ import { useRouter, useParams } from 'next/navigation'
 import AppLayout from '@/components/layouts/AppLayout'
 import { createClient } from '@/lib/supabase/client'
 import type { UserRole, Church } from '@/types'
+import { useSundaySession } from '@/contexts/SundaySessionContext'
 
 export default function AttendancePage() {
   const params = useParams()
@@ -19,7 +20,6 @@ export default function AttendancePage() {
   const [role, setRole] = useState<UserRole>('editor')
   const [church, setChurch] = useState<Church | null>(null)
   const [session, setSession] = useState<{ serviceDisplayName: string; serviceDate: string; locationName: string } | null>(null)
-
   // Attendance fields — string to allow empty vs "0" distinction
   const [main, setMain] = useState<string>('')
   const [kids, setKids] = useState<string>('')
@@ -36,15 +36,11 @@ export default function AttendancePage() {
 
   const isDirty = main !== originalMain || kids !== originalKids || youth !== originalYouth
 
+  const { restoreSession, notifyRefetch } = useSundaySession()
+
   useEffect(() => {
-    // Restore session
-    const lastActive = sessionStorage.getItem('sunday_last_active')
-    if (lastActive) {
-      const raw = sessionStorage.getItem(`sunday_session_${lastActive}`)
-      if (raw) {
-        try { setSession(JSON.parse(raw)) } catch { /* ignore */ }
-      }
-    }
+    const sess = restoreSession(occurrenceId)
+    if (sess) setSession(sess)
 
     const supabase = createClient()
     supabase.auth.getUser().then(async ({ data: { user } }) => {
@@ -94,6 +90,7 @@ export default function AttendancePage() {
 
     const payload = {
       service_occurrence_id: occurrenceId,
+      last_updated_by: user.id,
       main_attendance: main === '' ? null : parseInt(main, 10),
       kids_attendance: kids === '' ? null : parseInt(kids, 10),
       youth_attendance: youth === '' ? null : parseInt(youth, 10),
@@ -108,6 +105,7 @@ export default function AttendancePage() {
 
     setOriginalMain(main); setOriginalKids(kids); setOriginalYouth(youth)
     setSaved(true)
+    notifyRefetch()
     setTimeout(() => router.push(`/services/${occurrenceId}`), 1500)
   }
 

@@ -10,6 +10,7 @@ import Link from 'next/link'
 import AppLayout from '@/components/layouts/AppLayout'
 import { createClient } from '@/lib/supabase/client'
 import type { UserRole, AudienceGroupCode } from '@/types'
+import { useSundaySession } from '@/contexts/SundaySessionContext'
 
 interface Category { id: string; category_name: string; audience_group_code: AudienceGroupCode; sort_order: number }
 interface EntryRow { category_id: string; count: string; is_na: boolean }
@@ -26,28 +27,32 @@ export default function VolunteersPage() {
 
   const [role, setRole] = useState<UserRole>('editor')
   const [session, setSession] = useState<{ serviceDisplayName: string } | null>(null)
+  const { restoreSession, notifyRefetch } = useSundaySession()
+
   const [categories, setCategories] = useState<Category[]>([])
   const [entries, setEntries] = useState<Record<AudienceGroupCode, EntryRow[]>>({ MAIN: [], KIDS: [], YOUTH: [] })
+  const [savedEntries, setSavedEntries] = useState<Record<AudienceGroupCode, EntryRow[]>>({ MAIN: [], KIDS: [], YOUTH: [] })
   const [sectionState, setSectionState] = useState<Record<AudienceGroupCode, SectionState>>({ MAIN: 'editing', KIDS: 'editing', YOUTH: 'editing' })
-  const [saving, setSaving] = useState<AudienceGroupCode | null>(null)
+  const [saving, setSaving] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [showDirtyPrompt, setShowDirtyPrompt] = useState(false)
 
   useEffect(() => {
-    const lastActive = sessionStorage.getItem('sunday_last_active')
-    if (lastActive) {
-      const raw = sessionStorage.getItem(`sunday_session_${lastActive}`)
-      if (raw) try { setSession(JSON.parse(raw)) } catch { /* ignore */ }
-    }
+    const sess = restoreSession(occurrenceId)
+    if (sess) setSession(sess)
 
     const supabase = createClient()
     supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (!user) { router.push('/services'); return }
       const { data: membership } = await supabase
         .from('church_memberships')
-        .select('role, church_id')
+        .select('role, church_id, churches(tracks_volunteers)')
         .eq('user_id', user.id).eq('is_active', true).single()
       if (!membership) return
+      
+      // @ts-expect-error join
+      if (!membership.churches?.tracks_volunteers) { router.push(`/services/${occurrenceId}`); return }
+      
       setRole(membership.role as UserRole)
 
       const [catResult, entResult] = await Promise.all([
@@ -72,6 +77,7 @@ export default function VolunteersPage() {
         })
       }
       setEntries(initialEntries)
+      setSavedEntries(JSON.parse(JSON.stringify(initialEntries)))
     })
   }, [occurrenceId, router])
 
@@ -82,24 +88,27 @@ export default function VolunteersPage() {
     }))
   }
 
-  async function submitSection(group: AudienceGroupCode) {
+  async function submitSection(group: AudienceGroupCode): Promise<boolean> {
     setSaving(group)
     setError(null)
     const supabase = createClient()
 
     const rows = entries[group]
     for (const row of rows) {
+      // Skip rows with no count and not marked N/A — no row = not entered (schema design)
+      if (!row.is_na && row.count === '') continue
       const { error: upsertError } = await supabase.from('volunteer_entries').upsert({
         service_occurrence_id: occurrenceId,
         volunteer_category_id: row.category_id,
-        volunteer_count: row.is_na ? null : (row.count === '' ? null : parseInt(row.count, 10)),
+        volunteer_count: row.is_na ? 0 : parseInt(row.count, 10),
         is_not_applicable: row.is_na,
       }, { onConflict: 'service_occurrence_id,volunteer_category_id' })
-      if (upsertError) { setError(`Couldn't save ${GROUP_LABELS[group]} volunteers. Try again.`); setSaving(null); return }
+      if (upsertError) { setError(`Couldn't save ${GROUP_LABELS[group]} volunteers. Try again.`); setSaving(null); return false }
     }
 
     setSaving(null)
     setSectionState(prev => ({ ...prev, [group]: 'submitted' }))
+    return true
   }
 
   function groupTotal(group: AudienceGroupCode) {
@@ -107,7 +116,21 @@ export default function VolunteersPage() {
   }
 
   const allSubmitted = GROUPS.every(g => sectionState[g] === 'submitted')
-  const anyDirty = GROUPS.some(g => sectionState[g] === 'editing' && entries[g].some(r => r.count !== '' || r.is_na))
+  const anyDirty = GROUPS.some(g =>
+    sectionState[g] === 'editing' &&
+    entries[g].some((r, i) => r.count !== savedEntries[g][i]?.count || r.is_na !== savedEntries[g][i]?.is_na)
+  )
+
+  async function handleSaveAllAndLeave() {
+    for (const group of GROUPS) {
+      if (sectionState[group] === 'editing' && entries[group].some(r => r.count !== '' || r.is_na)) {
+        const ok = await submitSection(group)
+        if (!ok) return
+      }
+    }
+    notifyRefetch()
+    router.push(`/services/${occurrenceId}`)
+  }
 
   const groupCats = (group: AudienceGroupCode) => categories.filter(c => c.audience_group_code === group)
 
@@ -132,6 +155,7 @@ export default function VolunteersPage() {
           <div className="w-full bg-white rounded-t-2xl p-6 space-y-3">
             <p className="font-medium text-gray-900">Save before leaving?</p>
             <p className="text-sm text-gray-500">You have unsaved volunteer counts.</p>
+            <button onClick={() => { setShowDirtyPrompt(false); handleSaveAllAndLeave(); }} className="w-full bg-gray-900 text-white rounded-lg py-3 text-sm font-medium">Save and leave</button>
             <button onClick={() => { setShowDirtyPrompt(false); router.push(`/services/${occurrenceId}`) }} className="w-full border border-gray-300 text-gray-700 rounded-lg py-3 text-sm font-medium">Leave without saving</button>
             <button onClick={() => setShowDirtyPrompt(false)} className="w-full text-gray-400 py-2 text-sm">Keep editing</button>
           </div>
@@ -221,7 +245,7 @@ export default function VolunteersPage() {
         {/* E4 — All submitted → return */}
         {allSubmitted && (
           <button
-            onClick={() => router.push(`/services/${occurrenceId}`)}
+            onClick={() => { notifyRefetch(); router.push(`/services/${occurrenceId}`); }}
             className="w-full bg-gray-900 text-white rounded-xl py-4 font-medium text-sm hover:bg-gray-700 transition-colors"
           >
             Save and return →

@@ -4,6 +4,29 @@
 
 import { createClient } from '@/lib/supabase/client'
 
+interface OccRow {
+  id: string
+  service_date: string
+  service_template_id: string
+  attendance_entries: { main_attendance: number | null; kids_attendance: number | null; youth_attendance: number | null }[]
+  volunteer_entries: { volunteer_count: number; is_not_applicable: boolean }[]
+  response_entries: { stat_value: number | null; is_not_applicable: boolean }[]
+  giving_entries: { giving_amount: string }[]
+  service_occurrence_tags: {
+    service_tag_id: string
+    service_tags: { tag_code: string; tag_name: string; effective_start_date: string | null; effective_end_date: string | null }[]
+  }[]
+}
+
+interface PeriodRow {
+  service_tag_id: string
+  response_category_id: string
+  entry_period_type: string
+  period_date: string
+  stat_value: number | null
+  is_not_applicable: boolean
+}
+
 export interface ComparisonValue {
   current: number | null
   prior: number | null
@@ -17,6 +40,9 @@ export interface TagRow {
   volunteers?: { a: ComparisonValue; b: ComparisonValue; c: ComparisonValue }
   stats?: { a: ComparisonValue; b: ComparisonValue; c: ComparisonValue }
   giving?: { a: ComparisonValue; b: ComparisonValue; c: ComparisonValue }
+  dayStats?:   { a: ComparisonValue; b: ComparisonValue; c: ComparisonValue }
+  weekStats?:  { a: ComparisonValue; b: ComparisonValue; c: ComparisonValue }
+  monthStats?: { a: ComparisonValue; b: ComparisonValue; c: ComparisonValue }
 }
 
 function delta(current: number | null, prior: number | null): number | null {
@@ -52,16 +78,17 @@ export async function fetchDashboardData(churchId: string, includeVolunteers: bo
   const yearStart = `${now.getFullYear()}-01-01`
   const lastYearStart = `${now.getFullYear() - 1}-01-01`
   const lastYearSameWeek = weekStart(new Date(now.getTime() - 365 * 86400000))
+  const fourWeeksAgoMinus1 = new Date(new Date(fourWeeksAgo).getTime() - 86400000).toISOString().split('T')[0]
 
   // Get distinct primary tags that have occurrences
   const { data: tagRows } = await supabase
     .from('service_occurrence_tags')
-    .select('service_tag_id, service_tags(tag_name, tag_code)')
+    .select('service_tag_id, service_tags(tag_name, tag_code), service_occurrences!inner(church_id)')
     .eq('service_occurrences.church_id', churchId)
     .not('service_tag_id', 'is', null)
 
   // Get all occurrences with attendance, volunteers, stats, giving
-  const { data: occurrences } = await supabase
+  const { data: rawOccurrences } = await supabase
     .from('service_occurrences')
     .select(`
       id, service_date, service_template_id,
@@ -77,58 +104,65 @@ export async function fetchDashboardData(churchId: string, includeVolunteers: bo
     .lte('service_date', todayStr)
     .order('service_date')
 
-  if (!occurrences) return []
+  // Get period entries (day/week/month stats — keyed by tag + period)
+  const { data: rawPeriodEntries } = await supabase
+    .from('church_period_entries')
+    .select('service_tag_id, response_category_id, entry_period_type, period_date, stat_value, is_not_applicable')
+    .eq('church_id', churchId)
+    .gte('period_date', lastYearStart)
+    .lte('period_date', todayStr)
+
+  if (!rawOccurrences) return []
+  const occurrences = (rawOccurrences as any) as OccRow[]
+  const periodEntries = (rawPeriodEntries ?? []) as PeriodRow[]
+
+  // Build tag_code → tag_id map from tagRows (for period entry lookup)
+  const tagIdMap = new Map<string, string>()
+  for (const tr of (tagRows ?? [])) {
+    const tag = (tr.service_tags as any)?.[0]
+    if (tag) tagIdMap.set(tag.tag_code, tr.service_tag_id)
+  }
 
   // Get unique primary tags
   const primaryTagMap = new Map<string, string>() // tag_code → tag_name
   for (const occ of occurrences) {
-    // @ts-expect-error join
     for (const ot of (occ.service_occurrence_tags ?? [])) {
-      // @ts-expect-error join
-      const tag = ot.service_tags
+      const tag = ot.service_tags?.[0]
       if (tag && !tag.effective_start_date && !tag.effective_end_date) {
         primaryTagMap.set(tag.tag_code, tag.tag_name)
       }
     }
   }
 
-  function attTotal(occ: typeof occurrences[0]): number | null {
-    // @ts-expect-error join
+  function attTotal(occ: OccRow): number | null {
     const ae = occ.attendance_entries?.[0]
     if (!ae || ae.main_attendance === null) return null
     return (ae.main_attendance ?? 0) + (ae.kids_attendance ?? 0) + (ae.youth_attendance ?? 0)
   }
 
-  function volTotal(occ: typeof occurrences[0]): number | null {
-    // @ts-expect-error join
-    const ve = occ.volunteer_entries?.filter((v: {is_not_applicable: boolean}) => !v.is_not_applicable) ?? []
+  function volTotal(occ: OccRow): number | null {
+    const ve = occ.volunteer_entries?.filter(v => !v.is_not_applicable) ?? []
     if (ve.length === 0) return null
-    // @ts-expect-error join
-    return ve.reduce((s: number, v: {volunteer_count: number}) => s + (v.volunteer_count ?? 0), 0)
+    return ve.reduce((s, v) => s + (v.volunteer_count ?? 0), 0)
   }
 
-  function statsTotal(occ: typeof occurrences[0]): number | null {
-    // @ts-expect-error join
-    const re = occ.response_entries?.filter((r: {is_not_applicable: boolean}) => !r.is_not_applicable) ?? []
+  function statsTotal(occ: OccRow): number | null {
+    const re = occ.response_entries?.filter(r => !r.is_not_applicable) ?? []
     if (re.length === 0) return null
-    // @ts-expect-error join
-    return re.reduce((s: number, r: {stat_value: number}) => s + (r.stat_value ?? 0), 0)
+    return re.reduce((s, r) => s + (r.stat_value ?? 0), 0)
   }
 
-  function givingTotal(occ: typeof occurrences[0]): number | null {
-    // @ts-expect-error join
+  function givingTotal(occ: OccRow): number | null {
     const ge = occ.giving_entries ?? []
     if (ge.length === 0) return null
-    // @ts-expect-error join
-    return ge.reduce((s: number, g: {giving_amount: string}) => s + parseFloat(g.giving_amount ?? '0'), 0)
+    return ge.reduce((s, g) => s + parseFloat(g.giving_amount ?? '0'), 0)
   }
 
-  function hasTag(occ: typeof occurrences[0], tagCode: string): boolean {
-    // @ts-expect-error join
-    return (occ.service_occurrence_tags ?? []).some((ot: {service_tags: {tag_code: string}}) => ot.service_tags?.tag_code === tagCode)
+  function hasTag(occ: OccRow, tagCode: string): boolean {
+    return (occ.service_occurrence_tags ?? []).some(ot => ot.service_tags?.[0]?.tag_code === tagCode)
   }
 
-  function inRange(occ: typeof occurrences[0], from: string, to: string): boolean {
+  function inRange(occ: OccRow, from: string, to: string): boolean {
     return occ.service_date >= from && occ.service_date <= to
   }
 
@@ -136,8 +170,8 @@ export async function fetchDashboardData(churchId: string, includeVolunteers: bo
     return weekStart(new Date(dateStr + 'T12:00:00'))
   }
 
-  // Aggregate weekly totals for a tag
-  function weeklyTotals(tagCode: string, metric: (occ: typeof occurrences[0]) => number | null, from: string, to: string): number[] {
+  // Aggregate weekly totals for a tag (from occurrence-keyed entries)
+  function weeklyTotals(tagCode: string, metric: (occ: OccRow) => number | null, from: string, to: string): number[] {
     const byWeek = new Map<string, number>()
     for (const occ of occurrences) {
       if (!inRange(occ, from, to)) continue
@@ -155,7 +189,7 @@ export async function fetchDashboardData(churchId: string, includeVolunteers: bo
     return Math.round(vals.reduce((s, v) => s + v, 0) / vals.length)
   }
 
-  function weekSum(tagCode: string, metric: (occ: typeof occurrences[0]) => number | null, from: string, to: string): number | null {
+  function weekSum(tagCode: string, metric: (occ: OccRow) => number | null, from: string, to: string): number | null {
     let total = 0; let found = false
     for (const occ of occurrences) {
       if (!inRange(occ, from, to)) continue
@@ -166,10 +200,36 @@ export async function fetchDashboardData(churchId: string, includeVolunteers: bo
     return found ? total : null
   }
 
+  // Period entry helpers (for day/week/month stats)
+  function periodWeeklyTotals(tagId: string, periodType: string, from: string, to: string): number[] {
+    const byWeek = new Map<string, number>()
+    for (const pe of periodEntries) {
+      if (pe.service_tag_id !== tagId) continue
+      if (pe.entry_period_type !== periodType) continue
+      if (pe.is_not_applicable || pe.stat_value === null) continue
+      if (pe.period_date < from || pe.period_date > to) continue
+      const wk = weekOf(pe.period_date)
+      byWeek.set(wk, (byWeek.get(wk) ?? 0) + pe.stat_value)
+    }
+    return Array.from(byWeek.values())
+  }
+
+  function periodWeekSum(tagId: string, periodType: string, from: string, to: string): number | null {
+    let total = 0; let found = false
+    for (const pe of periodEntries) {
+      if (pe.service_tag_id !== tagId) continue
+      if (pe.entry_period_type !== periodType) continue
+      if (pe.is_not_applicable || pe.stat_value === null) continue
+      if (pe.period_date < from || pe.period_date > to) continue
+      total += pe.stat_value; found = true
+    }
+    return found ? total : null
+  }
+
   const result: TagRow[] = []
 
   for (const [tagCode, tagName] of primaryTagMap) {
-    function buildComparisons(metric: (occ: typeof occurrences[0]) => number | null) {
+    function buildComparisons(metric: (occ: OccRow) => number | null) {
       // P14a: this week vs last week
       const thisWk = weekSum(tagCode, metric, thisWeekStart, todayStr)
       const lastWk = weekSum(tagCode, metric, lastWeekStart, lastWeekEnd)
@@ -177,7 +237,7 @@ export async function fetchDashboardData(churchId: string, includeVolunteers: bo
 
       // P14b: 4-wk avg vs prior 4-wk avg
       const cur4 = avg(weeklyTotals(tagCode, metric, fourWeeksAgo, lastWeekEnd))
-      const pri4 = avg(weeklyTotals(tagCode, metric, eightWeeksAgo, new Date(new Date(fourWeeksAgo).getTime() - 86400000).toISOString().split('T')[0]))
+      const pri4 = avg(weeklyTotals(tagCode, metric, eightWeeksAgo, fourWeeksAgoMinus1))
       const b = cv(cur4, pri4)
 
       // P14c: YTD avg vs prior YTD avg (N72: weeks with occurrences denominator)
@@ -196,6 +256,32 @@ export async function fetchDashboardData(churchId: string, includeVolunteers: bo
     if (includeVolunteers) row.volunteers = buildComparisons(volTotal)
     row.stats = buildComparisons(statsTotal)
     row.giving = buildComparisons(givingTotal)
+
+    // Period stats (day/week/month — from church_period_entries)
+    const tagId = tagIdMap.get(tagCode) ?? ''
+    if (tagId) {
+      function buildPeriodComparisons(periodType: string) {
+        const thisWk = periodWeekSum(tagId, periodType, thisWeekStart, todayStr)
+        const lastWk = periodWeekSum(tagId, periodType, lastWeekStart, lastWeekEnd)
+        const a = cv(thisWk, lastWk)
+
+        const cur4 = avg(periodWeeklyTotals(tagId, periodType, fourWeeksAgo, lastWeekEnd))
+        const pri4 = avg(periodWeeklyTotals(tagId, periodType, eightWeeksAgo, fourWeeksAgoMinus1))
+        const b = cv(cur4, pri4)
+
+        const ytdWeeks   = periodWeeklyTotals(tagId, periodType, yearStart, todayStr)
+        const priorWeeks = periodWeeklyTotals(tagId, periodType, lastYearStart, lastYearSameWeek)
+        const c = cv(avg(ytdWeeks), avg(priorWeeks))
+        return { a, b, c }
+      }
+
+      if (periodEntries.some(pe => pe.service_tag_id === tagId && pe.entry_period_type === 'day'))
+        row.dayStats = buildPeriodComparisons('day')
+      if (periodEntries.some(pe => pe.service_tag_id === tagId && pe.entry_period_type === 'week'))
+        row.weekStats = buildPeriodComparisons('week')
+      if (periodEntries.some(pe => pe.service_tag_id === tagId && pe.entry_period_type === 'month'))
+        row.monthStats = buildPeriodComparisons('month')
+    }
 
     result.push(row)
   }

@@ -10,6 +10,7 @@ import Link from 'next/link'
 import AppLayout from '@/components/layouts/AppLayout'
 import { createClient } from '@/lib/supabase/client'
 import type { UserRole, Church } from '@/types'
+import { useSundaySession } from '@/contexts/SundaySessionContext'
 
 interface SectionSummary {
   main_attendance: number | null
@@ -75,23 +76,14 @@ export default function OccurrencePage() {
   const [occurrence, setOccurrence] = useState<OccurrenceInfo | null>(null)
   const [summary, setSummary] = useState<SectionSummary | null>(null)
   const [loading, setLoading] = useState(true)
+  const { refetchTick } = useSundaySession()
+
+  const { restoreSession } = useSundaySession()
 
   useEffect(() => {
-    // Try to restore session from sessionStorage or URL param (N8)
-    const lastActive = sessionStorage.getItem('sunday_last_active')
-    if (lastActive) {
-      const sessionKey = `sunday_session_${lastActive}`
-      const raw = sessionStorage.getItem(sessionKey)
-      // Validate occurrenceId matches session
-      if (raw) {
-        try {
-          const parsed = JSON.parse(raw)
-          if (parsed.occurrenceId !== occurrenceId) {
-            // Update session to this occurrence
-            sessionStorage.setItem('sunday_last_active', parsed.serviceDate)
-          }
-        } catch { /* ignore */ }
-      }
+    // Try to restore session from storage using the ID from URL
+    if (typeof window !== 'undefined') {
+       restoreSession(occurrenceId)
     }
 
     const supabase = createClient()
@@ -129,34 +121,41 @@ export default function OccurrencePage() {
         location_name: occ.church_locations?.name ?? '',
       })
 
-      // P13 — single round-trip section summaries (N7)
-      const { data: att } = await supabase.from('attendance_entries').select('main_attendance, kids_attendance, youth_attendance').eq('service_occurrence_id', occurrenceId).maybeSingle()
-      const { data: volSum } = await supabase.from('volunteer_entries').select('volunteer_count').eq('service_occurrence_id', occurrenceId).eq('is_not_applicable', false)
-      const { data: resSum } = await supabase.from('response_entries').select('stat_value').eq('service_occurrence_id', occurrenceId).eq('is_not_applicable', false)
-      const { data: givSum } = await supabase.from('giving_entries').select('giving_amount').eq('service_occurrence_id', occurrenceId)
+      // P13 — batch four queries via Promise.all
+      const [attRes, volRes, resRes, givRes] = await Promise.all([
+        supabase.from('attendance_entries').select('main_attendance, kids_attendance, youth_attendance').eq('service_occurrence_id', occurrenceId).maybeSingle(),
+        supabase.from('volunteer_entries').select('volunteer_count').eq('service_occurrence_id', occurrenceId).eq('is_not_applicable', false),
+        supabase.from('response_entries').select('stat_value').eq('service_occurrence_id', occurrenceId).eq('is_not_applicable', false),
+        supabase.from('giving_entries').select('giving_amount').eq('service_occurrence_id', occurrenceId)
+      ])
 
-      const totalVol = volSum?.reduce((s, r) => s + (r.volunteer_count ?? 0), 0) ?? null
-      const totalRes = resSum?.reduce((s, r) => s + (r.stat_value ?? 0), 0) ?? null
-      const totalGiv = givSum?.reduce((s, r) => s + parseFloat(r.giving_amount ?? '0'), 0) ?? null
+      const totalVol = volRes.data?.reduce((s, r) => s + (r.volunteer_count ?? 0), 0) ?? null
+      const totalRes = resRes.data?.reduce((s, r) => s + (r.stat_value ?? 0), 0) ?? null
+      const totalGiv = givRes.data?.reduce((s, r) => s + parseFloat(r.giving_amount ?? '0'), 0) ?? null
 
       setSummary({
-        main_attendance: att?.main_attendance ?? null,
-        kids_attendance: att?.kids_attendance ?? null,
-        youth_attendance: att?.youth_attendance ?? null,
-        total_volunteers: (volSum?.length ?? 0) > 0 ? totalVol : null,
+        main_attendance: attRes.data?.main_attendance ?? null,
+        kids_attendance: attRes.data?.kids_attendance ?? null,
+        youth_attendance: attRes.data?.youth_attendance ?? null,
+        total_volunteers: (volRes.data?.length ?? 0) > 0 ? totalVol : null,
         active_groups: null,
-        total_responses: (resSum?.length ?? 0) > 0 ? totalRes : null,
-        total_giving: (givSum?.length ?? 0) > 0 ? totalGiv?.toFixed(2) ?? null : null,
+        total_responses: (resRes.data?.length ?? 0) > 0 ? totalRes : null,
+        total_giving: (givRes.data?.length ?? 0) > 0 ? totalGiv?.toFixed(2) ?? null : null,
       })
 
       setLoading(false)
     })
-  }, [occurrenceId, router])
+  }, [occurrenceId, router, refetchTick])
 
   if (!church || !occurrence) return null
 
   const isCancelled = occurrence.status === 'cancelled'
-  const attEntered = summary?.main_attendance !== null
+  
+  const mainFilled = summary?.main_attendance !== null
+  const kidsFilled = church.tracks_kids_attendance ? summary?.kids_attendance !== null : true
+  const youthFilled = church.tracks_youth_attendance ? summary?.youth_attendance !== null : true
+  const attEntered = mainFilled && kidsFilled && youthFilled
+  
   const volEntered = summary?.total_volunteers !== null
   const resEntered = summary?.total_responses !== null
   const givEntered = summary?.total_giving !== null

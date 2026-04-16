@@ -87,7 +87,7 @@ export interface VolunteerEntry {
 }
 
 // ─── Response / Stats Categories ───────────────────────────────────────────────
-export type StatScope = 'audience' | 'service'
+export type StatScope = 'audience' | 'service' | 'day' | 'week' | 'month'
 
 export interface ResponseCategory {
   id: string
@@ -106,6 +106,17 @@ export interface ResponseEntry {
   response_category_id: string
   audience_group_code: AudienceGroupCode | null   // null for service-level stats
   stat_value: number
+  is_not_applicable: boolean
+}
+
+export interface PeriodEntry {
+  id: string
+  church_id: string
+  service_tag_id: string
+  response_category_id: string
+  entry_period_type: 'day' | 'week' | 'month'
+  period_date: string   // ISO date YYYY-MM-DD
+  stat_value: number | null
   is_not_applicable: boolean
 }
 

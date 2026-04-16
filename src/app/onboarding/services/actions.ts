@@ -45,10 +45,12 @@ export async function saveTemplatesAction(templates: TemplateInput[]): Promise<{
         .eq('church_id', churchId)
       if (error) return { error: 'Failed to save service.' }
     } else {
+      const service_code = tmpl.display_name.trim().toUpperCase().replace(/[^A-Z0-9]+/g, '_').substring(0, 8) + '_' + Math.random().toString(36).substring(2, 6).toUpperCase()
       const { data, error } = await supabase
         .from('service_templates')
         .insert({
           church_id: churchId,
+          service_code,
           display_name: tmpl.display_name.trim(),
           location_id: tmpl.location_id,
           sort_order: tmpl.sort_order,
