@@ -143,9 +143,9 @@ export default function AttendancePage() {
   return (
     <AppLayout role={role}>
       {/* E1 — Persistent Occurrence Header */}
-      <div className="sticky top-0 z-10 bg-white border-b border-gray-100 px-4 py-3">
+      <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm border-b border-gray-100 px-4 py-3">
         <div className="flex items-center gap-3">
-          <button onClick={handleBack} className="text-gray-400 hover:text-gray-700 transition-colors">
+          <button onClick={handleBack} className="text-gray-400 hover:text-gray-600 transition-colors cursor-pointer">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
             </svg>
@@ -163,8 +163,8 @@ export default function AttendancePage() {
           <div className="w-full bg-white rounded-t-2xl p-6 space-y-3">
             <p className="font-medium text-gray-900">Save before leaving?</p>
             <p className="text-sm text-gray-500">You have unsaved attendance.</p>
-            <button onClick={() => { setShowDirtyPrompt(false); handleSave() }} className="w-full bg-gray-900 text-white rounded-lg py-3 text-sm font-medium">Save and leave</button>
-            <button onClick={() => { setShowDirtyPrompt(false); router.push(`/services/${occurrenceId}`) }} className="w-full border border-gray-300 text-gray-700 rounded-lg py-3 text-sm font-medium">Leave without saving</button>
+            <button onClick={() => { setShowDirtyPrompt(false); handleSave() }} className="w-full bg-blue-600 text-white rounded-xl py-3 text-sm font-semibold hover:bg-blue-700 transition-colors">Save and leave</button>
+            <button onClick={() => { setShowDirtyPrompt(false); router.push(`/services/${occurrenceId}`) }} className="w-full border border-gray-200 text-gray-700 rounded-xl py-3 text-sm font-medium hover:bg-gray-50 transition-colors">Leave without saving</button>
             <button onClick={() => setShowDirtyPrompt(false)} className="w-full text-gray-400 py-2 text-sm">Keep editing</button>
           </div>
         </div>
@@ -183,7 +183,7 @@ export default function AttendancePage() {
               value={main}
               onChange={e => setMain(e.target.value)}
               placeholder="–"
-              className="w-full text-3xl font-light border-b-2 border-gray-200 focus:border-gray-900 outline-none py-2 text-gray-900 placeholder-gray-300 bg-transparent"
+              className="w-full text-3xl font-light border-b-2 border-gray-200 focus:border-blue-500 outline-none py-2 text-gray-900 placeholder-gray-300 bg-transparent"
             />
           </div>
 
@@ -198,7 +198,7 @@ export default function AttendancePage() {
                 value={kids}
                 onChange={e => setKids(e.target.value)}
                 placeholder="–"
-                className="w-full text-3xl font-light border-b-2 border-gray-200 focus:border-gray-900 outline-none py-2 text-gray-900 placeholder-gray-300 bg-transparent"
+                className="w-full text-3xl font-light border-b-2 border-gray-200 focus:border-blue-500 outline-none py-2 text-gray-900 placeholder-gray-300 bg-transparent"
               />
             </div>
           )}
@@ -214,7 +214,7 @@ export default function AttendancePage() {
                 value={youth}
                 onChange={e => setYouth(e.target.value)}
                 placeholder="–"
-                className="w-full text-3xl font-light border-b-2 border-gray-200 focus:border-gray-900 outline-none py-2 text-gray-900 placeholder-gray-300 bg-transparent"
+                className="w-full text-3xl font-light border-b-2 border-gray-200 focus:border-blue-500 outline-none py-2 text-gray-900 placeholder-gray-300 bg-transparent"
               />
             </div>
           )}
@@ -233,7 +233,7 @@ export default function AttendancePage() {
         <button
           onClick={handleSave}
           disabled={saving}
-          className="w-full bg-gray-900 text-white rounded-xl py-4 font-medium text-sm hover:bg-gray-700 transition-colors disabled:opacity-40"
+          className="w-full bg-blue-600 text-white rounded-xl py-4 font-semibold text-sm hover:bg-blue-700 transition-colors disabled:opacity-40"
         >
           {saving ? 'Saving...' : 'Save Attendance'}
         </button>

@@ -1,290 +1,553 @@
-// Dashboard query helpers — P14a, P14b, P14c
-// D-033: three columns simultaneously | N72: YTD denominator = weeks with occurrences
-// N73: delta = (current - prior) / prior × 100
+// D1 Full Dashboard — v2.0 four-column data layer.
+// IRIS_D1_ELEMENT_MAP.md v2.0 · P14a/b/c/d/e/f/g · D-033 revised · D-041 revised · D-044 superseded · D-053/054/055
+//
+// Columns (left to right):
+//   w        = Current Week          (P14a)
+//   m4       = Last 4-Wk Avg         (P14b)
+//   ytd      = Current YTD Avg       (P14c — weeks-with-occurrences denominator, N72)
+//   priorYtd = Prior YTD Avg         (P14d — same-week window last year, same denominator rule, D-055)
+//
+// Deltas (D-053): w vs m4, ytd vs priorYtd. No delta m4↔ytd.
 
 import { createClient } from '@/lib/supabase/client'
+
+// ─── Shape helpers ────────────────────────────────────────────────────────────
+
+export interface FourWin {
+  w: number | null
+  m4: number | null
+  ytd: number | null
+  priorYtd: number | null
+  delta_w_m4: number | null         // percent
+  delta_ytd_prior: number | null    // percent
+}
+
+export interface AudienceStatRow {
+  category_id: string
+  category_name: string
+  category_code: string
+  values: FourWin
+}
+
+export interface AudienceSection {
+  attendance: FourWin
+  volunteers: FourWin      // zeroed + null when church.tracks_volunteers = false (UI hides)
+  stats: AudienceStatRow[] // empty when church.tracks_responses = false (UI hides)
+}
+
+export interface VolunteerBreakoutRow {
+  category_id: string
+  category_name: string
+  audience_group_code: 'MAIN' | 'KIDS' | 'YOUTH'
+  sort_order: number
+  values: FourWin
+}
+
+export interface VolunteerBreakout {
+  total: FourWin
+  rows: VolunteerBreakoutRow[]
+}
+
+export interface OtherStatRow {
+  key: string                // category_id + '|' + (tag_code ?? '')
+  category_id: string
+  category_name: string
+  tag_code: string | null    // null for service-scope stats; set for period entries
+  values: FourWin
+}
+
+export interface DashboardSummary {
+  grandTotal: FourWin
+  adults: FourWin
+  kids: FourWin
+  youth: FourWin
+  volunteers: FourWin
+  firstTimeDecisions: FourWin
+  giving: FourWin
+}
+
+export interface DashboardHighlights {
+  attendance: { current: number; prior: number }
+  giving:     { current: number; prior: number }
+  volunteers: { current: number; prior: number }
+}
+
+export interface DashboardData {
+  summary: DashboardSummary
+  adults: AudienceSection
+  kids: AudienceSection
+  youth: AudienceSection
+  volunteerBreakout: VolunteerBreakout
+  otherStats: OtherStatRow[]
+  highlights: DashboardHighlights
+  hasAnyData: boolean
+  weeksWithData: number             // for the E10 one-week-state gate
+}
+
+// ─── Raw row shapes (as returned by the joined Supabase selects) ─────────────
+
+interface AttRow     { main_attendance: number | null; kids_attendance: number | null; youth_attendance: number | null }
+interface VolCatRow  { id: string; category_name: string; audience_group_code: 'MAIN' | 'KIDS' | 'YOUTH'; sort_order: number; is_active: boolean }
+interface VolEntryRow { volunteer_count: number; is_not_applicable: boolean; volunteer_categories: VolCatRow | VolCatRow[] | null }
+interface RespCatRow { id: string; category_name: string; category_code: string; stat_scope: 'audience' | 'service' | 'day' | 'week' | 'month'; display_order: number; is_active: boolean }
+interface RespEntryRow { stat_value: number | null; is_not_applicable: boolean; audience_group_code: 'MAIN' | 'KIDS' | 'YOUTH' | null; response_categories: RespCatRow | RespCatRow[] | null }
+interface GivingEntryRow { giving_amount: string }
 
 interface OccRow {
   id: string
   service_date: string
-  service_template_id: string
-  attendance_entries: { main_attendance: number | null; kids_attendance: number | null; youth_attendance: number | null }[]
-  volunteer_entries: { volunteer_count: number; is_not_applicable: boolean }[]
-  response_entries: { stat_value: number | null; is_not_applicable: boolean }[]
-  giving_entries: { giving_amount: string }[]
-  service_occurrence_tags: {
-    service_tag_id: string
-    service_tags: { tag_code: string; tag_name: string; effective_start_date: string | null; effective_end_date: string | null }[]
-  }[]
+  attendance_entries: AttRow | AttRow[] | null  // unique constraint → PostgREST returns object, not array
+  volunteer_entries: VolEntryRow[]
+  response_entries: RespEntryRow[]
+  giving_entries: GivingEntryRow[]
 }
 
-interface PeriodRow {
+interface PeRow {
   service_tag_id: string
-  response_category_id: string
   entry_period_type: string
   period_date: string
   stat_value: number | null
   is_not_applicable: boolean
+  service_tags:        { tag_code: string } | { tag_code: string }[] | null
+  response_categories: RespCatRow | RespCatRow[] | null
 }
 
-export interface ComparisonValue {
-  current: number | null
-  prior: number | null
-  delta: number | null   // percentage
+function firstRelated<T>(v: T | T[] | null | undefined): T | null {
+  if (!v) return null
+  return Array.isArray(v) ? (v[0] ?? null) : v
 }
 
-export interface TagRow {
-  tag_code: string
-  tag_name: string
-  attendance: { a: ComparisonValue; b: ComparisonValue; c: ComparisonValue }
-  volunteers?: { a: ComparisonValue; b: ComparisonValue; c: ComparisonValue }
-  stats?: { a: ComparisonValue; b: ComparisonValue; c: ComparisonValue }
-  giving?: { a: ComparisonValue; b: ComparisonValue; c: ComparisonValue }
-  dayStats?:   { a: ComparisonValue; b: ComparisonValue; c: ComparisonValue }
-  weekStats?:  { a: ComparisonValue; b: ComparisonValue; c: ComparisonValue }
-  monthStats?: { a: ComparisonValue; b: ComparisonValue; c: ComparisonValue }
-}
+// ─── Delta + rounding ─────────────────────────────────────────────────────────
 
 function delta(current: number | null, prior: number | null): number | null {
-  if (prior === null || prior === 0 || current === null) return null
+  if (current === null || prior === null || prior === 0) return null
   return Math.round(((current - prior) / prior) * 100)
 }
 
-function cv(current: number | null, prior: number | null): ComparisonValue {
-  return { current, prior, delta: delta(current, prior) }
+function roundOrNull(n: number | null): number | null {
+  return n === null ? null : Math.round(n)
 }
 
-// Fetch all dashboard data for a church
-export async function fetchDashboardData(churchId: string, includeVolunteers: boolean): Promise<TagRow[]> {
-  const supabase = createClient()
+// ─── Date boundaries ──────────────────────────────────────────────────────────
 
-  const now = new Date()
-  const todayStr = now.toISOString().split('T')[0]
+interface Boundaries {
+  today: string
+  thisWeekStart: string       // Sunday of current week (Sun→Sat buckets — church ops week)
+  lastWeekEnd: string         // Saturday before thisWeekStart
+  fourWksAgoStart: string     // Sunday 4 weeks before thisWeekStart
+  yearStart: string           // Jan 1 of current year
+  lastYearStart: string       // Jan 1 of prior year
+  lastYearSameWeek: string    // Sunday of the same week, one year ago
+}
 
-  // Week boundaries (Monday-based weeks via ISO)
-  function weekStart(d: Date): string {
-    const day = d.getDay()
-    const diff = d.getDate() - day + (day === 0 ? -6 : 1)
-    const monday = new Date(d)
-    monday.setDate(diff)
-    return monday.toISOString().split('T')[0]
-  }
+// Sunday-starting week bucket. Sunday is both the start of the week AND the
+// primary service day — a service on Sunday 4/12 lands in week starting 4/12,
+// so viewing mid-week (Wed/Thu/Fri) shows that Sunday's numbers as Current Week.
+function weekStartOf(d: Date): string {
+  const day = d.getDay() // 0=Sun, 1=Mon, ..., 6=Sat
+  const sunday = new Date(d)
+  sunday.setDate(d.getDate() - day)
+  sunday.setHours(0, 0, 0, 0)
+  return sunday.toISOString().split('T')[0]
+}
 
-  const thisWeekStart = weekStart(now)
-  const lastWeekStart = weekStart(new Date(now.getTime() - 7 * 86400000))
-  const lastWeekEnd = new Date(new Date(thisWeekStart).getTime() - 86400000).toISOString().split('T')[0]
-  const fourWeeksAgo = weekStart(new Date(now.getTime() - 28 * 86400000))
-  const eightWeeksAgo = weekStart(new Date(now.getTime() - 56 * 86400000))
+function shiftDays(dateStr: string, days: number): string {
+  const d = new Date(dateStr + 'T12:00:00')
+  d.setDate(d.getDate() + days)
+  return d.toISOString().split('T')[0]
+}
+
+function buildBoundaries(now: Date): Boundaries {
+  const today = now.toISOString().split('T')[0]
+  const thisWeekStart = weekStartOf(now)
+  const lastWeekEnd = shiftDays(thisWeekStart, -1)
+  const fourWksAgoStart = shiftDays(thisWeekStart, -28)
   const yearStart = `${now.getFullYear()}-01-01`
   const lastYearStart = `${now.getFullYear() - 1}-01-01`
-  const lastYearSameWeek = weekStart(new Date(now.getTime() - 365 * 86400000))
-  const fourWeeksAgoMinus1 = new Date(new Date(fourWeeksAgo).getTime() - 86400000).toISOString().split('T')[0]
+  const priorYear = new Date(now)
+  priorYear.setFullYear(priorYear.getFullYear() - 1)
+  const lastYearSameWeek = weekStartOf(priorYear)
+  return { today, thisWeekStart, lastWeekEnd, fourWksAgoStart, yearStart, lastYearStart, lastYearSameWeek }
+}
 
-  // Get distinct primary tags that have occurrences
-  const { data: tagRows } = await supabase
-    .from('service_occurrence_tags')
-    .select('service_tag_id, service_tags(tag_name, tag_code), service_occurrences!inner(church_id)')
-    .eq('service_occurrences.church_id', churchId)
-    .not('service_tag_id', 'is', null)
+function weekOf(dateStr: string): string {
+  return weekStartOf(new Date(dateStr + 'T12:00:00'))
+}
 
-  // Get all occurrences with attendance, volunteers, stats, giving
-  const { data: rawOccurrences } = await supabase
+// ─── Core aggregation ─────────────────────────────────────────────────────────
+
+/**
+ * Given a Map of weekStart → value, assemble a FourWin across the time boundaries.
+ * Rule 4 (NULL ≠ zero) is enforced by never inserting a bucket for a NULL metric
+ * (callers must skip null values before calling set/update on the map).
+ */
+function fourWinFromWeekly(weekly: Map<string, number>, b: Boundaries): FourWin {
+  // Col 1 — Current Week: the single bucket for thisWeekStart
+  const w = weekly.has(b.thisWeekStart) ? weekly.get(b.thisWeekStart)! : null
+
+  // Col 2 — Last 4-Wk Avg: weeks in [fourWksAgoStart, lastWeekEnd], weeks-with-data denominator (N72 extension)
+  const last4: number[] = []
+  for (const [wk, v] of weekly) {
+    if (wk >= b.fourWksAgoStart && wk <= b.lastWeekEnd) last4.push(v)
+  }
+  const m4 = last4.length > 0 ? last4.reduce((s, x) => s + x, 0) / last4.length : null
+
+  // Col 3 — Current YTD Avg: weeks in [yearStart, thisWeekStart], weeks-with-data denominator (N72)
+  const ytdVals: number[] = []
+  for (const [wk, v] of weekly) {
+    if (wk >= b.yearStart && wk <= b.thisWeekStart) ytdVals.push(v)
+  }
+  const ytd = ytdVals.length > 0 ? ytdVals.reduce((s, x) => s + x, 0) / ytdVals.length : null
+
+  // Col 4 — Prior YTD Avg: weeks in [lastYearStart, lastYearSameWeek], same denominator rule (D-055)
+  const priorVals: number[] = []
+  for (const [wk, v] of weekly) {
+    if (wk >= b.lastYearStart && wk <= b.lastYearSameWeek) priorVals.push(v)
+  }
+  const priorYtd = priorVals.length > 0 ? priorVals.reduce((s, x) => s + x, 0) / priorVals.length : null
+
+  const wR = roundOrNull(w)
+  const m4R = roundOrNull(m4)
+  const ytdR = roundOrNull(ytd)
+  const priorR = roundOrNull(priorYtd)
+
+  return {
+    w: wR, m4: m4R, ytd: ytdR, priorYtd: priorR,
+    delta_w_m4: delta(wR, m4R),
+    delta_ytd_prior: delta(ytdR, priorR),
+  }
+}
+
+/**
+ * Build a weekly Map by summing `value(occ)` per week. Null values are skipped
+ * (Rule 4) — they do not become 0 buckets and do not drag averages down.
+ */
+function buildWeekly(
+  occurrences: OccRow[],
+  value: (occ: OccRow) => number | null,
+): Map<string, number> {
+  const byWeek = new Map<string, number>()
+  for (const occ of occurrences) {
+    const v = value(occ)
+    if (v === null) continue
+    const wk = weekOf(occ.service_date)
+    byWeek.set(wk, (byWeek.get(wk) ?? 0) + v)
+  }
+  return byWeek
+}
+
+// ─── Per-occurrence metric extractors ─────────────────────────────────────────
+// Rule 4: any NULL → return null (don't COALESCE to 0).
+
+function attMain(occ: OccRow): number | null {
+  const ae = firstRelated(occ.attendance_entries)
+  if (!ae || ae.main_attendance === null) return null
+  return ae.main_attendance
+}
+function attKids(occ: OccRow): number | null {
+  const ae = firstRelated(occ.attendance_entries)
+  if (!ae || ae.kids_attendance === null) return null
+  return ae.kids_attendance
+}
+function attYouth(occ: OccRow): number | null {
+  const ae = firstRelated(occ.attendance_entries)
+  if (!ae || ae.youth_attendance === null) return null
+  return ae.youth_attendance
+}
+
+function attGrandTotal(occ: OccRow): number | null {
+  // Grand total (D-055): MAIN + KIDS + YOUTH per occurrence.
+  // NULL-aware: if MAIN is null, treat the entire record as not entered.
+  // Missing kids/youth audiences (tracked = false) are treated as 0 contribution
+  // — a church that doesn't track kids should still have a meaningful grand total.
+  const ae = firstRelated(occ.attendance_entries)
+  if (!ae || ae.main_attendance === null) return null
+  return ae.main_attendance + (ae.kids_attendance ?? 0) + (ae.youth_attendance ?? 0)
+}
+
+function volTotalForAudience(audience: 'MAIN' | 'KIDS' | 'YOUTH' | null, occ: OccRow): number | null {
+  // audience = null → all audiences (total volunteers).
+  // Rule 3: exclude is_not_applicable. Missing rows → null (not entered).
+  const entries = occ.volunteer_entries ?? []
+  const filtered = entries.filter(ve => {
+    if (ve.is_not_applicable) return false
+    if (audience === null) return true
+    const cat = firstRelated(ve.volunteer_categories)
+    return cat?.audience_group_code === audience
+  })
+  if (filtered.length === 0) return null
+  return filtered.reduce((s, ve) => s + (ve.volunteer_count ?? 0), 0)
+}
+
+function givingTotal(occ: OccRow): number | null {
+  // Rule 5: SUM giving_entries. Missing rows → null.
+  const ge = occ.giving_entries ?? []
+  if (ge.length === 0) return null
+  return ge.reduce((s, g) => s + parseFloat(g.giving_amount ?? '0'), 0)
+}
+
+function firstTimeDecisionsTotal(occ: OccRow): number | null {
+  // Sum FIRST_TIME_DECISION stat_value across all audiences for this occurrence.
+  // Null when no such entries exist OR all matching entries are N/A.
+  const entries = occ.response_entries ?? []
+  let sum = 0
+  let found = false
+  for (const re of entries) {
+    if (re.is_not_applicable || re.stat_value === null) continue
+    const cat = firstRelated(re.response_categories)
+    if (cat?.category_code !== 'FIRST_TIME_DECISION') continue
+    sum += re.stat_value
+    found = true
+  }
+  return found ? sum : null
+}
+
+// ─── Main fetcher ─────────────────────────────────────────────────────────────
+
+export async function fetchDashboardData(
+  churchId: string,
+  tracks: { tracks_volunteers: boolean; tracks_responses: boolean; tracks_giving: boolean },
+): Promise<DashboardData> {
+  const supabase = createClient()
+  const b = buildBoundaries(new Date())
+
+  // ── One deep-select pulls every occurrence-keyed fact for the last year+ ──
+  // RLS already scopes to the caller's church(es); we still filter by churchId and active.
+  const { data: rawOccurrences, error: occErr } = await supabase
     .from('service_occurrences')
     .select(`
-      id, service_date, service_template_id,
+      id, service_date,
       attendance_entries(main_attendance, kids_attendance, youth_attendance),
-      volunteer_entries(volunteer_count, is_not_applicable),
-      response_entries(stat_value, is_not_applicable),
-      giving_entries(giving_amount),
-      service_occurrence_tags(service_tag_id, service_tags(tag_code, tag_name, effective_start_date, effective_end_date))
+      volunteer_entries(
+        volunteer_count, is_not_applicable,
+        volunteer_categories(id, category_name, audience_group_code, sort_order, is_active)
+      ),
+      response_entries(
+        stat_value, is_not_applicable, audience_group_code,
+        response_categories(id, category_name, category_code, stat_scope, display_order, is_active)
+      ),
+      giving_entries(giving_amount)
     `)
     .eq('church_id', churchId)
-    .eq('status', 'active')
-    .gte('service_date', lastYearStart)
-    .lte('service_date', todayStr)
+    .eq('status', 'active')                   // Rule 1
+    .gte('service_date', b.lastYearStart)
+    .lte('service_date', b.today)
     .order('service_date')
 
-  // Get period entries (day/week/month stats — keyed by tag + period)
-  const { data: rawPeriodEntries } = await supabase
+  if (occErr) console.error('[dashboard] service_occurrences fetch failed:', occErr)
+
+  const { data: rawPeriodEntries, error: peErr } = await supabase
     .from('church_period_entries')
-    .select('service_tag_id, response_category_id, entry_period_type, period_date, stat_value, is_not_applicable')
+    .select(`
+      service_tag_id, entry_period_type, period_date, stat_value, is_not_applicable,
+      service_tags(tag_code),
+      response_categories(id, category_name, category_code, stat_scope, display_order, is_active)
+    `)
     .eq('church_id', churchId)
-    .gte('period_date', lastYearStart)
-    .lte('period_date', todayStr)
+    .gte('period_date', b.lastYearStart)
+    .lte('period_date', b.today)
 
-  if (!rawOccurrences) return []
-  const occurrences = (rawOccurrences as any) as OccRow[]
-  const periodEntries = (rawPeriodEntries ?? []) as PeriodRow[]
+  if (peErr) console.error('[dashboard] church_period_entries fetch failed:', peErr)
 
-  // Build tag_code → tag_id map from tagRows (for period entry lookup)
-  const tagIdMap = new Map<string, string>()
-  for (const tr of (tagRows ?? [])) {
-    const tag = (tr.service_tags as any)?.[0]
-    if (tag) tagIdMap.set(tag.tag_code, tr.service_tag_id)
-  }
+  const occurrences = ((rawOccurrences ?? []) as unknown) as OccRow[]
+  const periodEntries = ((rawPeriodEntries ?? []) as unknown) as PeRow[]
 
-  // Get unique primary tags
-  const primaryTagMap = new Map<string, string>() // tag_code → tag_name
-  for (const occ of occurrences) {
-    for (const ot of (occ.service_occurrence_tags ?? [])) {
-      const tag = ot.service_tags?.[0]
-      if (tag && !tag.effective_start_date && !tag.effective_end_date) {
-        primaryTagMap.set(tag.tag_code, tag.tag_name)
-      }
-    }
-  }
+  // Empty-data short-circuit: still return a fully shaped object so UI can render empty state.
+  const hasAnyData = occurrences.length > 0 || periodEntries.length > 0
+  const weeksWithData = new Set<string>(occurrences.map(o => weekOf(o.service_date))).size
 
-  function attTotal(occ: OccRow): number | null {
-    const ae = occ.attendance_entries?.[0]
-    if (!ae || ae.main_attendance === null) return null
-    return (ae.main_attendance ?? 0) + (ae.kids_attendance ?? 0) + (ae.youth_attendance ?? 0)
-  }
-
-  function volTotal(occ: OccRow): number | null {
-    const ve = occ.volunteer_entries?.filter(v => !v.is_not_applicable) ?? []
-    if (ve.length === 0) return null
-    return ve.reduce((s, v) => s + (v.volunteer_count ?? 0), 0)
-  }
-
-  function statsTotal(occ: OccRow): number | null {
-    const re = occ.response_entries?.filter(r => !r.is_not_applicable) ?? []
-    if (re.length === 0) return null
-    return re.reduce((s, r) => s + (r.stat_value ?? 0), 0)
-  }
-
-  function givingTotal(occ: OccRow): number | null {
-    const ge = occ.giving_entries ?? []
-    if (ge.length === 0) return null
-    return ge.reduce((s, g) => s + parseFloat(g.giving_amount ?? '0'), 0)
-  }
-
-  function hasTag(occ: OccRow, tagCode: string): boolean {
-    return (occ.service_occurrence_tags ?? []).some(ot => ot.service_tags?.[0]?.tag_code === tagCode)
-  }
-
-  function inRange(occ: OccRow, from: string, to: string): boolean {
-    return occ.service_date >= from && occ.service_date <= to
-  }
-
-  function weekOf(dateStr: string): string {
-    return weekStart(new Date(dateStr + 'T12:00:00'))
-  }
-
-  // Aggregate weekly totals for a tag (from occurrence-keyed entries)
-  function weeklyTotals(tagCode: string, metric: (occ: OccRow) => number | null, from: string, to: string): number[] {
-    const byWeek = new Map<string, number>()
+  // ── KPI highlight cards (v1.0 carry) — this week vs last week totals ──
+  const lastWeekStart = shiftDays(b.thisWeekStart, -7)
+  function rangeSum(metric: (occ: OccRow) => number | null, from: string, to: string): number {
+    let total = 0
     for (const occ of occurrences) {
-      if (!inRange(occ, from, to)) continue
-      if (!hasTag(occ, tagCode)) continue
-      const val = metric(occ)
-      if (val === null) continue
+      if (occ.service_date < from || occ.service_date > to) continue
+      const v = metric(occ)
+      if (v !== null) total += v
+    }
+    return total
+  }
+  const highlights: DashboardHighlights = {
+    attendance: {
+      current: rangeSum(attGrandTotal, b.thisWeekStart, b.today),
+      prior:   rangeSum(attGrandTotal, lastWeekStart, b.lastWeekEnd),
+    },
+    giving: {
+      current: rangeSum(givingTotal, b.thisWeekStart, b.today),
+      prior:   rangeSum(givingTotal, lastWeekStart, b.lastWeekEnd),
+    },
+    volunteers: {
+      current: rangeSum(occ => volTotalForAudience(null, occ), b.thisWeekStart, b.today),
+      prior:   rangeSum(occ => volTotalForAudience(null, occ), lastWeekStart, b.lastWeekEnd),
+    },
+  }
+
+  // ── Summary Card rows ──
+  const summary: DashboardSummary = {
+    grandTotal:         fourWinFromWeekly(buildWeekly(occurrences, attGrandTotal), b),
+    adults:             fourWinFromWeekly(buildWeekly(occurrences, attMain), b),
+    kids:               fourWinFromWeekly(buildWeekly(occurrences, attKids), b),
+    youth:              fourWinFromWeekly(buildWeekly(occurrences, attYouth), b),
+    volunteers:         fourWinFromWeekly(buildWeekly(occurrences, occ => volTotalForAudience(null, occ)), b),
+    firstTimeDecisions: fourWinFromWeekly(buildWeekly(occurrences, firstTimeDecisionsTotal), b),
+    giving:             fourWinFromWeekly(buildWeekly(occurrences, givingTotal), b),
+  }
+
+  // ── Audience sections (Adults / Kids / Youth) ──
+  function audienceStats(audience: 'MAIN' | 'KIDS' | 'YOUTH'): AudienceStatRow[] {
+    if (!tracks.tracks_responses) return []
+    // Group response_entries by category_id within this audience.
+    const byCat = new Map<string, { name: string; code: string; order: number; weekly: Map<string, number> }>()
+    for (const occ of occurrences) {
       const wk = weekOf(occ.service_date)
-      byWeek.set(wk, (byWeek.get(wk) ?? 0) + val)
-    }
-    return Array.from(byWeek.values())
-  }
-
-  function avg(vals: number[]): number | null {
-    if (vals.length === 0) return null
-    return Math.round(vals.reduce((s, v) => s + v, 0) / vals.length)
-  }
-
-  function weekSum(tagCode: string, metric: (occ: OccRow) => number | null, from: string, to: string): number | null {
-    let total = 0; let found = false
-    for (const occ of occurrences) {
-      if (!inRange(occ, from, to)) continue
-      if (!hasTag(occ, tagCode)) continue
-      const val = metric(occ)
-      if (val !== null) { total += val; found = true }
-    }
-    return found ? total : null
-  }
-
-  // Period entry helpers (for day/week/month stats)
-  function periodWeeklyTotals(tagId: string, periodType: string, from: string, to: string): number[] {
-    const byWeek = new Map<string, number>()
-    for (const pe of periodEntries) {
-      if (pe.service_tag_id !== tagId) continue
-      if (pe.entry_period_type !== periodType) continue
-      if (pe.is_not_applicable || pe.stat_value === null) continue
-      if (pe.period_date < from || pe.period_date > to) continue
-      const wk = weekOf(pe.period_date)
-      byWeek.set(wk, (byWeek.get(wk) ?? 0) + pe.stat_value)
-    }
-    return Array.from(byWeek.values())
-  }
-
-  function periodWeekSum(tagId: string, periodType: string, from: string, to: string): number | null {
-    let total = 0; let found = false
-    for (const pe of periodEntries) {
-      if (pe.service_tag_id !== tagId) continue
-      if (pe.entry_period_type !== periodType) continue
-      if (pe.is_not_applicable || pe.stat_value === null) continue
-      if (pe.period_date < from || pe.period_date > to) continue
-      total += pe.stat_value; found = true
-    }
-    return found ? total : null
-  }
-
-  const result: TagRow[] = []
-
-  for (const [tagCode, tagName] of primaryTagMap) {
-    function buildComparisons(metric: (occ: OccRow) => number | null) {
-      // P14a: this week vs last week
-      const thisWk = weekSum(tagCode, metric, thisWeekStart, todayStr)
-      const lastWk = weekSum(tagCode, metric, lastWeekStart, lastWeekEnd)
-      const a = cv(thisWk, lastWk)
-
-      // P14b: 4-wk avg vs prior 4-wk avg
-      const cur4 = avg(weeklyTotals(tagCode, metric, fourWeeksAgo, lastWeekEnd))
-      const pri4 = avg(weeklyTotals(tagCode, metric, eightWeeksAgo, fourWeeksAgoMinus1))
-      const b = cv(cur4, pri4)
-
-      // P14c: YTD avg vs prior YTD avg (N72: weeks with occurrences denominator)
-      const ytdWeeks = weeklyTotals(tagCode, metric, yearStart, todayStr)
-      const priorWeeks = weeklyTotals(tagCode, metric, lastYearStart, lastYearSameWeek)
-      const c = cv(avg(ytdWeeks), avg(priorWeeks))
-
-      return { a, b, c }
-    }
-
-    const row: TagRow = {
-      tag_code: tagCode,
-      tag_name: tagName,
-      attendance: buildComparisons(attTotal),
-    }
-    if (includeVolunteers) row.volunteers = buildComparisons(volTotal)
-    row.stats = buildComparisons(statsTotal)
-    row.giving = buildComparisons(givingTotal)
-
-    // Period stats (day/week/month — from church_period_entries)
-    const tagId = tagIdMap.get(tagCode) ?? ''
-    if (tagId) {
-      function buildPeriodComparisons(periodType: string) {
-        const thisWk = periodWeekSum(tagId, periodType, thisWeekStart, todayStr)
-        const lastWk = periodWeekSum(tagId, periodType, lastWeekStart, lastWeekEnd)
-        const a = cv(thisWk, lastWk)
-
-        const cur4 = avg(periodWeeklyTotals(tagId, periodType, fourWeeksAgo, lastWeekEnd))
-        const pri4 = avg(periodWeeklyTotals(tagId, periodType, eightWeeksAgo, fourWeeksAgoMinus1))
-        const b = cv(cur4, pri4)
-
-        const ytdWeeks   = periodWeeklyTotals(tagId, periodType, yearStart, todayStr)
-        const priorWeeks = periodWeeklyTotals(tagId, periodType, lastYearStart, lastYearSameWeek)
-        const c = cv(avg(ytdWeeks), avg(priorWeeks))
-        return { a, b, c }
+      for (const re of occ.response_entries ?? []) {
+        if (re.is_not_applicable || re.stat_value === null) continue
+        if (re.audience_group_code !== audience) continue
+        const cat = firstRelated(re.response_categories)
+        if (!cat || !cat.is_active || cat.stat_scope !== 'audience') continue
+        let entry = byCat.get(cat.id)
+        if (!entry) {
+          entry = { name: cat.category_name, code: cat.category_code, order: cat.display_order, weekly: new Map() }
+          byCat.set(cat.id, entry)
+        }
+        entry.weekly.set(wk, (entry.weekly.get(wk) ?? 0) + re.stat_value)
       }
-
-      if (periodEntries.some(pe => pe.service_tag_id === tagId && pe.entry_period_type === 'day'))
-        row.dayStats = buildPeriodComparisons('day')
-      if (periodEntries.some(pe => pe.service_tag_id === tagId && pe.entry_period_type === 'week'))
-        row.weekStats = buildPeriodComparisons('week')
-      if (periodEntries.some(pe => pe.service_tag_id === tagId && pe.entry_period_type === 'month'))
-        row.monthStats = buildPeriodComparisons('month')
     }
-
-    result.push(row)
+    const entries = Array.from(byCat.entries())
+      .map(([id, e]) => ({
+        category_id: id,
+        category_name: e.name,
+        category_code: e.code,
+        order: e.order,
+        values: fourWinFromWeekly(e.weekly, b),
+      }))
+      .sort((x, y) => x.order - y.order || x.category_name.localeCompare(y.category_name))
+    return entries.map(({ category_id, category_name, category_code, values }) => ({
+      category_id, category_name, category_code, values,
+    }))
   }
 
-  return result
+  function audienceSection(audience: 'MAIN' | 'KIDS' | 'YOUTH'): AudienceSection {
+    const attrMetric = audience === 'MAIN' ? attMain : audience === 'KIDS' ? attKids : attYouth
+    return {
+      attendance: fourWinFromWeekly(buildWeekly(occurrences, attrMetric), b),
+      volunteers: tracks.tracks_volunteers
+        ? fourWinFromWeekly(buildWeekly(occurrences, occ => volTotalForAudience(audience, occ)), b)
+        : emptyFourWin(),
+      stats: audienceStats(audience),
+    }
+  }
+
+  // ── Volunteer Breakout (E7) ──
+  function volunteerBreakout(): VolunteerBreakout {
+    if (!tracks.tracks_volunteers) {
+      return { total: emptyFourWin(), rows: [] }
+    }
+    const total = fourWinFromWeekly(buildWeekly(occurrences, occ => volTotalForAudience(null, occ)), b)
+    // Group by volunteer_category id.
+    type BucketMeta = { name: string; audience: 'MAIN' | 'KIDS' | 'YOUTH'; sort_order: number; weekly: Map<string, number> }
+    const byCat = new Map<string, BucketMeta>()
+    for (const occ of occurrences) {
+      const wk = weekOf(occ.service_date)
+      for (const ve of occ.volunteer_entries ?? []) {
+        if (ve.is_not_applicable) continue
+        const cat = firstRelated(ve.volunteer_categories)
+        if (!cat || !cat.is_active) continue
+        let entry = byCat.get(cat.id)
+        if (!entry) {
+          entry = { name: cat.category_name, audience: cat.audience_group_code, sort_order: cat.sort_order, weekly: new Map() }
+          byCat.set(cat.id, entry)
+        }
+        entry.weekly.set(wk, (entry.weekly.get(wk) ?? 0) + (ve.volunteer_count ?? 0))
+      }
+    }
+    const audienceOrder = { MAIN: 0, KIDS: 1, YOUTH: 2 }
+    const rows: VolunteerBreakoutRow[] = Array.from(byCat.entries())
+      .map(([id, e]) => ({
+        category_id: id,
+        category_name: e.name,
+        audience_group_code: e.audience,
+        sort_order: e.sort_order,
+        values: fourWinFromWeekly(e.weekly, b),
+      }))
+      .sort((a, c) =>
+        audienceOrder[a.audience_group_code] - audienceOrder[c.audience_group_code] ||
+        a.sort_order - c.sort_order ||
+        a.category_name.localeCompare(c.category_name)
+      )
+    return { total, rows }
+  }
+
+  // ── Other Stats (E8) — service-scope + period entries ──
+  function otherStats(): OtherStatRow[] {
+    if (!tracks.tracks_responses) return []
+    type Bucket = { category_id: string; category_name: string; tag_code: string | null; weekly: Map<string, number> }
+    const buckets = new Map<string, Bucket>()
+
+    // Service-scope response_entries (tag_code = null, no tag label shown)
+    for (const occ of occurrences) {
+      const wk = weekOf(occ.service_date)
+      for (const re of occ.response_entries ?? []) {
+        if (re.is_not_applicable || re.stat_value === null) continue
+        const cat = firstRelated(re.response_categories)
+        if (!cat || !cat.is_active || cat.stat_scope !== 'service') continue
+        // D-055 — First-Time Decisions live in Summary/audience sections only.
+        if (cat.category_code === 'FIRST_TIME_DECISION') continue
+        const key = cat.id + '|'
+        let bucket = buckets.get(key)
+        if (!bucket) {
+          bucket = { category_id: cat.id, category_name: cat.category_name, tag_code: null, weekly: new Map() }
+          buckets.set(key, bucket)
+        }
+        bucket.weekly.set(wk, (bucket.weekly.get(wk) ?? 0) + re.stat_value)
+      }
+    }
+
+    // church_period_entries (tag-keyed)
+    for (const pe of periodEntries) {
+      if (pe.is_not_applicable || pe.stat_value === null) continue
+      const cat = firstRelated(pe.response_categories)
+      if (!cat || !cat.is_active) continue
+      if (cat.category_code === 'FIRST_TIME_DECISION') continue
+      const tag = firstRelated(pe.service_tags)
+      const tagCode = tag?.tag_code ?? null
+      const key = cat.id + '|' + (tagCode ?? '')
+      const wk = weekOf(pe.period_date)
+      let bucket = buckets.get(key)
+      if (!bucket) {
+        bucket = { category_id: cat.id, category_name: cat.category_name, tag_code: tagCode, weekly: new Map() }
+        buckets.set(key, bucket)
+      }
+      bucket.weekly.set(wk, (bucket.weekly.get(wk) ?? 0) + pe.stat_value)
+    }
+
+    return Array.from(buckets.values())
+      .map(bucket => ({
+        key: bucket.category_id + '|' + (bucket.tag_code ?? ''),
+        category_id: bucket.category_id,
+        category_name: bucket.category_name,
+        tag_code: bucket.tag_code,
+        values: fourWinFromWeekly(bucket.weekly, b),
+      }))
+      .sort((a, c) =>
+        a.category_name.localeCompare(c.category_name) ||
+        (a.tag_code ?? '').localeCompare(c.tag_code ?? '')
+      )
+  }
+
+  return {
+    summary,
+    adults: audienceSection('MAIN'),
+    kids:   audienceSection('KIDS'),
+    youth:  audienceSection('YOUTH'),
+    volunteerBreakout: volunteerBreakout(),
+    otherStats: otherStats(),
+    highlights,
+    hasAnyData,
+    weeksWithData,
+  }
+}
+
+export function emptyFourWin(): FourWin {
+  return { w: null, m4: null, ytd: null, priorYtd: null, delta_w_m4: null, delta_ytd_prior: null }
 }

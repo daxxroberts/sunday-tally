@@ -134,10 +134,10 @@ export default function SettingsTeamPage() {
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Invite Someone</p>
           {lastSent && <p className="text-sm text-gray-600 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 mb-3">Invite sent to {lastSent}.</p>}
           <form onSubmit={handleSend} className="space-y-3">
-            <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="email@church.com" className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent" />
+            <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="email@church.com" className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
             <div className="space-y-2">
               {roleOptions.map(r => (
-                <label key={r} className={`flex items-start gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${role === r ? 'border-gray-900 bg-gray-50' : 'border-gray-200'}`}>
+                <label key={r} className={`flex items-start gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${role === r ? 'border-blue-600 bg-blue-50' : 'border-gray-200'}`}>
                   <input type="radio" name="settingsRole" value={r} checked={role === r} onChange={() => setRole(r)} className="mt-0.5" />
                   <div>
                     <span className="text-sm font-medium text-gray-900 capitalize">{r}</span>
@@ -147,7 +147,7 @@ export default function SettingsTeamPage() {
               ))}
             </div>
             {error && <p className="text-sm text-red-600">{error}</p>}
-            <button type="submit" disabled={!email.trim() || isPending} className="w-full bg-gray-900 text-white rounded-lg py-3 font-medium text-sm hover:bg-gray-700 disabled:opacity-40">
+            <button type="submit" disabled={!email.trim() || isPending} className="w-full bg-blue-600 text-white rounded-xl py-3 font-semibold text-sm hover:bg-blue-700 transition-colors disabled:opacity-40">
               {isPending ? 'Sending...' : 'Send invite'}
             </button>
           </form>

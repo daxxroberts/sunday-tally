@@ -90,7 +90,7 @@ export default function SettingsStatsPage() {
                 <option value="week">Per week</option>
                 <option value="month">Per month</option>
               </select>
-              <button onClick={addStat} disabled={!newName.trim() || isPending} className="text-sm text-gray-900 font-medium disabled:opacity-40 ml-auto">Add</button>
+              <button onClick={addStat} disabled={!newName.trim() || isPending} className="text-sm text-blue-600 font-semibold hover:text-blue-700 disabled:opacity-40 ml-auto transition-colors">Add</button>
             </div>
           </div>
         </div>

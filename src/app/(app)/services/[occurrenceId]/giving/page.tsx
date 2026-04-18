@@ -57,7 +57,7 @@ export default function GivingPage() {
 
       const [priorReq, srcsReq] = await Promise.all([
         supabase.from('giving_entries').select('id, giving_amount, giving_source_id').eq('service_occurrence_id', occurrenceId),
-        supabase.from('giving_sources').select('id, source_name').eq('church_id', membership.church_id).eq('is_active', true).order('sort_order'),
+        supabase.from('giving_sources').select('id, source_name').eq('church_id', membership.church_id).eq('is_active', true).order('display_order'),
       ])
       
       const loadedSources = srcsReq.data ?? []
@@ -147,7 +147,7 @@ export default function GivingPage() {
   return (
     <AppLayout role={role}>
       {/* E1 — Header */}
-      <div className="sticky top-0 z-10 bg-white border-b border-gray-100 px-4 py-3">
+      <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm border-b border-gray-100 px-4 py-3">
         <div className="flex items-center gap-3">
           <button onClick={() => isDirty ? setShowDirtyPrompt(true) : router.push(`/services/${occurrenceId}`)} className="text-gray-400 hover:text-gray-700">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
@@ -165,14 +165,14 @@ export default function GivingPage() {
           <div className="w-full bg-white rounded-t-2xl p-6 space-y-3">
             <p className="font-medium text-gray-900">Save your giving entry first?</p>
             <p className="text-sm text-gray-500">It won&apos;t be included in your total if you leave now.</p>
-            <button onClick={() => { setShowDirtyPrompt(false); doSave() }} className="w-full bg-gray-900 text-white rounded-lg py-3 text-sm font-medium">Save</button>
-            <button onClick={() => { setShowDirtyPrompt(false); router.push(`/services/${occurrenceId}`) }} className="w-full border border-gray-300 text-gray-700 rounded-lg py-3 text-sm font-medium">Discard</button>
+            <button onClick={() => { setShowDirtyPrompt(false); doSave() }} className="w-full bg-blue-600 text-white rounded-xl py-3 text-sm font-semibold hover:bg-blue-700 transition-colors">Save</button>
+            <button onClick={() => { setShowDirtyPrompt(false); router.push(`/services/${occurrenceId}`) }} className="w-full border border-gray-200 text-gray-700 rounded-xl py-3 text-sm font-medium hover:bg-gray-50 transition-colors">Discard</button>
             <button onClick={() => setShowDirtyPrompt(false)} className="w-full text-gray-400 py-2 text-sm">Keep editing</button>
           </div>
         </div>
       )}
 
-      <div className="px-4 py-6 space-y-6 pb-32">
+      <div className="px-4 py-6 space-y-6 pb-36">
         <div className="space-y-4">
            {sources.map(source => (
               <div key={source.id} className="bg-white border text-sm border-gray-200 rounded-xl p-4 flex items-center justify-between shadow-sm">
@@ -220,11 +220,11 @@ export default function GivingPage() {
           </button>
         )}
 
-        <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-100">
+        <div className="fixed bottom-16 left-0 right-0 p-4 bg-white border-t border-gray-100">
            <button
              onClick={doSave}
              disabled={saving}
-             className="w-full bg-gray-900 text-white rounded-xl py-4 font-medium text-sm hover:bg-gray-700 transition-colors disabled:opacity-40"
+             className="w-full bg-blue-600 text-white rounded-xl py-4 font-semibold text-sm hover:bg-blue-700 transition-colors disabled:opacity-40"
            >
              {saving ? 'Saving...' : 'Save — dashboard will update'}
            </button>

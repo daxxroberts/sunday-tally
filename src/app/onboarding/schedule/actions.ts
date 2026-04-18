@@ -57,18 +57,20 @@ export async function saveScheduleAction(
     .eq('service_template_id', templateId)
     .eq('is_active', true)
 
+  // Upsert handles the case where a deactivated row already exists with the same effective_start_date
+  // (unique constraint: service_template_id + effective_start_date)
   const { error } = await supabase
     .from('service_schedule_versions')
-    .insert({
+    .upsert({
       service_template_id: templateId,
       day_of_week: dayOfWeek,
       start_time: startTime,
       effective_start_date: effectiveStartDate,
       effective_end_date: null,
       is_active: true,
-    })
+    }, { onConflict: 'service_template_id,effective_start_date' })
 
-  if (error) return { error: 'Failed to save schedule.' }
+  if (error) return { error: `Failed to save schedule: ${error.message}` }
   revalidatePath('/onboarding/schedule')
   return {}
 }

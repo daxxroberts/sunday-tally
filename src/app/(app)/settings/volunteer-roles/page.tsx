@@ -92,7 +92,7 @@ export default function SettingsVolunteerRolesPage() {
                   placeholder="Add a role..."
                   className="flex-1 text-sm border-b border-gray-200 focus:border-gray-900 outline-none py-1 text-gray-900 placeholder-gray-400 bg-transparent"
                 />
-                <button onClick={() => addCategory(group)} disabled={!newName[group].trim() || isPending} className="text-sm text-gray-900 font-medium disabled:opacity-40">Add</button>
+                <button onClick={() => addCategory(group)} disabled={!newName[group].trim() || isPending} className="text-sm text-blue-600 font-semibold hover:text-blue-700 disabled:opacity-40 transition-colors">Add</button>
               </div>
             </div>
           </div>

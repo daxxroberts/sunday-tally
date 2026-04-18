@@ -28,6 +28,12 @@ interface OccurrenceCard {
   volunteers_entered: boolean
   responses_entered: boolean
   giving_entered: boolean
+  metrics: {
+    main_att?: number
+    kids_att?: number
+    youth_att?: number
+    volunteer_count?: number
+  }
 }
 
 interface ScheduledCard {
@@ -59,6 +65,7 @@ interface OccurrenceJoin {
     display_name: string
     sort_order: number
     location_id: string
+    primary_tag_id: string | null
     service_schedule_versions: Pick<ScheduleVersion, 'start_time' | 'effective_start_date'>[]
   }
   location: { name: string }
@@ -69,8 +76,8 @@ interface TemplateRow {
   display_name: string
   sort_order: number
   location_id: string
-  church_locations: { name: string }[]
-  service_schedule_versions: ScheduleVersion[]
+  church_locations: { name: string } | { name: string }[] | null
+  service_schedule_versions: ScheduleVersion[] | ScheduleVersion | null
 }
 
 function formatDate(dateStr: string) {
@@ -102,6 +109,16 @@ function addDays(date: Date, days: number) {
 function getMostRecentWeekday(baseDate: Date, dayOfWeek: number) {
   const diff = (baseDate.getDay() - dayOfWeek + 7) % 7
   return addDays(baseDate, -diff)
+}
+
+function firstRelated<T>(value: T | T[] | null | undefined): T | null {
+  if (!value) return null
+  return Array.isArray(value) ? (value[0] ?? null) : value
+}
+
+function relatedList<T>(value: T | T[] | null | undefined): T[] {
+  if (!value) return []
+  return Array.isArray(value) ? value : [value]
 }
 
 function completionStatus(card: OccurrenceCard, church: Church): 'empty' | 'partial' | 'complete' {
@@ -203,21 +220,45 @@ export default function ServicesPage() {
       const occIds = typedOccurrences.map(o => o.id)
 
       let attSet = new Map()
-      let volSet = new Set()
+      let volSet = new Map<string, number>()
       let resSet = new Set()
-      let givSet = new Set()
+      let givSet = new Map<string, number>()
 
       if (occIds.length > 0) {
-        const [att, vol, res, giv] = await Promise.all([
+        const [att, vol, res, giv, catRes] = await Promise.all([
           supabase.from('attendance_entries').select('service_occurrence_id, main_attendance, kids_attendance, youth_attendance').in('service_occurrence_id', occIds),
-          supabase.from('volunteer_entries').select('service_occurrence_id').in('service_occurrence_id', occIds),
+          supabase.from('volunteer_entries').select('service_occurrence_id, volunteer_count, is_not_applicable').in('service_occurrence_id', occIds),
           supabase.from('response_entries').select('service_occurrence_id').in('service_occurrence_id', occIds),
-          supabase.from('giving_entries').select('service_occurrence_id').in('service_occurrence_id', occIds)
+          supabase.from('giving_entries').select('service_occurrence_id, giving_amount').in('service_occurrence_id', occIds),
+          supabase.from('response_categories').select('id, stat_scope').eq('church_id', churchId).eq('is_active', true)
         ])
         att.data?.forEach(r => attSet.set(r.service_occurrence_id, r))
-        vol.data?.forEach(r => volSet.add(r.service_occurrence_id))
+        vol.data?.forEach(r => {
+          if (!r.is_not_applicable) {
+            const current = (volSet.get(r.service_occurrence_id) || 0)
+            volSet.set(r.service_occurrence_id, current + (r.volunteer_count || 0))
+          }
+        })
         res.data?.forEach(r => resSet.add(r.service_occurrence_id))
-        giv.data?.forEach(r => givSet.add(r.service_occurrence_id))
+        giv.data?.forEach(r => {
+          const current = (givSet.get(r.service_occurrence_id) || 0)
+          givSet.set(r.service_occurrence_id, current + parseFloat(r.giving_amount || '0'))
+        })
+
+        // Period Stats (Daily) status fetch
+        const dayCats = catRes.data?.filter(c => c.stat_scope === 'day') || []
+        if (dayCats.length > 0) {
+          const { data: periodEntries } = await supabase
+            .from('church_period_entries')
+            .select('period_date, response_category_id, is_not_applicable, stat_value')
+            .eq('church_id', churchId)
+            .in('period_date', Array.from(new Set(typedOccurrences.map(o => o.service_date))))
+
+          // Store period status per date in a ref or state for Header display
+          if (typeof window !== 'undefined') {
+            (window as any).__sunday_period_status = { dayCats, periodEntries }
+          }
+        }
       }
 
       for (const occ of typedOccurrences) {
@@ -257,6 +298,12 @@ export default function ServicesPage() {
           volunteers_entered: volSet.has(occ.id),
           responses_entered: resSet.has(occ.id),
           giving_entered: givSet.has(occ.id),
+          metrics: {
+            main_att: attRow?.main_attendance ?? undefined,
+            kids_att: attRow?.kids_attendance ?? undefined,
+            youth_att: attRow?.youth_attendance ?? undefined,
+            volunteer_count: (volSet.get(occ.id) as number) || undefined
+          }
         })
       }
 
@@ -275,9 +322,10 @@ export default function ServicesPage() {
       const scheduledCards: ScheduledCard[] = []
       for (const tmpl of templates) {
         // Only schedules that are active AND already effective (not future-dated)
-        const activeSchedules = tmpl.service_schedule_versions.filter(sv =>
+        const activeSchedules = relatedList(tmpl.service_schedule_versions).filter(sv =>
           sv.is_active && (!sv.effective_start_date || sv.effective_start_date <= today)
         )
+        const templateLocation = firstRelated(tmpl.church_locations)
         for (const sv of activeSchedules) {
           const expectedDate = getMostRecentWeekday(todayDate, sv.day_of_week)
           const expectedStr = toLocalDateString(expectedDate)
@@ -291,7 +339,7 @@ export default function ServicesPage() {
               type: 'scheduled',
               template_id: tmpl.id,
               service_name: tmpl.display_name,
-              location_name: tmpl.church_locations?.[0]?.name ?? '',
+              location_name: templateLocation?.name ?? '',
               location_id: tmpl.location_id,
               start_time: sv.start_time,
               expected_date: expectedStr,
@@ -386,7 +434,7 @@ export default function ServicesPage() {
   return (
     <AppLayout role={role}>
       {/* E1 — App Header */}
-      <div className="sticky top-0 z-10 bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between">
+      <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm border-b border-gray-100 px-4 py-3 flex items-center justify-between">
         <span className="font-semibold text-gray-900">{church.name}</span>
         {(role === 'owner' || role === 'admin') && (
           <Link href="/settings" className="text-gray-400 hover:text-gray-700 transition-colors">
@@ -432,7 +480,7 @@ export default function ServicesPage() {
                 </div>
 
                 <Link href="/settings/services"
-                  className="inline-flex justify-center flex-1 w-full bg-gray-900 text-white rounded-lg px-4 py-3 text-sm font-medium hover:bg-gray-700 transition">
+                  className="inline-flex justify-center flex-1 w-full bg-blue-600 text-white rounded-xl px-4 py-3 text-sm font-semibold hover:bg-blue-700 transition-colors">
                   Continue Setup
                 </Link>
               </div>
@@ -442,7 +490,7 @@ export default function ServicesPage() {
                 <p className="font-medium text-gray-900 mb-1">Set up your service schedule</p>
                 <p className="text-sm text-gray-500 mb-4">Add services so they appear here each week.</p>
                 <Link href="/settings/services"
-                  className="inline-block bg-gray-900 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-gray-700 transition-colors">
+                  className="inline-block bg-blue-600 text-white rounded-xl px-4 py-2 text-sm font-semibold hover:bg-blue-700 transition-colors">
                   Go to Settings
                 </Link>
               </>
@@ -489,13 +537,31 @@ export default function ServicesPage() {
                         <div key={date}>
                           <div className="flex items-center justify-between mb-3 px-1">
                             <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">{formatDate(date)}</span>
-                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
-                              allDone ? 'bg-green-100 text-green-700' :
-                              completionCounts.complete > 0 ? 'bg-blue-100 text-blue-700' :
-                              'bg-amber-100 text-amber-700'
-                            }`}>
-                              {allDone ? 'Complete' : completionCounts.total === 0 ? 'Not started' : `${completionCounts.complete}/${completionCounts.total} entered`}
-                            </span>
+                            
+                            <div className="flex items-center gap-2">
+                               {/* Period Status Badge */}
+                               {(() => {
+                                  const period = (window as any).__sunday_period_status
+                                  if (!period) return null
+                                  const entries = (period.periodEntries as any[])?.filter(e => e.period_date === date && period.dayCats.some((c: any) => c.id === e.response_category_id)) || []
+                                  const done = entries.length
+                                  const total = period.dayCats.length
+                                  if (total === 0) return null
+                                  return (
+                                    <span className={`text-[10px] font-black px-2 py-0.5 rounded border ${done === total ? 'bg-green-50 text-green-700 border-green-100' : 'bg-gray-50 text-gray-400 border-gray-100'}`}>
+                                      DAILY: {done}/{total}
+                                    </span>
+                                  )
+                               })()}
+
+                               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                                 allDone ? 'bg-green-100 text-green-700' :
+                                 completionCounts.complete > 0 ? 'bg-blue-100 text-blue-700' :
+                                 'bg-amber-100 text-amber-700'
+                               }`}>
+                                 {allDone ? 'Complete' : completionCounts.total === 0 ? 'Not started' : `${completionCounts.complete}/${completionCounts.total} entered`}
+                               </span>
+                            </div>
                           </div>
 
                           <div className="space-y-3">
@@ -537,6 +603,25 @@ export default function ServicesPage() {
                                         <span className="text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded uppercase tracking-wider text-[9px] font-black">Planned</span>
                                       )}
                                     </div>
+
+                                    {card.type === 'existing' && (
+                                      <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1">
+                                        {(card.metrics.main_att !== undefined || card.metrics.kids_att !== undefined) && (
+                                          <div className="flex items-center gap-1">
+                                            <span className="text-[11px] font-bold text-gray-900">
+                                              {((card.metrics.main_att || 0) + (card.metrics.kids_att || 0) + (card.metrics.youth_att || 0)).toLocaleString()}
+                                            </span>
+                                            <span className="text-[10px] text-gray-500 font-medium uppercase tracking-tight">Attendance</span>
+                                          </div>
+                                        )}
+                                        {card.metrics.volunteer_count !== undefined && (
+                                          <div className="flex items-center gap-1 border-l border-gray-100 pl-3">
+                                            <span className="text-[11px] font-bold text-gray-900">{card.metrics.volunteer_count}</span>
+                                            <span className="text-[10px] text-gray-500 font-medium uppercase tracking-tight">Serving</span>
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
 
                                     <div className="mt-4 pt-4 border-t border-gray-50">
                                       {checklist.missing.length > 0 ? (

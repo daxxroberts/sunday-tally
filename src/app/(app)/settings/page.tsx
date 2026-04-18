@@ -2,7 +2,6 @@
 
 // T_SETTINGS — Settings Hub — /settings
 // IRIS_TSETTINGS_ELEMENT_MAP.md: E1-E4 all implemented
-// Copy rule: name — one-line reason why (instructional rule)
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
@@ -12,12 +11,12 @@ import type { UserRole } from '@/types'
 
 function SettingsRow({ href, label, description }: { href: string; label: string; description: string }) {
   return (
-    <Link href={href} className="flex items-center justify-between px-4 py-3.5 hover:bg-gray-50 active:bg-gray-100 transition-colors group">
+    <Link href={href} className="flex items-center justify-between px-4 py-3.5 hover:bg-blue-50/50 active:bg-blue-50 transition-colors group cursor-pointer">
       <div>
-        <p className="text-sm font-medium text-gray-900">{label}</p>
+        <p className="text-sm font-semibold text-gray-900">{label}</p>
         <p className="text-xs text-gray-500 mt-0.5">{description}</p>
       </div>
-      <svg className="w-4 h-4 text-gray-300 group-hover:text-gray-500 flex-shrink-0 ml-3 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <svg className="w-4 h-4 text-gray-300 group-hover:text-blue-400 flex-shrink-0 ml-3 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
       </svg>
     </Link>
@@ -27,8 +26,8 @@ function SettingsRow({ href, label, description }: { href: string; label: string
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
-      <p className="px-4 pt-6 pb-2 text-xs font-semibold text-gray-400 uppercase tracking-wide">{title}</p>
-      <div className="bg-white border border-gray-200 rounded-xl divide-y divide-gray-100 overflow-hidden">
+      <p className="px-1 pt-5 pb-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest">{title}</p>
+      <div className="bg-white border border-gray-200 rounded-2xl divide-y divide-gray-100 overflow-hidden shadow-[0_1px_4px_-1px_rgba(0,0,0,0.04)]">
         {children}
       </div>
     </div>
@@ -53,11 +52,11 @@ export default function SettingsPage() {
   return (
     <AppLayout role={role}>
       {/* E1 */}
-      <div className="sticky top-0 z-10 bg-white border-b border-gray-100 px-4 py-3">
-        <p className="font-semibold text-gray-900">Settings</p>
+      <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm border-b border-gray-100 px-4 py-3">
+        <p className="font-bold text-gray-900">Settings</p>
       </div>
 
-      <div className="px-4 pb-8 space-y-2">
+      <div className="px-4 pb-8 space-y-1">
         {/* E2 — Your Church */}
         <Section title="Your Church">
           <SettingsRow href="/settings/locations" label="Locations" description="Where your services meet" />

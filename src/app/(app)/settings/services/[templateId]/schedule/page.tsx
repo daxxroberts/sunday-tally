@@ -45,7 +45,7 @@ export default function SettingsSchedulePage() {
       if (membership) setRole(membership.role as UserRole)
       const { data: tmpl } = await supabase.from('service_templates').select('display_name').eq('id', templateId).single()
       if (tmpl) setTemplateName(tmpl.display_name)
-      const { data: sv } = await supabase.from('service_schedule_versions').select('day_of_week, start_time, effective_start_date').eq('service_template_id', templateId).eq('is_active', true).single()
+      const { data: sv } = await supabase.from('service_schedule_versions').select('day_of_week, start_time, effective_start_date').eq('service_template_id', templateId).eq('is_active', true).maybeSingle()
       if (sv) setCurrentSchedule({ day: sv.day_of_week, time: sv.start_time, since: sv.effective_start_date })
     })
   }, [templateId])

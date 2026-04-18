@@ -80,7 +80,7 @@ export default function SettingsGivingSourcesPage() {
           ))}
           <div className="px-4 py-3 flex items-center gap-2">
             <input type="text" value={newName} onChange={e => setNewName(e.target.value)} onKeyDown={e => e.key === 'Enter' && addSource()} placeholder="Add a giving source..." className="flex-1 text-sm border-b border-gray-200 focus:border-gray-900 outline-none py-1 text-gray-900 placeholder-gray-400 bg-transparent" />
-            <button onClick={addSource} disabled={!newName.trim() || isPending} className="text-sm text-gray-900 font-medium disabled:opacity-40">Add</button>
+            <button onClick={addSource} disabled={!newName.trim() || isPending} className="text-sm text-blue-600 font-semibold hover:text-blue-700 disabled:opacity-40 transition-colors">Add</button>
           </div>
         </div>
       </div>

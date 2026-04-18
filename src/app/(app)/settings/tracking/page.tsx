@@ -33,7 +33,7 @@ function Toggle({ checked, onChange, label, reason, showImpact }: {
           role="switch"
           aria-checked={checked}
           onClick={() => onChange(!checked)}
-          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0 ${checked ? 'bg-gray-900' : 'bg-gray-300'}`}
+          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0 ${checked ? 'bg-blue-600' : 'bg-gray-300'}`}
         >
           <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${checked ? 'translate-x-6' : 'translate-x-1'}`} />
         </button>
@@ -137,7 +137,7 @@ export default function SettingsTrackingPage() {
         <button
           onClick={handleSave}
           disabled={!isDirty || isPending}
-          className="w-full bg-gray-900 text-white rounded-xl py-3.5 font-medium text-sm hover:bg-gray-700 transition-colors disabled:opacity-40"
+          className="w-full bg-blue-600 text-white rounded-xl py-3.5 font-semibold text-sm hover:bg-blue-700 transition-colors disabled:opacity-40"
         >
           {saved ? '✓ Saved' : isPending ? 'Saving...' : 'Save — your Sunday screens will update to match.'}
         </button>

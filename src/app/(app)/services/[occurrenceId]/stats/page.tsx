@@ -376,7 +376,7 @@ export default function StatsPage() {
   return (
     <AppLayout role={role}>
       {/* E1 — Header */}
-      <div className="sticky top-0 z-10 bg-white border-b border-gray-100 px-4 py-3">
+      <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm border-b border-gray-100 px-4 py-3">
         <div className="flex items-center gap-3">
           <button onClick={() => anyDirty ? setShowDirtyPrompt(true) : router.push(`/services/${occurrenceId}`)} className="text-gray-400 hover:text-gray-700">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
@@ -393,7 +393,7 @@ export default function StatsPage() {
           <div className="w-full bg-white rounded-t-2xl p-6 space-y-3">
             <p className="font-medium text-gray-900">Save before leaving?</p>
             <p className="text-sm text-gray-500">Unsaved stats won&apos;t appear in your reports.</p>
-            <button onClick={() => { setShowDirtyPrompt(false); handleSaveAllAndLeave(); }} className="w-full bg-gray-900 text-white rounded-lg py-3 text-sm font-medium">Save and leave</button>
+            <button onClick={() => { setShowDirtyPrompt(false); handleSaveAllAndLeave(); }} className="w-full bg-blue-600 text-white rounded-xl py-3 text-sm font-semibold hover:bg-blue-700 transition-colors">Save and leave</button>
             <button onClick={() => { setShowDirtyPrompt(false); router.push(`/services/${occurrenceId}`) }} className="w-full border border-gray-300 text-gray-700 rounded-lg py-3 text-sm font-medium">Leave without saving</button>
             <button onClick={() => setShowDirtyPrompt(false)} className="w-full text-gray-400 py-2 text-sm">Keep editing</button>
           </div>
@@ -434,13 +434,13 @@ export default function StatsPage() {
                     return (
                       <div key={row.category_id} className="px-4 py-3 flex items-center gap-3">
                         <span className="flex-1 text-sm font-medium text-gray-900">{cat?.category_name}</span>
-                        <input type="number" inputMode="numeric" min="0" value={row.value} onChange={e => updateAudienceEntry(group, row.category_id, { value: e.target.value })} disabled={row.is_na} placeholder="–" className="w-16 text-right border border-gray-200 rounded-lg px-2 py-1.5 text-sm disabled:opacity-30 focus:outline-none focus:ring-2 focus:ring-gray-900" />
+                        <input type="number" inputMode="numeric" min="0" value={row.value} onChange={e => updateAudienceEntry(group, row.category_id, { value: e.target.value })} disabled={row.is_na} placeholder="–" className="w-16 text-right border border-gray-200 rounded-lg px-2 py-1.5 text-sm disabled:opacity-30 focus:outline-none focus:ring-2 focus:ring-blue-500" />
                         <button type="button" onClick={() => updateAudienceEntry(group, row.category_id, { is_na: !row.is_na, value: '' })} className={`text-xs px-2 py-1 rounded-md border transition-colors ${row.is_na ? 'bg-gray-200 text-gray-700 border-gray-300' : 'text-gray-400 border-gray-200 hover:border-gray-400'}`}>Didn&apos;t apply</button>
                       </div>
                     )
                   })}
                   <div className="px-4 py-3">
-                    <button onClick={() => submitAudienceSection(group)} disabled={saving === group} className="w-full bg-gray-900 text-white rounded-lg py-2.5 text-sm font-medium hover:bg-gray-700 disabled:opacity-40">
+                    <button onClick={() => submitAudienceSection(group)} disabled={saving === group} className="w-full bg-blue-600 text-white rounded-xl py-2.5 text-sm font-semibold hover:bg-blue-700 transition-colors disabled:opacity-40">
                       {saving === group ? 'Saving...' : `Save ${GROUP_LABELS[group]} Stats`}
                     </button>
                   </div>
@@ -467,7 +467,7 @@ export default function StatsPage() {
                   return (
                     <div key={row.category_id} className="px-4 py-3 flex items-center gap-3">
                       <span className="flex-1 text-sm font-medium text-gray-900">{cat?.category_name}</span>
-                      <input type="number" inputMode="numeric" min="0" value={row.value} onChange={e => updateServiceEntry(row.category_id, { value: e.target.value })} disabled={row.is_na} placeholder="–" className="w-16 text-right border border-gray-200 rounded-lg px-2 py-1.5 text-sm disabled:opacity-30 focus:outline-none focus:ring-2 focus:ring-gray-900" />
+                      <input type="number" inputMode="numeric" min="0" value={row.value} onChange={e => updateServiceEntry(row.category_id, { value: e.target.value })} disabled={row.is_na} placeholder="–" className="w-16 text-right border border-gray-200 rounded-lg px-2 py-1.5 text-sm disabled:opacity-30 focus:outline-none focus:ring-2 focus:ring-blue-500" />
                       <button type="button" onClick={() => updateServiceEntry(row.category_id, { is_na: !row.is_na, value: '' })} className={`text-xs px-2 py-1 rounded-md border transition-colors ${row.is_na ? 'bg-gray-200 text-gray-700 border-gray-300' : 'text-gray-400 border-gray-200 hover:border-gray-400'}`}>
                         Didn&apos;t apply
                       </button>
@@ -475,7 +475,7 @@ export default function StatsPage() {
                   )
                 })}
                 <div className="px-4 py-3">
-                  <button onClick={submitServiceStats} disabled={saving === 'service'} className="w-full bg-gray-900 text-white rounded-lg py-2.5 text-sm font-medium hover:bg-gray-700 disabled:opacity-40">
+                  <button onClick={submitServiceStats} disabled={saving === 'service'} className="w-full bg-blue-600 text-white rounded-xl py-2.5 text-sm font-semibold hover:bg-blue-700 transition-colors disabled:opacity-40">
                     {saving === 'service' ? 'Saving...' : 'Save Service Stats'}
                   </button>
                 </div>
@@ -502,13 +502,13 @@ export default function StatsPage() {
                   return (
                     <div key={row.category_id} className="px-4 py-3 flex items-center gap-3">
                       <span className="flex-1 text-sm font-medium text-gray-900">{cat?.category_name}</span>
-                      <input type="number" inputMode="numeric" min="0" value={row.value} onChange={e => updatePeriodEntry(setDayEntries, row.category_id, { value: e.target.value })} disabled={row.is_na} placeholder="–" className="w-16 text-right border border-gray-200 rounded-lg px-2 py-1.5 text-sm disabled:opacity-30 focus:outline-none focus:ring-2 focus:ring-gray-900" />
+                      <input type="number" inputMode="numeric" min="0" value={row.value} onChange={e => updatePeriodEntry(setDayEntries, row.category_id, { value: e.target.value })} disabled={row.is_na} placeholder="–" className="w-16 text-right border border-gray-200 rounded-lg px-2 py-1.5 text-sm disabled:opacity-30 focus:outline-none focus:ring-2 focus:ring-blue-500" />
                       <button type="button" onClick={() => updatePeriodEntry(setDayEntries, row.category_id, { is_na: !row.is_na, value: '' })} className={`text-xs px-2 py-1 rounded-md border transition-colors ${row.is_na ? 'bg-gray-200 text-gray-700 border-gray-300' : 'text-gray-400 border-gray-200 hover:border-gray-400'}`}>Didn&apos;t apply</button>
                     </div>
                   )
                 })}
                 <div className="px-4 py-3">
-                  <button onClick={() => submitPeriodSection(dayEntries, 'day', serviceDate, setSavedDayEntries, setDaySubmitted)} disabled={saving === 'day'} className="w-full bg-gray-900 text-white rounded-lg py-2.5 text-sm font-medium hover:bg-gray-700 disabled:opacity-40">
+                  <button onClick={() => submitPeriodSection(dayEntries, 'day', serviceDate, setSavedDayEntries, setDaySubmitted)} disabled={saving === 'day'} className="w-full bg-blue-600 text-white rounded-xl py-2.5 text-sm font-semibold hover:bg-blue-700 transition-colors disabled:opacity-40">
                     {saving === 'day' ? 'Saving...' : 'Save Daily Stats'}
                   </button>
                 </div>
@@ -535,13 +535,13 @@ export default function StatsPage() {
                   return (
                     <div key={row.category_id} className="px-4 py-3 flex items-center gap-3">
                       <span className="flex-1 text-sm font-medium text-gray-900">{cat?.category_name}</span>
-                      <input type="number" inputMode="numeric" min="0" value={row.value} onChange={e => updatePeriodEntry(setWeekEntries, row.category_id, { value: e.target.value })} disabled={row.is_na} placeholder="–" className="w-16 text-right border border-gray-200 rounded-lg px-2 py-1.5 text-sm disabled:opacity-30 focus:outline-none focus:ring-2 focus:ring-gray-900" />
+                      <input type="number" inputMode="numeric" min="0" value={row.value} onChange={e => updatePeriodEntry(setWeekEntries, row.category_id, { value: e.target.value })} disabled={row.is_na} placeholder="–" className="w-16 text-right border border-gray-200 rounded-lg px-2 py-1.5 text-sm disabled:opacity-30 focus:outline-none focus:ring-2 focus:ring-blue-500" />
                       <button type="button" onClick={() => updatePeriodEntry(setWeekEntries, row.category_id, { is_na: !row.is_na, value: '' })} className={`text-xs px-2 py-1 rounded-md border transition-colors ${row.is_na ? 'bg-gray-200 text-gray-700 border-gray-300' : 'text-gray-400 border-gray-200 hover:border-gray-400'}`}>Didn&apos;t apply</button>
                     </div>
                   )
                 })}
                 <div className="px-4 py-3">
-                  <button onClick={() => submitPeriodSection(weekEntries, 'week', weekStartDate(serviceDate), setSavedWeekEntries, setWeekSubmitted)} disabled={saving === 'week'} className="w-full bg-gray-900 text-white rounded-lg py-2.5 text-sm font-medium hover:bg-gray-700 disabled:opacity-40">
+                  <button onClick={() => submitPeriodSection(weekEntries, 'week', weekStartDate(serviceDate), setSavedWeekEntries, setWeekSubmitted)} disabled={saving === 'week'} className="w-full bg-blue-600 text-white rounded-xl py-2.5 text-sm font-semibold hover:bg-blue-700 transition-colors disabled:opacity-40">
                     {saving === 'week' ? 'Saving...' : 'Save Weekly Stats'}
                   </button>
                 </div>
@@ -568,13 +568,13 @@ export default function StatsPage() {
                   return (
                     <div key={row.category_id} className="px-4 py-3 flex items-center gap-3">
                       <span className="flex-1 text-sm font-medium text-gray-900">{cat?.category_name}</span>
-                      <input type="number" inputMode="numeric" min="0" value={row.value} onChange={e => updatePeriodEntry(setMonthEntries, row.category_id, { value: e.target.value })} disabled={row.is_na} placeholder="–" className="w-16 text-right border border-gray-200 rounded-lg px-2 py-1.5 text-sm disabled:opacity-30 focus:outline-none focus:ring-2 focus:ring-gray-900" />
+                      <input type="number" inputMode="numeric" min="0" value={row.value} onChange={e => updatePeriodEntry(setMonthEntries, row.category_id, { value: e.target.value })} disabled={row.is_na} placeholder="–" className="w-16 text-right border border-gray-200 rounded-lg px-2 py-1.5 text-sm disabled:opacity-30 focus:outline-none focus:ring-2 focus:ring-blue-500" />
                       <button type="button" onClick={() => updatePeriodEntry(setMonthEntries, row.category_id, { is_na: !row.is_na, value: '' })} className={`text-xs px-2 py-1 rounded-md border transition-colors ${row.is_na ? 'bg-gray-200 text-gray-700 border-gray-300' : 'text-gray-400 border-gray-200 hover:border-gray-400'}`}>Didn&apos;t apply</button>
                     </div>
                   )
                 })}
                 <div className="px-4 py-3">
-                  <button onClick={() => submitPeriodSection(monthEntries, 'month', monthStartDate(serviceDate), setSavedMonthEntries, setMonthSubmitted)} disabled={saving === 'month'} className="w-full bg-gray-900 text-white rounded-lg py-2.5 text-sm font-medium hover:bg-gray-700 disabled:opacity-40">
+                  <button onClick={() => submitPeriodSection(monthEntries, 'month', monthStartDate(serviceDate), setSavedMonthEntries, setMonthSubmitted)} disabled={saving === 'month'} className="w-full bg-blue-600 text-white rounded-xl py-2.5 text-sm font-semibold hover:bg-blue-700 transition-colors disabled:opacity-40">
                     {saving === 'month' ? 'Saving...' : 'Save Monthly Stats'}
                   </button>
                 </div>

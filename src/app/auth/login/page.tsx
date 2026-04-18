@@ -55,18 +55,18 @@ export default function AuthLoginPage() {
   return (
     <AuthLayout>
       {/* E1 */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-semibold text-gray-900">Church Analytics</h1>
+      <div className="mb-6">
+        <h1 className="text-xl font-bold text-gray-900">Sign in</h1>
         <p className="mt-1 text-gray-500 text-sm">Track what matters. See what&apos;s growing.</p>
       </div>
 
       {/* Tab toggle — password vs magic link */}
-      <div className="flex border border-gray-200 rounded-lg p-0.5 mb-6">
+      <div className="flex border border-gray-200 rounded-xl p-0.5 mb-6 bg-gray-50">
         <button
           type="button"
           onClick={() => { setMode('password'); setError(null); setMagicSent(false) }}
-          className={`flex-1 text-sm py-1.5 rounded-md transition-colors font-medium ${
-            mode === 'password' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-900'
+          className={`flex-1 text-sm py-1.5 rounded-lg transition-all font-medium ${
+            mode === 'password' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'
           }`}
         >
           Password
@@ -74,8 +74,8 @@ export default function AuthLoginPage() {
         <button
           type="button"
           onClick={() => { setMode('magic'); setError(null) }}
-          className={`flex-1 text-sm py-1.5 rounded-md transition-colors font-medium ${
-            mode === 'magic' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-900'
+          className={`flex-1 text-sm py-1.5 rounded-lg transition-all font-medium ${
+            mode === 'magic' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'
           }`}
         >
           Email link
@@ -84,8 +84,8 @@ export default function AuthLoginPage() {
 
       {/* E2 — Email field (shared) */}
       <div className="mb-4">
-        <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-          Your email address
+        <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1.5">
+          Email address
         </label>
         <input
           id="email"
@@ -94,7 +94,7 @@ export default function AuthLoginPage() {
           value={email}
           onChange={e => setEmail(e.target.value)}
           disabled={isPending}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:opacity-50"
+          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 text-sm"
         />
       </div>
 
@@ -102,8 +102,8 @@ export default function AuthLoginPage() {
       {mode === 'password' && (
         <form onSubmit={handlePasswordSubmit} className="space-y-4">
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-              Your password
+            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1.5">
+              Password
             </label>
             <input
               id="password"
@@ -112,12 +112,12 @@ export default function AuthLoginPage() {
               value={password}
               onChange={e => setPassword(e.target.value)}
               disabled={isPending}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:opacity-50"
+              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 text-sm"
             />
           </div>
 
           {error && (
-            <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+            <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
               {error}
             </p>
           )}
@@ -125,7 +125,7 @@ export default function AuthLoginPage() {
           <button
             type="submit"
             disabled={!email || !password || isPending}
-            className="w-full bg-gray-900 text-white rounded-lg py-3 font-medium text-sm hover:bg-gray-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="w-full bg-blue-600 text-white rounded-xl py-3 font-semibold text-sm hover:bg-blue-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {isPending ? 'Signing in...' : 'Sign in'}
           </button>
@@ -133,7 +133,7 @@ export default function AuthLoginPage() {
           <button
             type="button"
             onClick={() => { setMode('magic'); setError(null) }}
-            className="w-full text-center text-xs text-gray-400 hover:text-gray-700 transition-colors py-1"
+            className="w-full text-center text-xs text-gray-400 hover:text-gray-600 transition-colors py-1"
           >
             Sign in with a link instead
           </button>
@@ -144,15 +144,15 @@ export default function AuthLoginPage() {
       {mode === 'magic' && (
         <form onSubmit={handleMagicSubmit} className="space-y-4">
           {magicSent ? (
-            <div className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3">
-              <p className="text-sm text-gray-700 font-medium">Check your email</p>
-              <p className="text-xs text-gray-500 mt-1">
+            <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">
+              <p className="text-sm text-blue-800 font-semibold">Check your email</p>
+              <p className="text-xs text-blue-600 mt-1">
                 We sent a link to {email}. Click it to sign in.
               </p>
               <button
                 type="submit"
                 disabled={resendCooldown > 0 || isPending}
-                className="mt-3 text-xs text-gray-500 hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="mt-3 text-xs text-blue-600 hover:text-blue-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors font-medium"
               >
                 {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend link'}
               </button>
@@ -160,14 +160,14 @@ export default function AuthLoginPage() {
           ) : (
             <>
               {error && (
-                <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
                   {error}
                 </p>
               )}
               <button
                 type="submit"
                 disabled={!email || isPending}
-                className="w-full bg-gray-900 text-white rounded-lg py-3 font-medium text-sm hover:bg-gray-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className="w-full bg-blue-600 text-white rounded-xl py-3 font-semibold text-sm hover:bg-blue-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {isPending ? 'Sending...' : 'Send me a link'}
               </button>
@@ -177,14 +177,14 @@ export default function AuthLoginPage() {
       )}
 
       {/* E8 — Viewer re-auth note */}
-      <p className="mt-8 text-xs text-gray-400 text-center">
+      <p className="mt-6 text-xs text-gray-400 text-center">
         Looking for your dashboard link? Enter your email above and we&apos;ll send you a new one.
       </p>
 
       {/* New church */}
-      <p className="mt-4 text-center text-xs text-gray-400">
+      <p className="mt-3 text-center text-xs text-gray-400">
         New church?{' '}
-        <Link href="/signup" className="text-gray-600 hover:text-gray-900 underline">
+        <Link href="/signup" className="text-blue-600 hover:text-blue-700 font-medium">
           Set up your account →
         </Link>
       </p>

@@ -63,11 +63,11 @@ export default function SettingsLocationsPage() {
       </div>
       <form onSubmit={handleSave} className="px-4 py-4 space-y-4">
         {locations.map((loc, idx) => (
-          <input key={idx} type="text" value={loc.name} onChange={e => updateName(idx, e.target.value)} placeholder="Location name" className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900" />
+          <input key={idx} type="text" value={loc.name} onChange={e => updateName(idx, e.target.value)} placeholder="Location name" className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
         ))}
         <button type="button" onClick={addLocation} className="text-sm text-gray-500 hover:text-gray-900">+ Add another location</button>
         {error && <p className="text-sm text-red-600">{error}</p>}
-        <button type="submit" disabled={isPending} className="w-full bg-gray-900 text-white rounded-xl py-3.5 font-medium text-sm hover:bg-gray-700 disabled:opacity-40">
+        <button type="submit" disabled={isPending} className="w-full bg-blue-600 text-white rounded-xl py-3.5 font-semibold text-sm hover:bg-blue-700 transition-colors disabled:opacity-40">
           {saved ? '✓ Saved' : isPending ? 'Saving...' : 'Save changes'}
         </button>
       </form>

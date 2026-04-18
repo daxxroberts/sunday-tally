@@ -30,6 +30,13 @@ interface OccurrenceInfo {
   location_name: string
 }
 
+const SECTION_COLORS: Record<string, { dot: string; icon: string; bg: string }> = {
+  attendance: { dot: 'bg-blue-500',    icon: 'text-blue-600',   bg: 'bg-blue-50' },
+  volunteers: { dot: 'bg-violet-500',  icon: 'text-violet-600', bg: 'bg-violet-50' },
+  stats:      { dot: 'bg-amber-500',   icon: 'text-amber-600',  bg: 'bg-amber-50' },
+  giving:     { dot: 'bg-emerald-500', icon: 'text-emerald-600',bg: 'bg-emerald-50' },
+}
+
 function AttIcon() {
   return (
     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
@@ -49,7 +56,7 @@ function VolIcon() {
 function StatsIcon() {
   return (
     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
     </svg>
   )
 }
@@ -81,7 +88,6 @@ export default function OccurrencePage() {
   const { restoreSession } = useSundaySession()
 
   useEffect(() => {
-    // Try to restore session from storage using the ID from URL
     if (typeof window !== 'undefined') {
        restoreSession(occurrenceId)
     }
@@ -102,7 +108,6 @@ export default function OccurrencePage() {
       // @ts-expect-error join
       setChurch(membership.churches as Church)
 
-      // Fetch occurrence
       const { data: occ } = await supabase
         .from('service_occurrences')
         .select('id, service_date, status, service_templates(display_name), church_locations(name)')
@@ -150,12 +155,12 @@ export default function OccurrencePage() {
   if (!church || !occurrence) return null
 
   const isCancelled = occurrence.status === 'cancelled'
-  
+
   const mainFilled = summary?.main_attendance !== null
   const kidsFilled = church.tracks_kids_attendance ? summary?.kids_attendance !== null : true
   const youthFilled = church.tracks_youth_attendance ? summary?.youth_attendance !== null : true
   const attEntered = mainFilled && kidsFilled && youthFilled
-  
+
   const volEntered = summary?.total_volunteers !== null
   const resEntered = summary?.total_responses !== null
   const givEntered = summary?.total_giving !== null
@@ -168,10 +173,9 @@ export default function OccurrencePage() {
   ].filter(s => s.always || s.flag)
 
   const allComplete = tracked.every(s => s.entered)
-  const anyStarted = tracked.some(s => s.entered)
 
   function attSummary() {
-    if (!summary || summary.main_attendance === null) return 'Tap to enter attendance'
+    if (!summary || summary.main_attendance === null) return 'Tap to enter'
     const parts = [`Main ${summary.main_attendance}`]
     if (church!.tracks_kids_attendance && summary.kids_attendance !== null) parts.push(`Kids ${summary.kids_attendance}`)
     if (church!.tracks_youth_attendance && summary.youth_attendance !== null) parts.push(`Youth ${summary.youth_attendance}`)
@@ -180,74 +184,115 @@ export default function OccurrencePage() {
 
   const SECTIONS = [
     { key: 'attendance', label: 'Attendance', icon: <AttIcon />, href: `/services/${occurrenceId}/attendance`, entered: attEntered, summary: attSummary(), show: true },
-    { key: 'volunteers', label: 'Volunteers', icon: <VolIcon />, href: `/services/${occurrenceId}/volunteers`, entered: volEntered, summary: volEntered ? `${summary?.total_volunteers} total` : 'Tap to enter volunteers', show: church.tracks_volunteers },
-    { key: 'stats', label: 'Stats', icon: <StatsIcon />, href: `/services/${occurrenceId}/stats`, entered: resEntered, summary: resEntered ? `${summary?.total_responses} total` : 'Tap to enter stats', show: church.tracks_responses },
-    { key: 'giving', label: 'Giving', icon: <GivingIcon />, href: `/services/${occurrenceId}/giving`, entered: givEntered, summary: givEntered ? `$${parseFloat(summary?.total_giving ?? '0').toLocaleString()}` : 'Tap to enter giving', show: church.tracks_giving },
+    { key: 'volunteers', label: 'Volunteers', icon: <VolIcon />, href: `/services/${occurrenceId}/volunteers`, entered: volEntered, summary: volEntered ? `${summary?.total_volunteers} total` : 'Tap to enter', show: church.tracks_volunteers },
+    { key: 'stats', label: 'Stats', icon: <StatsIcon />, href: `/services/${occurrenceId}/stats`, entered: resEntered, summary: resEntered ? `${summary?.total_responses} total` : 'Tap to enter', show: church.tracks_responses },
+    { key: 'giving', label: 'Giving', icon: <GivingIcon />, href: `/services/${occurrenceId}/giving`, entered: givEntered, summary: givEntered ? `$${parseFloat(summary?.total_giving ?? '0').toLocaleString()}` : 'Tap to enter', show: church.tracks_giving },
   ].filter(s => s.show)
+
+  const enteredCount = tracked.filter(s => s.entered).length
 
   return (
     <AppLayout role={role}>
       {/* E1 — Persistent Occurrence Header */}
-      <div className="sticky top-0 z-10 bg-white border-b border-gray-100 px-4 py-3">
+      <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm border-b border-gray-100 px-4 py-3">
         <div className="flex items-center gap-3">
-          <button onClick={() => router.push('/services')} className="text-gray-400 hover:text-gray-700 transition-colors">
+          <button onClick={() => router.push('/services')} className="text-gray-400 hover:text-gray-600 transition-colors cursor-pointer">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
             </svg>
           </button>
-          <div>
-            <p className="font-semibold text-gray-900 text-sm">{occurrence.service_name}</p>
-            <p className="text-xs text-gray-400">{formatDate(occurrence.service_date)}{occurrence.location_name ? ` · ${occurrence.location_name}` : ''}</p>
+          <div className="flex-1 min-w-0">
+            <p className="font-bold text-gray-900 text-sm leading-tight truncate">{occurrence.service_name}</p>
+            <p className="text-xs text-gray-400 leading-tight">{formatDate(occurrence.service_date)}{occurrence.location_name ? ` · ${occurrence.location_name}` : ''}</p>
           </div>
+          {/* Progress pill */}
+          {!loading && !isCancelled && (
+            <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full flex-shrink-0 ${
+              allComplete ? 'bg-emerald-50 text-emerald-700' :
+              enteredCount > 0 ? 'bg-blue-50 text-blue-700' :
+              'bg-amber-50 text-amber-700'
+            }`}>
+              {allComplete ? 'Complete' : `${enteredCount}/${tracked.length}`}
+            </span>
+          )}
         </div>
       </div>
 
       <div className="px-4 py-4 space-y-3">
         {/* E7 — Cancelled banner */}
         {isCancelled && (
-          <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-800">
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 text-sm text-amber-800 font-medium">
             This service was cancelled
           </div>
         )}
 
         {/* E2 — All-complete banner */}
         {allComplete && !isCancelled && (
-          <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 flex items-center justify-between">
-            <p className="text-sm text-green-800 font-medium">All done for {occurrence.service_name}</p>
-            <button onClick={() => router.push('/services')} className="text-xs text-green-700 underline">Back</button>
+          <div className="bg-gradient-to-r from-emerald-50 to-white border border-emerald-200 rounded-2xl px-4 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center flex-shrink-0">
+                <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <p className="text-sm text-emerald-800 font-semibold">All sections complete</p>
+            </div>
+            <button onClick={() => router.push('/services')} className="text-xs text-emerald-600 font-medium hover:text-emerald-800 transition-colors">Back</button>
           </div>
         )}
 
         {/* E3 — Section rows */}
-        {SECTIONS.map((section, i) => (
-          <Link
-            key={section.key}
-            href={isCancelled ? '#' : section.href}
-            onClick={isCancelled ? e => e.preventDefault() : undefined}
-            className={`block border rounded-xl px-4 py-4 flex items-center gap-4 transition-colors ${
-              isCancelled ? 'border-gray-100 opacity-50 cursor-not-allowed' : 'border-gray-200 hover:border-gray-400 active:bg-gray-50'
-            }`}
-          >
-            <span className={section.entered ? 'text-gray-900' : 'text-gray-400'}>{section.icon}</span>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900">{section.label}</p>
-              <p className="text-xs text-gray-500 mt-0.5 truncate">{section.summary}</p>
-            </div>
-            {/* E3d — completion indicator */}
-            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
-              section.entered ? 'bg-green-500' : 'bg-amber-400'
-            }`} />
-          </Link>
-        ))}
+        {loading ? (
+          <div className="space-y-2">
+            {[1,2,3].map(i => <div key={i} className="h-16 bg-gray-100 rounded-2xl animate-pulse" />)}
+          </div>
+        ) : (
+          SECTIONS.map(section => {
+            const colors = SECTION_COLORS[section.key] ?? SECTION_COLORS.attendance
+            return (
+              <Link
+                key={section.key}
+                href={isCancelled ? '#' : section.href}
+                onClick={isCancelled ? e => e.preventDefault() : undefined}
+                className={`block bg-white border rounded-2xl px-4 py-4 flex items-center gap-4 transition-all ${
+                  isCancelled
+                    ? 'border-gray-100 opacity-50 cursor-not-allowed'
+                    : 'border-gray-200 hover:border-blue-200 hover:shadow-[0_2px_8px_-2px_rgba(59,130,246,0.15)] cursor-pointer'
+                }`}
+              >
+                {/* Icon in colored circle */}
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${section.entered ? colors.bg : 'bg-gray-50'} ${section.entered ? colors.icon : 'text-gray-400'}`}>
+                  {section.icon}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-900">{section.label}</p>
+                  <p className="text-xs text-gray-500 mt-0.5 truncate">{section.summary}</p>
+                </div>
+                {/* E3d — completion indicator */}
+                {section.entered ? (
+                  <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${colors.dot}`}>
+                    <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                ) : (
+                  <svg className="w-4 h-4 text-gray-300 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
+                )}
+              </Link>
+            )
+          })
+        )}
 
         {/* E5 — Correction note */}
         {allComplete && !isCancelled && (
-          <p className="text-xs text-center text-gray-400 pt-2">Need to correct something? Tap any section.</p>
+          <p className="text-xs text-center text-gray-400 pt-1">Need to correct something? Tap any section above.</p>
         )}
 
         {/* E6 — Back */}
-        <div className="pt-4 text-center">
-          <Link href="/services" className="text-sm text-gray-400 hover:text-gray-700 transition-colors">
+        <div className="pt-3 text-center">
+          <Link href="/services" className="text-sm text-gray-400 hover:text-gray-600 transition-colors">
             ← Back to services
           </Link>
         </div>
