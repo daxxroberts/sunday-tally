@@ -171,6 +171,7 @@ export default function ServicesPage() {
   const [cards, setCards] = useState<ServiceCard[]>([])
   const [loading, setLoading] = useState(true)
   const [templateCount, setTemplateCount] = useState<number | null>(null)
+  const [nextServiceDate, setNextServiceDate] = useState<string | null>(null)
   const [creatingId, setCreatingId] = useState<string | null>(null)
   const tapping = useRef(false)
   const router = useRouter()
@@ -320,11 +321,20 @@ export default function ServicesPage() {
       setTemplateCount(templates.length)
 
       const scheduledCards: ScheduledCard[] = []
+      let soonestUpcoming: string | null = null
       for (const tmpl of templates) {
         // Only schedules that are active AND already effective (not future-dated)
         const activeSchedules = relatedList(tmpl.service_schedule_versions).filter(sv =>
           sv.is_active && (!sv.effective_start_date || sv.effective_start_date <= today)
         )
+        // Track future-dated schedules so we can show "coming up on X" messaging
+        relatedList(tmpl.service_schedule_versions).forEach(sv => {
+          if (sv.is_active && sv.effective_start_date && sv.effective_start_date > today) {
+            if (!soonestUpcoming || sv.effective_start_date < soonestUpcoming) {
+              soonestUpcoming = sv.effective_start_date
+            }
+          }
+        })
         const templateLocation = firstRelated(tmpl.church_locations)
         for (const sv of activeSchedules) {
           const expectedDate = getMostRecentWeekday(todayDate, sv.day_of_week)
@@ -350,6 +360,7 @@ export default function ServicesPage() {
       }
 
       setCards([...existingCards, ...scheduledCards])
+      if (soonestUpcoming) setNextServiceDate(soonestUpcoming)
       setLoading(false)
     })
   }, [])
@@ -483,6 +494,17 @@ export default function ServicesPage() {
                   className="inline-flex justify-center flex-1 w-full bg-blue-600 text-white rounded-xl px-4 py-3 text-sm font-semibold hover:bg-blue-700 transition-colors">
                   Continue Setup
                 </Link>
+              </div>
+            ) : nextServiceDate ? (
+              /* E5 — State 4b: Schedule set, first service not yet here */
+              <div className="max-w-sm mx-auto">
+                <div className="w-14 h-14 rounded-2xl bg-blue-50 flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-7 h-7 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+                  </svg>
+                </div>
+                <p className="font-semibold text-gray-900 mb-1">You're all set up</p>
+                <p className="text-sm text-gray-500">Your first service is scheduled for <span className="font-semibold text-gray-700">{formatDate(nextServiceDate)}</span>. This page will show it when the date arrives.</p>
               </div>
             ) : (
               /* E5 — State 4: No services this week */
