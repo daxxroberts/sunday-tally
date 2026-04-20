@@ -130,7 +130,7 @@ async function ensurePeriodRow(
     .single()
 
   if (error || !inserted) {
-    // Race — refetch
+    // Either a race condition or RLS blocking the insert — refetch.
     const again = await supabase
       .from('ai_usage_periods')
       .select('id, cents_used, cap_cents')
@@ -138,6 +138,12 @@ async function ensurePeriodRow(
       .eq('bucket',     sel.bucket)
       .eq('period_key', sel.periodKey)
       .single()
+    if (!again.data) {
+      throw new Error(
+        `ai_usage_periods write blocked — run migration 0012_ai_usage_rls_write.sql. ` +
+        `Original insert error: ${error?.message ?? 'unknown'}`
+      )
+    }
     return again.data as PeriodRow
   }
 
