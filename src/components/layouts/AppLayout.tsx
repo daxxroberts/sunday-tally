@@ -8,8 +8,9 @@ import { usePathname } from 'next/navigation'
 import type { UserRole } from '@/types'
 
 interface AppLayoutProps {
-  children: React.ReactNode
-  role: UserRole
+  children:    React.ReactNode
+  role:        UserRole
+  fillHeight?: boolean  // removes outer scroll; children manage their own overflow
 }
 
 interface Tab {
@@ -29,6 +30,12 @@ const CalendarIcon = ({ filled }: { filled?: boolean }) => (
 const ChartIcon = ({ filled }: { filled?: boolean }) => (
   <svg className="w-6 h-6" fill={filled ? 'currentColor' : 'none'} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={filled ? 0 : 1.8}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+  </svg>
+)
+
+const SparkleIcon = ({ filled }: { filled?: boolean }) => (
+  <svg className="w-6 h-6" fill={filled ? 'currentColor' : 'none'} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={filled ? 0 : 1.8}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M5 3v4m-2-2h4M6 17v4m-2-2h4m5-16l2.5 6L21 11l-5.5 2.5L13 20l-2.5-6.5L5 11l5.5-1.5L13 3z" />
   </svg>
 )
 
@@ -55,6 +62,13 @@ const TABS: Tab[] = [
     activeIcon: <ChartIcon filled />,
   },
   {
+    label: 'Ask AI',
+    href: '/dashboard/ai',
+    roles: ['owner', 'admin', 'editor'],
+    icon: <SparkleIcon />,
+    activeIcon: <SparkleIcon filled />,
+  },
+  {
     label: 'Settings',
     href: '/settings',
     roles: ['owner', 'admin'],
@@ -67,7 +81,7 @@ function getDashboardHref(role: UserRole) {
   return role === 'viewer' ? '/dashboard/viewer' : '/dashboard'
 }
 
-export default function AppLayout({ children, role }: AppLayoutProps) {
+export default function AppLayout({ children, role, fillHeight }: AppLayoutProps) {
   const pathname = usePathname()
 
   const visibleTabs = TABS.filter(tab => tab.roles.includes(role))
@@ -75,7 +89,8 @@ export default function AppLayout({ children, role }: AppLayoutProps) {
   function isActive(tab: Tab) {
     const href = tab.label === 'Dashboard' ? getDashboardHref(role) : tab.href
     if (href === '/services') return pathname.startsWith('/services')
-    if (href === '/dashboard') return pathname.startsWith('/dashboard')
+    if (href === '/dashboard/ai') return pathname.startsWith('/dashboard/ai')
+    if (href === '/dashboard') return pathname.startsWith('/dashboard') && !pathname.startsWith('/dashboard/ai')
     if (href === '/settings') return pathname.startsWith('/settings')
     return false
   }
@@ -87,8 +102,11 @@ export default function AppLayout({ children, role }: AppLayoutProps) {
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
-      {/* Main content — padded bottom to clear tab bar */}
-      <main className="flex-1 pb-24 overflow-y-auto">
+      {/* Main content */}
+      <main className={fillHeight
+        ? 'flex-1 flex flex-col overflow-hidden'
+        : 'flex-1 pb-24 overflow-y-auto'
+      }>
         {children}
       </main>
 

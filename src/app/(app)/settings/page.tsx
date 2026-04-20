@@ -68,6 +68,15 @@ export default function SettingsPage() {
           <SettingsRow href="/settings/team" label="Members" description="Who has access and what they can do" />
         </Section>
 
+        {/* Data */}
+        <Section title="Data">
+          <SettingsRow
+            href="/onboarding/import"
+            label="AI Data Import"
+            description="Upload CSVs or Sheets — AI maps your columns and imports your history"
+          />
+        </Section>
+
         {/* E4 — What You Track */}
         <Section title="What You Track">
           <SettingsRow href="/settings/tracking" label="Tracking" description="Turn audiences and modules on or off" />

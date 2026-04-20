@@ -79,19 +79,20 @@ export default function OnboardingLocationsPage() {
     })
   }
 
-  function handleContinue(e: React.FormEvent) {
-    e.preventDefault()
+  function saveAndNavigate(dest: string) {
     if (!hasValid || isPending) return
     setError(null)
-
-    // Assign sort_order before saving
     const toSave = validLocations.map((l, i) => ({ ...l, sort_order: i + 1 }))
-
     startTransition(async () => {
       const result = await saveLocationsAction(toSave)
       if (result.error) { setError(result.error); return }
-      router.push('/onboarding/services')
+      router.push(dest)
     })
+  }
+
+  function handleContinue(e: React.FormEvent) {
+    e.preventDefault()
+    saveAndNavigate('/onboarding/services')
   }
 
   return (
@@ -158,7 +159,7 @@ export default function OnboardingLocationsPage() {
           <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>
         )}
 
-        {/* E4 — Continue */}
+        {/* E4 — Continue (manual path) */}
         <button
           type="submit"
           disabled={!hasValid || isPending}
@@ -166,6 +167,20 @@ export default function OnboardingLocationsPage() {
         >
           {isPending ? 'Saving...' : 'Continue — set up your service times next.'}
         </button>
+
+        {/* AI Import path */}
+        <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3.5">
+          <p className="text-sm font-medium text-gray-900">Have years of existing data?</p>
+          <p className="mt-0.5 text-xs text-gray-500">Upload CSVs or Google Sheets — AI will map your columns, detect anomalies, create your services and tags, and import everything automatically.</p>
+          <button
+            type="button"
+            disabled={!hasValid || isPending}
+            onClick={() => saveAndNavigate('/onboarding/import')}
+            className="mt-3 w-full rounded-lg border border-blue-200 bg-white py-2.5 text-sm font-medium text-blue-700 hover:bg-blue-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Import with AI instead →
+          </button>
+        </div>
 
         {!hasValid && (
           <p className="text-xs text-center text-gray-400">Add at least one location to continue.</p>
