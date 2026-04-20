@@ -2,6 +2,7 @@ import 'server-only'
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getAllRows, type SourceInput } from '@/lib/import/sources'
+import { parseDateIso, parseCount, fmtMonthLabel } from '@/lib/import/parsers'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -95,35 +96,4 @@ export async function POST(req: Request) {
     }))
 
   return NextResponse.json({ months })
-}
-
-function parseDateIso(raw: string | undefined): string | null {
-  if (!raw) return null
-  const s = String(raw).trim()
-  const iso = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(s)
-  if (iso) {
-    const [, y, m, d] = iso
-    return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`
-  }
-  const us = /^(\d{1,2})[\/-](\d{1,2})[\/-](\d{2,4})$/.exec(s)
-  if (us) {
-    let [, m, d, y] = us
-    if (y.length === 2) y = (Number(y) >= 70 ? '19' : '20') + y
-    return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`
-  }
-  const dt = new Date(s)
-  if (!Number.isFinite(dt.getTime())) return null
-  return `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, '0')}-${String(dt.getUTCDate()).padStart(2, '0')}`
-}
-
-function parseCount(raw: string | undefined): number | null {
-  if (raw == null || raw === '') return null
-  const n = Number(String(raw).replace(/[$,\s]/g, ''))
-  return Number.isFinite(n) && n >= 0 ? Math.round(n) : null
-}
-
-function fmtMonthLabel(yyyyMM: string): string {
-  const [y, m] = yyyyMM.split('-')
-  const names = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
-  return `${names[Number(m) - 1]} ${y}`
 }
