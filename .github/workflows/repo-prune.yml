@@ -1,0 +1,92 @@
+name: Weekly repo prune
+
+# Opens a PR every Monday removing accumulated test/dev artifacts.
+# If nothing prunable is committed, no PR is opened (silent no-op).
+# Manually triggerable via the "Run workflow" button on Actions tab.
+
+on:
+  schedule:
+    - cron: '17 14 * * 1'  # Mondays 14:17 UTC (~10:17am ET / 7:17am PT)
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  prune:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Scan only files Git is tracking. Bare .gitignore patterns can't be relied
+      # on at scan-time because old artifacts may have been committed before the
+      # ignore rule existed.
+      - name: Find prunable artifacts
+        id: scan
+        shell: bash
+        run: |
+          set -euo pipefail
+          patterns=(
+            ':(glob)**/test-videos/**'
+            ':(glob)**/test-screenshots/**'
+            ':(glob)**/playwright-report/**'
+            ':(glob)**/*_TEST_RESULTS.json'
+            ':(glob)PATTERN_READER_COMPARISON_RESULTS.json'
+            ':(glob)**/dev-server.log'
+            ':(glob)**/debug-*.png'
+          )
+          files=$(git ls-files -- "${patterns[@]}" || true)
+          if [ -z "$files" ]; then
+            echo "Nothing to prune."
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          count=$(echo "$files" | wc -l)
+          echo "Found $count prunable file(s)."
+          echo "$files"
+          echo "found=true" >> "$GITHUB_OUTPUT"
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+          {
+            echo "files<<PRUNE_EOF"
+            echo "$files"
+            echo "PRUNE_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Remove files
+        if: steps.scan.outputs.found == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r f; do
+            [ -n "$f" ] && git rm --quiet -- "$f"
+          done <<< "${{ steps.scan.outputs.files }}"
+
+      - name: Open pull request
+        if: steps.scan.outputs.found == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: chore/repo-prune-${{ github.run_id }}
+          title: "chore: prune ${{ steps.scan.outputs.count }} accumulated test artifact(s)"
+          commit-message: "chore: prune accumulated test artifacts"
+          body: |
+            Weekly automated repo prune.
+
+            Removed files matched these patterns:
+            - `**/test-videos/**`
+            - `**/test-screenshots/**`
+            - `**/playwright-report/**`
+            - `**/*_TEST_RESULTS.json`
+            - `PATTERN_READER_COMPARISON_RESULTS.json`
+            - `**/dev-server.log`
+            - `**/debug-*.png`
+
+            **Removed in this PR:**
+
+            ```
+            ${{ steps.scan.outputs.files }}
+            ```
+
+            If any of these are intentionally committed, close this PR and update
+            `.github/workflows/repo-prune.yml` to exclude them from the scan list.
+          delete-branch: true
