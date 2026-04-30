@@ -1,0 +1,694 @@
+{
+  "generated_at": "2026-04-28T04:22:57.259Z",
+  "results": [
+    {
+      "label": "multi-campus",
+      "ok": true,
+      "elapsed_s": 64,
+      "confidence": "HIGH",
+      "weeks_observed": 24,
+      "sources_count": 1,
+      "templates": [
+        {
+          "name": "Sunday Service",
+          "code": "SUNDAY_SERVICE",
+          "tag": "MAIN",
+          "day_of_week": 0,
+          "start_time": null
+        }
+      ],
+      "locations": [
+        "Main Campus",
+        "South Campus"
+      ],
+      "response_categories": [],
+      "giving_sources": [
+        "Offering"
+      ],
+      "volunteer_categories": [],
+      "questions": [
+        {
+          "id": "q_campus_modeling",
+          "blocking": true,
+          "title": "How to Model Main vs South Campus"
+        },
+        {
+          "id": "q_offering_scope",
+          "blocking": false,
+          "title": "Offering: Per-Campus or Church-Wide Total"
+        },
+        {
+          "id": "q_service_times",
+          "blocking": true,
+          "title": "What time does each service start?"
+        }
+      ],
+      "dest_fields": [
+        "attendance.kids",
+        "attendance.main",
+        "attendance.youth",
+        "giving.OFFERING",
+        "location_code",
+        "service_date"
+      ]
+    },
+    {
+      "label": "multi-language",
+      "ok": true,
+      "elapsed_s": 77,
+      "confidence": "MEDIUM",
+      "weeks_observed": 20,
+      "sources_count": 1,
+      "templates": [
+        {
+          "name": "English Service",
+          "code": "English",
+          "tag": "MAIN",
+          "day_of_week": 0,
+          "start_time": null
+        },
+        {
+          "name": "Spanish Service",
+          "code": "Spanish",
+          "tag": "SPANISH",
+          "day_of_week": 0,
+          "start_time": null
+        }
+      ],
+      "locations": [],
+      "response_categories": [],
+      "giving_sources": [
+        "Offering"
+      ],
+      "volunteer_categories": [],
+      "questions": [
+        {
+          "id": "q_language_service_model",
+          "blocking": true,
+          "title": "English vs. Spanish: one church or two tracks?"
+        },
+        {
+          "id": "q_offering_scope",
+          "blocking": true,
+          "title": "Is offering collected at each service, or weekly total?"
+        },
+        {
+          "id": "q_sunday_schedule",
+          "blocking": false,
+          "title": "Confirm both services run on Sundays"
+        },
+        {
+          "id": "q_service_times",
+          "blocking": true,
+          "title": "Service start times"
+        }
+      ],
+      "dest_fields": [
+        "attendance.kids",
+        "attendance.main",
+        "giving.OFFERING",
+        "service_date",
+        "service_template_code"
+      ]
+    },
+    {
+      "label": "kids-as-template",
+      "ok": true,
+      "elapsed_s": 78,
+      "confidence": "HIGH",
+      "weeks_observed": 24,
+      "sources_count": 1,
+      "templates": [
+        {
+          "name": "Adult Service",
+          "code": "Adult Service",
+          "tag": "MAIN",
+          "day_of_week": 0,
+          "start_time": null,
+          "audience_type": "MAIN"
+        },
+        {
+          "name": "LifeKids",
+          "code": "LifeKids",
+          "tag": "KIDS",
+          "day_of_week": 0,
+          "start_time": null,
+          "audience_type": "KIDS"
+        }
+      ],
+      "locations": [],
+      "response_categories": [
+        "Kids Rooms Open This Week (week)"
+      ],
+      "giving_sources": [],
+      "volunteer_categories": [
+        "Adult Service Volunteers (MAIN)",
+        "LifeKids Volunteers (KIDS)"
+      ],
+      "questions": [
+        {
+          "id": "q_rooms_open_scope",
+          "blocking": false,
+          "title": "Kids Rooms Open This Week: one number or per Sunday?"
+        },
+        {
+          "id": "q_volunteer_scope",
+          "blocking": false,
+          "title": "Volunteer counts: ministry-specific or church-wide?"
+        },
+        {
+          "id": "q_service_times",
+          "blocking": true,
+          "title": "What time does each service start?"
+        }
+      ],
+      "dest_fields": [
+        "attendance.main",
+        "period_response.ROOMS_OPEN.KIDS",
+        "service_date",
+        "service_template_code",
+        "volunteer.SERVICE_VOLUNTEERS"
+      ]
+    },
+    {
+      "label": "volunteer-heavy",
+      "ok": true,
+      "elapsed_s": 69,
+      "confidence": "MEDIUM",
+      "weeks_observed": 20,
+      "sources_count": 1,
+      "templates": [
+        {
+          "name": "Sunday Main Service",
+          "code": "SUNDAY_MAIN",
+          "tag": "MORNING",
+          "day_of_week": 0,
+          "start_time": null,
+          "audience_type": "MAIN"
+        }
+      ],
+      "locations": [],
+      "response_categories": [],
+      "giving_sources": [],
+      "volunteer_categories": [
+        "Greeters (MAIN)",
+        "Parking (MAIN)",
+        "Hosts (MAIN)",
+        "Production (MAIN)",
+        "Worship (MAIN)",
+        "Ushers (MAIN)",
+        "Coffee (MAIN)",
+        "Security (MAIN)"
+      ],
+      "questions": [
+        {
+          "id": "q_volunteer_audience_scope",
+          "blocking": false,
+          "title": "Volunteer Teams — Which Service Do They Serve?"
+        },
+        {
+          "id": "q_kids_youth_tracked_elsewhere",
+          "blocking": false,
+          "title": "Kids and Youth Attendance — Do You Track It?"
+        },
+        {
+          "id": "q_service_times",
+          "blocking": true,
+          "title": "What Time Does Your Main Service Start?"
+        }
+      ],
+      "dest_fields": [
+        "attendance.main",
+        "service_date",
+        "volunteer.COFFEE",
+        "volunteer.GREETERS",
+        "volunteer.HOSTS",
+        "volunteer.PARKING",
+        "volunteer.PRODUCTION",
+        "volunteer.SECURITY",
+        "volunteer.USHERS",
+        "volunteer.WORSHIP"
+      ]
+    },
+    {
+      "label": "stat-heavy",
+      "ok": true,
+      "elapsed_s": 60,
+      "confidence": "MEDIUM",
+      "weeks_observed": 20,
+      "sources_count": 1,
+      "templates": [
+        {
+          "name": "Sunday Service",
+          "code": "SUNDAY",
+          "tag": "MAIN",
+          "day_of_week": 0,
+          "start_time": null
+        }
+      ],
+      "locations": [],
+      "response_categories": [
+        "First Time Guests (service)",
+        "Salvations (service)",
+        "Rededications (service)",
+        "Baptisms (service)",
+        "Prayer Cards (service)"
+      ],
+      "giving_sources": [],
+      "volunteer_categories": [],
+      "questions": [
+        {
+          "id": "q_communion_count",
+          "blocking": true,
+          "title": "How should we track Communion Count?"
+        },
+        {
+          "id": "q_single_service",
+          "blocking": false,
+          "title": "One service or multiple?"
+        },
+        {
+          "id": "q_service_times",
+          "blocking": true,
+          "title": "What time do your services start?"
+        }
+      ],
+      "dest_fields": [
+        "attendance.main",
+        "ignore",
+        "response.BAPTISMS",
+        "response.FIRST_TIME_GUESTS",
+        "response.PRAYER_CARDS",
+        "response.REDEDICATIONS",
+        "response.SALVATIONS",
+        "service_date"
+      ]
+    },
+    {
+      "label": "online-attendance",
+      "ok": true,
+      "elapsed_s": 67,
+      "confidence": "MEDIUM",
+      "weeks_observed": 20,
+      "sources_count": 1,
+      "templates": [
+        {
+          "name": "Sunday Morning",
+          "code": "SUNDAY_MORNING",
+          "tag": "MORNING",
+          "day_of_week": 0,
+          "start_time": null
+        }
+      ],
+      "locations": [],
+      "response_categories": [],
+      "giving_sources": [
+        "Sunday Offering"
+      ],
+      "volunteer_categories": [],
+      "questions": [
+        {
+          "id": "q_online_attendance",
+          "blocking": true,
+          "title": "How to handle Online attendance"
+        },
+        {
+          "id": "q_offering_scope",
+          "blocking": true,
+          "title": "Is the offering amount per service or per week?"
+        },
+        {
+          "id": "q_data_recency",
+          "blocking": false,
+          "title": "Is this old data, or will you send more?"
+        },
+        {
+          "id": "q_service_times",
+          "blocking": true,
+          "title": "Service start times"
+        }
+      ],
+      "dest_fields": [
+        "attendance.kids",
+        "attendance.main",
+        "giving.SUNDAY_OFFERING",
+        "ignore",
+        "service_date"
+      ]
+    },
+    {
+      "label": "mixed-giving",
+      "ok": true,
+      "elapsed_s": 96,
+      "confidence": "HIGH",
+      "weeks_observed": 16,
+      "sources_count": 2,
+      "templates": [
+        {
+          "name": "9am Service",
+          "code": "9am",
+          "tag": "MORNING",
+          "day_of_week": 0,
+          "start_time": null
+        },
+        {
+          "name": "11am Service",
+          "code": "11am",
+          "tag": "MORNING",
+          "day_of_week": 0,
+          "start_time": null
+        }
+      ],
+      "locations": [],
+      "response_categories": [],
+      "giving_sources": [
+        "Plate",
+        "Total Online Giving",
+        "Total App Giving"
+      ],
+      "volunteer_categories": [],
+      "questions": [
+        {
+          "id": "q_attendance_audience",
+          "blocking": false,
+          "title": "Where does your attendance number belong?"
+        },
+        {
+          "id": "q_online_giving_scope",
+          "blocking": false,
+          "title": "How should online giving be tracked?"
+        },
+        {
+          "id": "q_online_vs_app_split",
+          "blocking": false,
+          "title": "Show online and app giving separately?"
+        },
+        {
+          "id": "q_plate_giving_completeness",
+          "blocking": false,
+          "title": "Is plate the only in-person giving you track?"
+        },
+        {
+          "id": "q_service_times",
+          "blocking": true,
+          "title": "What time do your services start?"
+        }
+      ],
+      "dest_fields": [
+        "attendance.main",
+        "giving.PLATE",
+        "period_giving.APP",
+        "period_giving.ONLINE",
+        "service_date",
+        "service_template_code"
+      ]
+    },
+    {
+      "label": "sparse-with-gaps",
+      "ok": true,
+      "elapsed_s": 69,
+      "confidence": "MEDIUM",
+      "weeks_observed": 30,
+      "sources_count": 1,
+      "templates": [
+        {
+          "name": "Sunday Service",
+          "code": "SUNDAY_MAIN",
+          "tag": "MORNING",
+          "day_of_week": 0,
+          "start_time": null
+        }
+      ],
+      "locations": [],
+      "response_categories": [],
+      "giving_sources": [
+        "Offering"
+      ],
+      "volunteer_categories": [],
+      "questions": [
+        {
+          "id": "q_service_aggregation",
+          "blocking": true,
+          "title": "Single Service or Multiple Services Per Row?"
+        },
+        {
+          "id": "q_offering_scope",
+          "blocking": true,
+          "title": "Is Offering Per-Service or Church-Wide?"
+        },
+        {
+          "id": "q_youth_tracking",
+          "blocking": false,
+          "title": "Do You Track Youth Attendance?"
+        },
+        {
+          "id": "q_offering_split",
+          "blocking": false,
+          "title": "Break Down Offering by How It's Given?"
+        },
+        {
+          "id": "q_service_times",
+          "blocking": true,
+          "title": "What time does each service start?"
+        }
+      ],
+      "dest_fields": [
+        "attendance.kids",
+        "attendance.main",
+        "giving.OFFERING",
+        "service_date"
+      ]
+    },
+    {
+      "label": "many-templates",
+      "ok": true,
+      "elapsed_s": 60,
+      "confidence": "HIGH",
+      "weeks_observed": 16,
+      "sources_count": 1,
+      "templates": [
+        {
+          "name": "Saturday Night",
+          "code": "Saturday Night",
+          "tag": "WEEKEND",
+          "day_of_week": 6,
+          "start_time": null
+        },
+        {
+          "name": "8am Service",
+          "code": "8am",
+          "tag": "MORNING",
+          "day_of_week": 0,
+          "start_time": null
+        },
+        {
+          "name": "9:30am Service",
+          "code": "9:30am",
+          "tag": "MORNING",
+          "day_of_week": 0,
+          "start_time": null
+        },
+        {
+          "name": "11am Service",
+          "code": "11am",
+          "tag": "MORNING",
+          "day_of_week": 0,
+          "start_time": null
+        },
+        {
+          "name": "12:30pm Service",
+          "code": "12:30pm",
+          "tag": "MORNING",
+          "day_of_week": 0,
+          "start_time": null
+        }
+      ],
+      "locations": [],
+      "response_categories": [],
+      "giving_sources": [
+        "Offering"
+      ],
+      "volunteer_categories": [],
+      "questions": [
+        {
+          "id": "q_attendance_audience",
+          "blocking": true,
+          "title": "Attendance Column — Who's Counted?"
+        },
+        {
+          "id": "q_offering_scope",
+          "blocking": true,
+          "title": "Offering — Per Service or One Weekly Total?"
+        },
+        {
+          "id": "q_service_times",
+          "blocking": true,
+          "title": "What time does each service start?"
+        }
+      ],
+      "dest_fields": [
+        "attendance.main",
+        "giving.OFFERING",
+        "service_date",
+        "service_template_code"
+      ]
+    },
+    {
+      "label": "times-in-description",
+      "ok": true,
+      "elapsed_s": 59,
+      "confidence": "MEDIUM",
+      "weeks_observed": 16,
+      "sources_count": 1,
+      "templates": [
+        {
+          "name": "Sunday AM",
+          "code": "Sunday AM",
+          "tag": "MORNING",
+          "day_of_week": 0,
+          "start_time": "10:30",
+          "audience_type": "MAIN"
+        },
+        {
+          "name": "Sunday PM",
+          "code": "Sunday PM",
+          "tag": "EVENING",
+          "day_of_week": 0,
+          "start_time": "18:00",
+          "audience_type": "MAIN"
+        }
+      ],
+      "locations": [
+        "Main Campus"
+      ],
+      "response_categories": [],
+      "giving_sources": [
+        "Offering"
+      ],
+      "volunteer_categories": [],
+      "questions": [
+        {
+          "id": "q_offering_scope",
+          "blocking": false,
+          "title": "Is offering counted per service or for the whole week?"
+        },
+        {
+          "id": "q_kids_youth_tracked",
+          "blocking": false,
+          "title": "Do you count kids and youth attendance?"
+        }
+      ],
+      "dest_fields": [
+        "attendance.main",
+        "giving.OFFERING",
+        "service_date",
+        "service_template_code"
+      ]
+    },
+    {
+      "label": "european-dates",
+      "ok": true,
+      "elapsed_s": 81,
+      "confidence": "MEDIUM",
+      "weeks_observed": 16,
+      "sources_count": 1,
+      "templates": [
+        {
+          "name": "Sunday Service",
+          "code": "SUNDAY_SERVICE",
+          "tag": "MORNING",
+          "day_of_week": 0,
+          "start_time": null
+        }
+      ],
+      "locations": [],
+      "response_categories": [],
+      "giving_sources": [
+        "Weekly Offering"
+      ],
+      "volunteer_categories": [],
+      "questions": [
+        {
+          "id": "q_offering_currency",
+          "blocking": true,
+          "title": "What currency are your offering amounts in?"
+        },
+        {
+          "id": "q_offering_scope",
+          "blocking": true,
+          "title": "Is your offering amount per service or a weekly total?"
+        },
+        {
+          "id": "q_youth_tracking",
+          "blocking": false,
+          "title": "Do you track youth or student attendance separately?"
+        },
+        {
+          "id": "q_service_times",
+          "blocking": true,
+          "title": "What time does your Sunday service start?"
+        }
+      ],
+      "dest_fields": [
+        "attendance.kids",
+        "attendance.main",
+        "giving.WEEKLY_OFFERING",
+        "service_date"
+      ]
+    },
+    {
+      "label": "custom-terminology",
+      "ok": true,
+      "elapsed_s": 59,
+      "confidence": "MEDIUM",
+      "weeks_observed": 16,
+      "sources_count": 1,
+      "templates": [
+        {
+          "name": "Foundation Service",
+          "code": "Foundation Service",
+          "tag": "MAIN",
+          "day_of_week": 0,
+          "start_time": null
+        },
+        {
+          "name": "Cornerstone Gathering",
+          "code": "Cornerstone Gathering",
+          "tag": "MAIN",
+          "day_of_week": 0,
+          "start_time": null
+        }
+      ],
+      "locations": [],
+      "response_categories": [],
+      "giving_sources": [
+        "Offering"
+      ],
+      "volunteer_categories": [],
+      "questions": [
+        {
+          "id": "q_gathering_distinct_services",
+          "blocking": false,
+          "title": "Are Foundation Service and Cornerstone Gathering two separate services?"
+        },
+        {
+          "id": "q_offering_scope",
+          "blocking": false,
+          "title": "Is giving tracked per service or for the whole church each Sunday?"
+        },
+        {
+          "id": "q_service_times",
+          "blocking": true,
+          "title": "What time do your services start?"
+        }
+      ],
+      "dest_fields": [
+        "attendance.kids",
+        "attendance.main",
+        "giving.OFFERING",
+        "service_date",
+        "service_template_code"
+      ]
+    }
+  ]
+}

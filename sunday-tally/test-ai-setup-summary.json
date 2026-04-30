@@ -1,0 +1,14 @@
+{
+  "time": "2026-04-21T14:53:55.792Z",
+  "test_email": "test-church-1776783136467@sundaytally-test.com",
+  "final_url": "http://localhost:3000/onboarding/import/confirm?job_id=808cfbaf-1d5c-4f84-936d-b985a6be9c51",
+  "total_errors": 1,
+  "total_warnings": 0,
+  "ai_cost_cents": 38,
+  "errors": [
+    {
+      "step": "confirm-phase-1",
+      "detail": "Next button still disabled after filling blocking questions"
+    }
+  ]
+}

@@ -1,0 +1,946 @@
+{
+  "app_name": "Church Analytics",
+  "version": "0.23",
+  "generated": "2026-04-24",
+  "screens": {
+    "AUTH": {
+      "name": "Login / Magic Link",
+      "route": "/auth/login",
+      "layout": "AuthLayout",
+      "tab": null,
+      "is_tab_root": false,
+      "roles": [
+        "owner",
+        "admin",
+        "editor",
+        "viewer"
+      ],
+      "navigates_to": [
+        {
+          "target": "GATE_1",
+          "trigger": "login_success",
+          "condition": "role_is_owner_or_admin",
+          "roles": [
+            "owner",
+            "admin"
+          ]
+        },
+        {
+          "target": "GATE_3",
+          "trigger": "login_success",
+          "condition": "role_is_viewer",
+          "roles": [
+            "viewer"
+          ]
+        },
+        {
+          "target": "T1",
+          "trigger": "login_success",
+          "condition": "role_is_editor",
+          "roles": [
+            "editor"
+          ]
+        },
+        {
+          "target": "SIGNUP",
+          "trigger": "create_new_church",
+          "condition": null
+        }
+      ],
+      "back": null,
+      "gates": [],
+      "shares_state": [],
+      "onboarding_step": null
+    },
+    "INVITE_ACCEPT": {
+      "name": "Invite Acceptance",
+      "route": "/auth/invite/[token]",
+      "layout": "AuthLayout",
+      "tab": null,
+      "is_tab_root": false,
+      "roles": [
+        "owner",
+        "admin",
+        "editor",
+        "viewer"
+      ],
+      "navigates_to": [
+        {
+          "target": "T1",
+          "trigger": "accept_success",
+          "condition": null,
+          "roles": [
+            "owner",
+            "admin",
+            "editor"
+          ]
+        },
+        {
+          "target": "D2",
+          "trigger": "accept_success",
+          "condition": null,
+          "roles": [
+            "viewer"
+          ]
+        }
+      ],
+      "back": null,
+      "gates": [],
+      "shares_state": [],
+      "onboarding_step": null
+    },
+    "ONBOARDING_CHURCH": {
+      "name": "Church Info (Step 1)",
+      "route": "/onboarding/church",
+      "layout": "OnboardingLayout",
+      "tab": null,
+      "is_tab_root": false,
+      "roles": [
+        "owner"
+      ],
+      "navigates_to": [
+        {
+          "target": "T_LOC",
+          "trigger": "continue",
+          "condition": null
+        }
+      ],
+      "back": null,
+      "gates": [],
+      "shares_state": [],
+      "onboarding_step": 1
+    },
+    "T_LOC": {
+      "name": "Location Setup",
+      "route": "/onboarding/locations",
+      "layout": "OnboardingLayout",
+      "tab": null,
+      "is_tab_root": false,
+      "roles": [
+        "owner",
+        "admin"
+      ],
+      "navigates_to": [
+        {
+          "target": "T6",
+          "trigger": "continue",
+          "condition": "at_least_one_location"
+        }
+      ],
+      "back": {
+        "target": "ONBOARDING_CHURCH",
+        "prompt_if_dirty": false
+      },
+      "gates": [],
+      "shares_state": [],
+      "onboarding_step": 2
+    },
+    "T6": {
+      "name": "Service Setup",
+      "route": "/onboarding/services",
+      "layout": "OnboardingLayout",
+      "tab": null,
+      "is_tab_root": false,
+      "roles": [
+        "owner",
+        "admin"
+      ],
+      "navigates_to": [
+        {
+          "target": "T_SCHED",
+          "trigger": "continue",
+          "condition": "at_least_one_service_with_primary_tag"
+        }
+      ],
+      "back": {
+        "target": "T_LOC",
+        "prompt_if_dirty": false
+      },
+      "gates": [],
+      "shares_state": [],
+      "onboarding_step": 3
+    },
+    "T_SCHED": {
+      "name": "Schedule Setup",
+      "route": "/onboarding/schedule",
+      "layout": "OnboardingLayout",
+      "tab": null,
+      "is_tab_root": false,
+      "roles": [
+        "owner",
+        "admin"
+      ],
+      "navigates_to": [
+        {
+          "target": "T_SCHED",
+          "trigger": "schedule_saved_more_pending",
+          "condition": "unscheduled_templates_remain"
+        },
+        {
+          "target": "T9",
+          "trigger": "continue",
+          "condition": "all_templates_scheduled"
+        }
+      ],
+      "back": {
+        "target": "T6",
+        "prompt_if_dirty": false
+      },
+      "gates": [],
+      "shares_state": [],
+      "onboarding_step": 4
+    },
+    "T9": {
+      "name": "Invite + Onboard",
+      "route": "/onboarding/invite",
+      "layout": "OnboardingLayout",
+      "tab": null,
+      "is_tab_root": false,
+      "roles": [
+        "owner",
+        "admin"
+      ],
+      "navigates_to": [
+        {
+          "target": "T1",
+          "trigger": "done_or_skip",
+          "condition": null
+        }
+      ],
+      "back": {
+        "target": "T_SCHED",
+        "prompt_if_dirty": false
+      },
+      "gates": [],
+      "shares_state": [],
+      "onboarding_step": 5
+    },
+    "T1": {
+      "name": "Recent Services",
+      "route": "/services",
+      "layout": "AppLayout",
+      "tab": "services",
+      "is_tab_root": true,
+      "roles": [
+        "owner",
+        "admin",
+        "editor"
+      ],
+      "navigates_to": [
+        {
+          "target": "T1B",
+          "trigger": "tap_service",
+          "condition": "occurrence_exists_or_create"
+        },
+        {
+          "target": "T_HISTORY",
+          "trigger": "tap_history",
+          "condition": null,
+          "roles": [
+            "owner",
+            "admin",
+            "editor"
+          ]
+        }
+      ],
+      "back": {
+        "target": null,
+        "prompt_if_dirty": false
+      },
+      "gates": [
+        "gate_1_setup"
+      ],
+      "shares_state": [],
+      "onboarding_step": null
+    },
+    "T1B": {
+      "name": "Occurrence Dashboard",
+      "route": "/services/[occurrenceId]",
+      "layout": "AppLayout",
+      "tab": "services",
+      "is_tab_root": false,
+      "roles": [
+        "owner",
+        "admin",
+        "editor"
+      ],
+      "navigates_to": [
+        {
+          "target": "T2",
+          "trigger": "tap_attendance",
+          "condition": null
+        },
+        {
+          "target": "T3",
+          "trigger": "tap_volunteers",
+          "condition": "tracks_volunteers"
+        },
+        {
+          "target": "T4",
+          "trigger": "tap_stats",
+          "condition": "tracks_responses"
+        },
+        {
+          "target": "T5",
+          "trigger": "tap_giving",
+          "condition": "tracks_giving"
+        }
+      ],
+      "back": {
+        "target": "T1",
+        "prompt_if_dirty": false
+      },
+      "gates": [],
+      "shares_state": [
+        "SUNDAY_SESSION"
+      ],
+      "onboarding_step": null
+    },
+    "T2": {
+      "name": "Attendance Entry",
+      "route": "/services/[occurrenceId]/attendance",
+      "layout": "AppLayout",
+      "tab": "services",
+      "is_tab_root": false,
+      "roles": [
+        "owner",
+        "admin",
+        "editor"
+      ],
+      "navigates_to": [
+        {
+          "target": "T1B",
+          "trigger": "submit",
+          "condition": null
+        }
+      ],
+      "back": {
+        "target": "T1B",
+        "prompt_if_dirty": true
+      },
+      "gates": [],
+      "shares_state": [
+        "SUNDAY_SESSION"
+      ],
+      "onboarding_step": null
+    },
+    "T3": {
+      "name": "Volunteer Entry",
+      "route": "/services/[occurrenceId]/volunteers",
+      "layout": "AppLayout",
+      "tab": "services",
+      "is_tab_root": false,
+      "roles": [
+        "owner",
+        "admin",
+        "editor"
+      ],
+      "navigates_to": [
+        {
+          "target": "T1B",
+          "trigger": "all_sections_submitted",
+          "condition": null
+        }
+      ],
+      "back": {
+        "target": "T1B",
+        "prompt_if_dirty": true
+      },
+      "gates": [
+        "gate_tracks_volunteers"
+      ],
+      "shares_state": [
+        "SUNDAY_SESSION"
+      ],
+      "onboarding_step": null
+    },
+    "T4": {
+      "name": "Stats Entry",
+      "route": "/services/[occurrenceId]/stats",
+      "layout": "AppLayout",
+      "tab": "services",
+      "is_tab_root": false,
+      "roles": [
+        "owner",
+        "admin",
+        "editor"
+      ],
+      "navigates_to": [
+        {
+          "target": "T4_SUMMARY",
+          "trigger": "all_sections_submitted",
+          "condition": null
+        }
+      ],
+      "back": {
+        "target": "T1B",
+        "prompt_if_dirty": true
+      },
+      "gates": [
+        "gate_tracks_responses"
+      ],
+      "shares_state": [
+        "SUNDAY_SESSION"
+      ],
+      "onboarding_step": null
+    },
+    "T4_SUMMARY": {
+      "name": "Stats Post-Submit Summary",
+      "route": "/services/[occurrenceId]/stats/summary",
+      "layout": "AppLayout",
+      "tab": "services",
+      "is_tab_root": false,
+      "roles": [
+        "owner",
+        "admin",
+        "editor"
+      ],
+      "navigates_to": [
+        {
+          "target": "T1B",
+          "trigger": "dismiss_or_auto_2500ms",
+          "condition": null
+        }
+      ],
+      "back": null,
+      "gates": [],
+      "shares_state": [
+        "SUNDAY_SESSION"
+      ],
+      "onboarding_step": null
+    },
+    "T5": {
+      "name": "Giving Entry",
+      "route": "/services/[occurrenceId]/giving",
+      "layout": "AppLayout",
+      "tab": "services",
+      "is_tab_root": false,
+      "roles": [
+        "owner",
+        "admin",
+        "editor"
+      ],
+      "navigates_to": [
+        {
+          "target": "T1B",
+          "trigger": "submit",
+          "condition": null
+        }
+      ],
+      "back": {
+        "target": "T1B",
+        "prompt_if_dirty": true
+      },
+      "gates": [
+        "gate_tracks_giving"
+      ],
+      "shares_state": [
+        "SUNDAY_SESSION"
+      ],
+      "onboarding_step": null
+    },
+    "D1": {
+      "name": "Full Dashboard",
+      "route": "/dashboard",
+      "layout": "AppLayout",
+      "tab": "dashboard",
+      "is_tab_root": true,
+      "roles": [
+        "owner",
+        "admin"
+      ],
+      "navigates_to": [],
+      "back": {
+        "target": null,
+        "prompt_if_dirty": false
+      },
+      "gates": [
+        "gate_1_setup"
+      ],
+      "shares_state": [],
+      "onboarding_step": null
+    },
+    "D2": {
+      "name": "Viewer Summary",
+      "route": "/dashboard/viewer",
+      "layout": "AppLayout",
+      "tab": "dashboard",
+      "is_tab_root": true,
+      "roles": [
+        "viewer"
+      ],
+      "navigates_to": [],
+      "back": {
+        "target": null,
+        "prompt_if_dirty": false
+      },
+      "gates": [
+        "gate_3_viewer"
+      ],
+      "shares_state": [],
+      "onboarding_step": null
+    },
+    "T_SETTINGS": {
+      "name": "Settings Hub",
+      "route": "/settings",
+      "layout": "AppLayout",
+      "tab": "settings",
+      "is_tab_root": true,
+      "roles": [
+        "owner",
+        "admin"
+      ],
+      "navigates_to": [
+        {
+          "target": "T_LOC_SETTINGS",
+          "trigger": "tap_locations",
+          "condition": null
+        },
+        {
+          "target": "T6_SETTINGS",
+          "trigger": "tap_services",
+          "condition": null
+        },
+        {
+          "target": "T6B",
+          "trigger": "tap_tracking",
+          "condition": null
+        },
+        {
+          "target": "T7",
+          "trigger": "tap_volunteer_roles",
+          "condition": null
+        },
+        {
+          "target": "T8",
+          "trigger": "tap_stats",
+          "condition": null
+        },
+        {
+          "target": "T_GIVING_SOURCES",
+          "trigger": "tap_giving_sources",
+          "condition": null
+        },
+        {
+          "target": "T_TAGS",
+          "trigger": "tap_tags",
+          "condition": null
+        },
+        {
+          "target": "T9_SETTINGS",
+          "trigger": "tap_invite",
+          "condition": null
+        }
+      ],
+      "back": {
+        "target": null,
+        "prompt_if_dirty": false
+      },
+      "gates": [
+        "gate_role_settings"
+      ],
+      "shares_state": [],
+      "onboarding_step": null
+    },
+    "T_LOC_SETTINGS": {
+      "name": "Location Setup (Settings)",
+      "route": "/settings/locations",
+      "layout": "AppLayout",
+      "tab": "settings",
+      "is_tab_root": false,
+      "roles": [
+        "owner",
+        "admin"
+      ],
+      "navigates_to": [],
+      "back": {
+        "target": "T_SETTINGS",
+        "prompt_if_dirty": true
+      },
+      "gates": [],
+      "shares_state": [],
+      "onboarding_step": null
+    },
+    "T6_SETTINGS": {
+      "name": "Service Setup (Settings)",
+      "route": "/settings/services",
+      "layout": "AppLayout",
+      "tab": "settings",
+      "is_tab_root": false,
+      "roles": [
+        "owner",
+        "admin"
+      ],
+      "navigates_to": [
+        {
+          "target": "T_SCHED_SETTINGS",
+          "trigger": "tap_schedule_for_service",
+          "condition": null
+        }
+      ],
+      "back": {
+        "target": "T_SETTINGS",
+        "prompt_if_dirty": true
+      },
+      "gates": [],
+      "shares_state": [],
+      "onboarding_step": null
+    },
+    "T_SCHED_SETTINGS": {
+      "name": "Schedule Setup (Settings)",
+      "route": "/settings/services/[templateId]/schedule",
+      "layout": "AppLayout",
+      "tab": "settings",
+      "is_tab_root": false,
+      "roles": [
+        "owner",
+        "admin"
+      ],
+      "navigates_to": [],
+      "back": {
+        "target": "T6_SETTINGS",
+        "prompt_if_dirty": true
+      },
+      "gates": [],
+      "shares_state": [],
+      "onboarding_step": null
+    },
+    "T6B": {
+      "name": "Tracking Configuration",
+      "route": "/settings/tracking",
+      "layout": "AppLayout",
+      "tab": "settings",
+      "is_tab_root": false,
+      "roles": [
+        "owner",
+        "admin"
+      ],
+      "navigates_to": [],
+      "back": {
+        "target": "T_SETTINGS",
+        "prompt_if_dirty": true
+      },
+      "gates": [],
+      "shares_state": [],
+      "onboarding_step": null
+    },
+    "T7": {
+      "name": "Volunteer Roles",
+      "route": "/settings/volunteer-roles",
+      "layout": "AppLayout",
+      "tab": "settings",
+      "is_tab_root": false,
+      "roles": [
+        "owner",
+        "admin"
+      ],
+      "navigates_to": [],
+      "back": {
+        "target": "T_SETTINGS",
+        "prompt_if_dirty": false
+      },
+      "gates": [],
+      "shares_state": [],
+      "onboarding_step": null
+    },
+    "T8": {
+      "name": "Stats",
+      "route": "/settings/stats",
+      "layout": "AppLayout",
+      "tab": "settings",
+      "is_tab_root": false,
+      "roles": [
+        "owner",
+        "admin"
+      ],
+      "navigates_to": [],
+      "back": {
+        "target": "T_SETTINGS",
+        "prompt_if_dirty": false
+      },
+      "gates": [],
+      "shares_state": [],
+      "onboarding_step": null
+    },
+    "T_GIVING_SOURCES": {
+      "name": "Giving Sources",
+      "route": "/settings/giving-sources",
+      "layout": "AppLayout",
+      "tab": "settings",
+      "is_tab_root": false,
+      "roles": [
+        "owner",
+        "admin"
+      ],
+      "navigates_to": [],
+      "back": {
+        "target": "T_SETTINGS",
+        "prompt_if_dirty": false
+      },
+      "gates": [],
+      "shares_state": [],
+      "onboarding_step": null
+    },
+    "T_TAGS": {
+      "name": "Service Tags",
+      "route": "/settings/tags",
+      "layout": "AppLayout",
+      "tab": "settings",
+      "is_tab_root": false,
+      "roles": [
+        "owner",
+        "admin"
+      ],
+      "navigates_to": [],
+      "back": {
+        "target": "T_SETTINGS",
+        "prompt_if_dirty": false
+      },
+      "gates": [],
+      "shares_state": [],
+      "onboarding_step": null
+    },
+    "T9_SETTINGS": {
+      "name": "Team (Settings)",
+      "route": "/settings/team",
+      "layout": "AppLayout",
+      "tab": "settings",
+      "is_tab_root": false,
+      "roles": [
+        "owner",
+        "admin"
+      ],
+      "navigates_to": [],
+      "back": {
+        "target": "T_SETTINGS",
+        "prompt_if_dirty": false
+      },
+      "gates": [],
+      "shares_state": [],
+      "onboarding_step": null
+    },
+    "T_HISTORY": {
+      "name": "Historical Data Review",
+      "route": "/services/history",
+      "layout": "AppLayout",
+      "tab": "services",
+      "is_tab_root": false,
+      "roles": [
+        "owner",
+        "admin",
+        "editor"
+      ],
+      "navigates_to": [
+        {
+          "target": "T1B",
+          "trigger": "tap_occurrence_link",
+          "condition": null
+        }
+      ],
+      "back": {
+        "target": "T1",
+        "prompt_if_dirty": false
+      },
+      "gates": [
+        "gate_1_setup"
+      ],
+      "shares_state": [],
+      "onboarding_step": null
+    },
+    "T_WEEKLY": {
+      "name": "Weekly Inputs",
+      "route": "/services/weekly",
+      "layout": "AppLayout",
+      "tab": "services",
+      "is_tab_root": false,
+      "roles": [
+        "owner",
+        "admin",
+        "editor"
+      ],
+      "navigates_to": [
+        {
+          "target": "T_GIVING_SOURCES",
+          "trigger": "tap_setup_link_empty_state",
+          "condition": "no_giving_sources_configured"
+        }
+      ],
+      "back": {
+        "target": "T1",
+        "prompt_if_dirty": false
+      },
+      "gates": [
+        "gate_1_setup"
+      ],
+      "shares_state": [],
+      "onboarding_step": null
+    },
+    "T_WEEKLY_STATS": {
+      "name": "Weekly Stats Inputs",
+      "route": "/services/weekly-stats",
+      "layout": "AppLayout",
+      "tab": "services",
+      "is_tab_root": false,
+      "roles": [
+        "owner",
+        "admin",
+        "editor"
+      ],
+      "navigates_to": [
+        {
+          "target": "T_STATS_SETTINGS",
+          "trigger": "tap_setup_link_empty_state",
+          "condition": "no_week_scope_stats_configured"
+        }
+      ],
+      "back": {
+        "target": "T1",
+        "prompt_if_dirty": false
+      },
+      "gates": [
+        "gate_1_setup"
+      ],
+      "shares_state": [],
+      "onboarding_step": null
+    },
+    "SIGNUP": {
+      "name": "New Church Signup",
+      "route": "/signup",
+      "layout": "AuthLayout",
+      "tab": null,
+      "is_tab_root": false,
+      "roles": [],
+      "navigates_to": [
+        {
+          "target": "ONBOARDING_CHURCH",
+          "trigger": "provisioning_success",
+          "condition": null
+        }
+      ],
+      "back": {
+        "target": "AUTH",
+        "prompt_if_dirty": false
+      },
+      "gates": [],
+      "shares_state": [],
+      "onboarding_step": null
+    }
+  },
+  "gates": {
+    "gate_1_setup": {
+      "name": "Gate 1 \u2014 Setup Completion",
+      "condition": "Church has at least one location AND at least one service with a primary tag AND at least one active schedule version",
+      "fail_redirect": "ONBOARDING_CHURCH",
+      "applies_to_roles": [
+        "owner",
+        "admin",
+        "editor"
+      ]
+    },
+    "gate_3_viewer": {
+      "name": "Gate 3 \u2014 Viewer Containment",
+      "condition": "Role is viewer",
+      "fail_redirect": "D2",
+      "applies_to_roles": [
+        "viewer"
+      ]
+    },
+    "gate_role_settings": {
+      "name": "Settings Role Gate",
+      "condition": "Role is owner or admin",
+      "fail_redirect": "T1",
+      "applies_to_roles": [
+        "editor",
+        "viewer"
+      ]
+    },
+    "gate_tracks_volunteers": {
+      "name": "Volunteer Tracking Gate",
+      "condition": "church.tracks_volunteers = true",
+      "fail_redirect": "T1B",
+      "applies_to_roles": [
+        "owner",
+        "admin",
+        "editor"
+      ]
+    },
+    "gate_tracks_responses": {
+      "name": "Stats Tracking Gate",
+      "condition": "church.tracks_responses = true",
+      "fail_redirect": "T1B",
+      "applies_to_roles": [
+        "owner",
+        "admin",
+        "editor"
+      ]
+    },
+    "gate_tracks_giving": {
+      "name": "Giving Tracking Gate",
+      "condition": "church.tracks_giving = true",
+      "fail_redirect": "T1B",
+      "applies_to_roles": [
+        "owner",
+        "admin",
+        "editor"
+      ]
+    }
+  },
+  "layouts": {
+    "AuthLayout": {
+      "description": "Minimal layout for login and invite acceptance. No nav bar. No tab bar. Centred content.",
+      "wraps": [
+        "AUTH",
+        "INVITE_ACCEPT"
+      ]
+    },
+    "OnboardingLayout": {
+      "description": "Linear onboarding layout. Progress indicator at top. No tab bar. Back button. Step counter.",
+      "wraps": [
+        "ONBOARDING_CHURCH",
+        "T_LOC",
+        "T6",
+        "T_SCHED",
+        "T9"
+      ]
+    },
+    "AppLayout": {
+      "description": "Main app layout. Tab bar at bottom (role-aware). Persistent nav. Used for all post-onboarding screens.",
+      "wraps": [
+        "T1",
+        "T1B",
+        "T2",
+        "T3",
+        "T4",
+        "T4_SUMMARY",
+        "T5",
+        "T_HISTORY",
+        "D1",
+        "D2",
+        "T_SETTINGS",
+        "T_LOC_SETTINGS",
+        "T6_SETTINGS",
+        "T_SCHED_SETTINGS",
+        "T6B",
+        "T7",
+        "T8",
+        "T_GIVING_SOURCES",
+        "T_TAGS",
+        "T9_SETTINGS"
+      ]
+    }
+  },
+  "shared_state": {
+    "SUNDAY_SESSION": {
+      "description": "Occurrence context written when user taps a service in T1. Contains occurrenceId, serviceDisplayName, serviceDate, locationName. Persists across T1b, T2, T3, T4, T4_SUMMARY, T5. Keyed by date in sessionStorage. Restored from URL param /services/[occurrenceId] if context lost.",
+      "scope": "session",
+      "used_by": [
+        "T1B",
+        "T2",
+        "T3",
+        "T4",
+        "T4_SUMMARY",
+        "T5"
+      ]
+    }
+  }
+}
