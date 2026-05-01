@@ -466,6 +466,12 @@ export default function ServicesPage() {
             </svg>
             History
           </Link>
+          <Link href="/services/history-v2" className="flex items-center gap-1.5 text-xs font-medium text-amber-700 hover:text-amber-900 transition-colors border border-amber-200 bg-amber-50 rounded-lg px-2.5 py-1.5 hover:border-amber-400" title="Preview of design-package History grid (sample data, no save)">
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
+            v2 Preview
+          </Link>
           {(role === 'owner' || role === 'admin') && (
             <Link href="/settings" className="text-gray-400 hover:text-gray-700 transition-colors">
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>

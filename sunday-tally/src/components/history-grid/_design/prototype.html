@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SundayTally — Dynamic History Grid Prototype</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --surface: #ffffff;
+      --border: #e2e8f0;
+      --ink: #0f172a;
+      --ink2: #475569;
+      --ink3: #94a3b8;
+      
+      --month-bg: #3b82f6;
+      --month-row: #eff6ff;
+      --week-bg: #10b981;
+      --week-row: #f0fdf4;
+      
+      --blue: #3b82f6;
+      --green: #22c55e;
+      --teal: #14b8a6;
+      --amber: #f59e0b;
+      --purple: #a855f7;
+      --red: #ef4444;
+    }
+    
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { 
+      font-family: 'Inter', sans-serif; 
+      background: var(--bg); 
+      color: var(--ink); 
+      padding: 20px;
+      line-height: 1.5;
+    }
+    
+    .header {
+      max-width: 1600px;
+      margin: 0 auto 16px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    
+    .header h1 {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    
+    .header p {
+      font-size: 14px;
+      color: var(--ink2);
+    }
+    
+    .legend {
+      max-width: 1600px;
+      margin: 0 auto 16px;
+      padding: 12px 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      font-size: 12px;
+      color: var(--ink2);
+    }
+    
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    
+    .legend-swatch {
+      width: 20px;
+      height: 14px;
+      border-radius: 3px;
+      border: 1px solid var(--border);
+    }
+    
+    .controls {
+      max-width: 1600px;
+      margin: 0 auto 16px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+    
+    .controls label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--ink2);
+    }
+    
+    .controls select {
+      background: white;
+      border: 1px solid var(--border);
+      color: var(--ink);
+      padding: 6px 10px;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+    
+    .controls button {
+      background: var(--blue);
+      color: white;
+      border: none;
+      padding: 6px 14px;
+      border-radius: 4px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    
+    .controls button:hover {
+      background: #2563eb;
+    }
+    
+    .grid-container {
+      max-width: 1600px;
+      margin: 0 auto;
+      overflow-x: auto;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    
+    /* HEADER ROWS */
+    thead th {
+      background: #f1f5f9;
+      color: var(--ink2);
+      font-weight: 600;
+      text-align: center;
+      border: 1px solid var(--border);
+      padding: 10px 8px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    
+    thead th.group-header {
+      background: #e2e8f0;
+      color: var(--ink);
+      font-weight: 700;
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    
+    thead th.collapsible {
+      cursor: pointer;
+      user-select: none;
+    }
+    
+    thead th.collapsible:hover {
+      background: #cbd5e1;
+    }
+    
+    thead th.scope-column {
+      background: #f1f5f9;
+      color: var(--ink3);
+      font-size: 10px;
+      width: 50px;
+    }
+    
+    thead th.label-column {
+      background: #f1f5f9;
+      color: var(--ink3);
+      font-size: 10px;
+      text-align: left;
+      width: 220px;
+    }
+    
+    /* BODY ROWS */
+    tbody td {
+      border: 1px solid var(--border);
+      padding: 8px;
+      text-align: center;
+      vertical-align: middle;
+    }
+    
+    tbody td.scope-cell {
+      text-align: center;
+      padding: 4px;
+    }
+    
+    tbody td.label-cell {
+      text-align: left;
+      padding: 8px 12px;
+      font-weight: 500;
+    }
+    
+    /* SCOPE TAGS */
+    .scope-tag {
+      display: inline-flex;
+      align-items: center;
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      border-radius: 3px;
+      padding: 2px 5px;
+      font-family: monospace;
+    }
+    
+    .scope-MO {
+      background: #dbeafe;
+      color: #1e40af;
+      border: 1px solid #93c5fd;
+    }
+    
+    .scope-WK {
+      background: #d1fae5;
+      color: #065f46;
+      border: 1px solid #6ee7b7;
+    }
+    
+    .scope-SV {
+      background: #e0f2fe;
+      color: #075985;
+      border: 1px solid #7dd3fc;
+    }
+    
+    .scope-SD {
+      background: #fef3c7;
+      color: #92400e;
+      border: 1px solid #fcd34d;
+    }
+    
+    /* ROW TYPES */
+    .row-month-header td {
+      background: var(--month-bg);
+      color: white;
+      font-weight: 700;
+      font-size: 12px;
+      padding: 10px;
+    }
+    
+    .row-MO td {
+      background: var(--month-row);
+    }
+    
+    .row-MO td.label-cell {
+      background: #dbeafe;
+      color: #1e40af;
+      border-left: 3px solid var(--blue);
+    }
+    
+    .row-week-header td {
+      background: var(--week-bg);
+      color: white;
+      font-weight: 600;
+      font-size: 11px;
+      padding: 8px;
+    }
+    
+    .row-WK td {
+      background: var(--week-row);
+    }
+    
+    .row-WK td.label-cell {
+      background: #d1fae5;
+      color: #065f46;
+      border-left: 3px solid var(--green);
+      padding-left: 16px;
+    }
+    
+    .row-svc-header td {
+      background: #dbeafe;
+      color: #1e40af;
+      font-weight: 600;
+      font-size: 11px;
+      padding: 6px;
+    }
+    
+    .row-SV td {
+      background: #ffffff;
+    }
+    
+    .row-SV td.label-cell {
+      background: #f0f9ff;
+      color: #0369a1;
+      border-left: 3px solid var(--blue);
+      padding-left: 22px;
+    }
+    
+    .row-SV:hover td {
+      background: #f8fafc;
+    }
+    
+    /* CELL STATES */
+    td.editable {
+      background: white;
+      cursor: text;
+      padding: 4px;
+    }
+    
+    td.editable:hover {
+      background: #fef3c7;
+      outline: 1px solid var(--amber);
+    }
+    
+    td.editable input {
+      width: 100%;
+      border: none;
+      background: transparent;
+      text-align: center;
+      font-size: 13px;
+      font-family: inherit;
+      padding: 4px;
+      color: var(--ink);
+    }
+    
+    td.editable input:focus {
+      outline: 2px solid var(--blue);
+      background: white;
+      border-radius: 2px;
+    }
+    
+    td.editable.changed {
+      background: #fef3c7;
+      outline: 2px solid var(--amber);
+    }
+    
+    td.read-only {
+      background: #eff6ff;
+      color: #1e40af;
+      font-weight: 600;
+      cursor: not-allowed;
+    }
+    
+    td.na {
+      background: #f8fafc;
+      color: #cbd5e1;
+      font-size: 11px;
+    }
+    
+    /* SAVE BAR */
+    .save-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: white;
+      border-top: 2px solid var(--amber);
+      padding: 12px 20px;
+      display: none;
+      align-items: center;
+      gap: 16px;
+      box-shadow: 0 -4px 12px rgba(0,0,0,0.1);
+      z-index: 100;
+    }
+    
+    .save-bar.visible {
+      display: flex;
+    }
+    
+    .save-bar-text {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--ink);
+    }
+    
+    .save-bar-count {
+      background: var(--amber);
+      color: white;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    
+    .save-bar-spacer {
+      flex: 1;
+    }
+    
+    .save-bar button {
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+    }
+    
+    .save-bar .btn-discard {
+      background: #f1f5f9;
+      color: var(--ink2);
+    }
+    
+    .save-bar .btn-discard:hover {
+      background: #e2e8f0;
+    }
+    
+    .save-bar .btn-save {
+      background: var(--blue);
+      color: white;
+    }
+    
+    .save-bar .btn-save:hover {
+      background: #2563eb;
+    }
+    
+    .legend {
+      max-width: 1600px;
+      margin: 16px auto 0;
+      padding: 12px 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      font-size: 12px;
+      color: var(--ink2);
+    }
+    
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    
+    .legend-swatch {
+      width: 20px;
+      height: 14px;
+      border-radius: 3px;
+      border: 1px solid var(--border);
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <h1>SundayTally — Dynamic History Grid Prototype</h1>
+  <p>This grid adapts its column structure based on church configuration. Switch between patterns to see different layouts.</p>
+</div>
+
+<div class="legend">
+  <div class="legend-item">
+    <div class="legend-swatch scope-MO"></div>
+    <span><strong>MO</strong> — Monthly Entry</span>
+  </div>
+  <div class="legend-item">
+    <div class="legend-swatch scope-WK"></div>
+    <span><strong>WK</strong> — Weekly Entry</span>
+  </div>
+  <div class="legend-item">
+    <div class="legend-swatch scope-SV"></div>
+    <span><strong>SV</strong> — Per-Service Entry</span>
+  </div>
+  <div class="legend-item">
+    <div class="legend-swatch scope-SD"></div>
+    <span><strong>SD</strong> — Single-Day Entry</span>
+  </div>
+</div>
+
+<div class="controls">
+  <label for="config-select">Grid Pattern:</label>
+  <select id="config-select">
+    <option value="v3">V3 — Metric-Grouped (Attendance | Volunteers | Stats)</option>
+    <option value="v4" selected>V4 — Experience-Grouped (Adult Exp | Kids Exp | Youth Exp)</option>
+    <option value="flat">Flat — No SV Grouping (Main | Kids | Youth | Giving | ... | Weekly Totals)</option>
+  </select>
+  <button onclick="renderGrid()">Rebuild Grid</button>
+</div>
+
+<div class="grid-container">
+  <table id="grid-table">
+    <thead id="grid-header"></thead>
+    <tbody id="grid-body"></tbody>
+  </table>
+</div>
+
+<div class="save-bar" id="save-bar">
+  <span class="save-bar-text">Unsaved changes</span>
+  <span class="save-bar-count" id="change-count">0</span>
+  <div class="save-bar-spacer"></div>
+  <button class="btn-discard" onclick="discardChanges()">Discard</button>
+  <button class="btn-save" onclick="saveChanges()">Save Changes</button>
+</div>
+
+<script type="module">
+// ══════════════════════════════════════════════════════════════════════════════
+// INLINE CONFIG SCHEMAS (normally imported from separate files)
+// ══════════════════════════════════════════════════════════════════════════════
+
+const configV3 = {
+  churchId: 'church_v3_example',
+  version: '1.0',
+  columns: [
+    {
+      type: 'group',
+      id: 'attendance',
+      label: 'Attendance',
+      scope: 'SV',
+      children: [
+        { type: 'data', id: 'main_attend', label: 'Main', scope: 'SV', editable: true, dataType: 'number' },
+        { type: 'data', id: 'kids_attend', label: 'Kids', scope: 'SV', editable: true, dataType: 'number' },
+        { type: 'data', id: 'youth_attend', label: 'Youth', scope: 'SV', editable: true, dataType: 'number' }
+      ]
+    },
+    {
+      type: 'group',
+      id: 'volunteers',
+      label: 'Volunteers',
+      scope: 'SV',
+      children: [
+        { type: 'data', id: 'vol_total', label: 'Vol Total', scope: 'SV', editable: false, dataType: 'number', computedFrom: ['vol_tech', 'vol_hosp', 'vol_greet'] },
+        {
+          type: 'group',
+          id: 'vol_roles',
+          label: 'Roles',
+          scope: 'SV',
+          collapsible: true,
+          defaultCollapsed: true,
+          children: [
+            { type: 'data', id: 'vol_tech', label: 'Tech', scope: 'SV', editable: true, dataType: 'number' },
+            { type: 'data', id: 'vol_hosp', label: 'Hospitality', scope: 'SV', editable: true, dataType: 'number' },
+            { type: 'data', id: 'vol_greet', label: 'Greeting', scope: 'SV', editable: true, dataType: 'number' }
+          ]
+        }
+      ]
+    },
+    {
+      type: 'group',
+      id: 'stats',
+      label: 'Stats & Decisions',
+      scope: 'SV',
+      children: [
+        { type: 'data', id: 'stat_guests', label: 'Guests', scope: 'SV', editable: true, dataType: 'number' },
+        { type: 'data', id: 'stat_baptisms', label: 'Baptisms', scope: 'SV', editable: true, dataType: 'number' }
+      ]
+    },
+    {
+      type: 'group',
+      id: 'weekly_metrics',
+      label: 'Weekly Metrics',
+      scope: 'WK',
+      children: [
+        { type: 'data', id: 'wk_giving', label: 'Giving ($)', scope: 'WK', editable: true, dataType: 'currency' },
+        { type: 'data', id: 'wk_rooms', label: 'Rooms', scope: 'WK', editable: true, dataType: 'number' }
+      ]
+    }
+  ],
+  serviceTemplates: [
+    { id: 'sunday_9am', displayName: '9:00 AM Service', dayOfWeek: 0, populatesColumnGroups: ['attendance', 'volunteers', 'stats'] },
+    { id: 'sunday_11am', displayName: '11:00 AM Service', dayOfWeek: 0, populatesColumnGroups: ['attendance', 'volunteers', 'stats'] }
+  ],
+  weeklyMetrics: [
+    { id: 'weekly_giving', label: 'Weekly Giving Total', scope: 'WK', columnId: 'wk_giving' },
+    { id: 'weekly_rooms', label: 'Rooms Open', scope: 'WK', columnId: 'wk_rooms' }
+  ],
+  monthlyMetrics: []
+};
+
+const configV4 = {
+  churchId: 'church_v4_example',
+  version: '1.0',
+  columns: [
+    {
+      type: 'group',
+      id: 'adult_exp',
+      label: 'Main Adult Experience',
+      scope: 'SV',
+      serviceFilter: ['sunday_9am', 'sunday_11am'],
+      children: [
+        { type: 'data', id: 'adult_attend', label: 'Attendance', scope: 'SV', editable: true, dataType: 'number' },
+        { type: 'data', id: 'adult_vol_total', label: 'Vol Total', scope: 'SV', editable: false, dataType: 'number' }
+      ]
+    },
+    {
+      type: 'group',
+      id: 'kids_exp',
+      label: 'Kids Experience',
+      scope: 'SV',
+      serviceFilter: ['sunday_9am', 'sunday_11am'],
+      children: [
+        { type: 'data', id: 'kids_attend', label: 'Attendance', scope: 'SV', editable: true, dataType: 'number' },
+        { type: 'data', id: 'kids_vol_total', label: 'Vol Total', scope: 'SV', editable: false, dataType: 'number' }
+      ]
+    },
+    {
+      type: 'group',
+      id: 'youth_exp',
+      label: 'Youth Experience',
+      scope: 'SV',
+      serviceFilter: ['wednesday_youth'],
+      children: [
+        { type: 'data', id: 'youth_students', label: 'Students', scope: 'SV', editable: true, dataType: 'number' },
+        { type: 'data', id: 'youth_childcare', label: 'Childcare', scope: 'SV', editable: true, dataType: 'number' }
+      ]
+    },
+    {
+      type: 'group',
+      id: 'service_stats',
+      label: 'Service Stats',
+      scope: 'SV',
+      children: [
+        { type: 'data', id: 'stat_guests', label: 'Guests', scope: 'SV', editable: true, dataType: 'number' },
+        { type: 'data', id: 'stat_baptisms', label: 'Baptisms', scope: 'SV', editable: true, dataType: 'number' }
+      ]
+    },
+    {
+      type: 'group',
+      id: 'weekly_stats',
+      label: 'Weekly Stats',
+      scope: 'WK',
+      children: [
+        { type: 'data', id: 'wk_giving', label: 'Giving ($)', scope: 'WK', editable: true, dataType: 'currency' },
+        { type: 'data', id: 'wk_rooms', label: 'Rooms', scope: 'WK', editable: true, dataType: 'number' }
+      ]
+    }
+  ],
+  serviceTemplates: [
+    { id: 'sunday_9am', displayName: '9:00 AM Service', dayOfWeek: 0, experienceType: 'adult_kids', populatesColumnGroups: ['adult_exp', 'kids_exp', 'service_stats'] },
+    { id: 'sunday_11am', displayName: '11:00 AM Service', dayOfWeek: 0, experienceType: 'adult_kids', populatesColumnGroups: ['adult_exp', 'kids_exp', 'service_stats'] },
+    { id: 'wednesday_youth', displayName: 'Wednesday Youth', dayOfWeek: 3, experienceType: 'youth', populatesColumnGroups: ['youth_exp', 'service_stats'] }
+  ],
+  weeklyMetrics: [
+    { id: 'weekly_giving', label: 'Weekly Giving Total', scope: 'WK', columnId: 'wk_giving' },
+    { id: 'weekly_rooms', label: 'Rooms Open', scope: 'WK', columnId: 'wk_rooms' }
+  ],
+  monthlyMetrics: []
+};
+
+const configFlat = {
+  churchId: 'church_flat_example',
+  version: '1.0',
+  columns: [
+    // Flat SV-scoped columns (no grouping by service time or metric type)
+    { type: 'data', id: 'main_attend', label: 'Main', scope: 'SV', editable: true, dataType: 'number' },
+    { type: 'data', id: 'kids_attend', label: 'Kids', scope: 'SV', editable: true, dataType: 'number' },
+    { type: 'data', id: 'youth_attend', label: 'Youth', scope: 'SV', editable: true, dataType: 'number' },
+    { type: 'data', id: 'giving', label: 'Giving ($)', scope: 'SV', editable: true, dataType: 'currency' },
+    { type: 'data', id: 'hands_raised', label: 'Hands Raised', scope: 'SV', editable: true, dataType: 'number' },
+    
+    // Weekly Totals group (WK-scoped metrics)
+    {
+      type: 'group',
+      id: 'weekly_totals',
+      label: 'Weekly Totals',
+      scope: 'WK',
+      children: [
+        { type: 'data', id: 'wk_volunteers', label: 'Volunteers', scope: 'WK', editable: true, dataType: 'number' },
+        { type: 'data', id: 'wk_giving_total', label: 'Giving ($)', scope: 'WK', editable: true, dataType: 'currency' }
+      ]
+    }
+  ],
+  serviceTemplates: [
+    { id: 'sunday_9am', displayName: '9:00 AM Service', dayOfWeek: 0, populatesColumnGroups: [] }, // all flat SV cols
+    { id: 'sunday_11am', displayName: '11:00 AM Service', dayOfWeek: 0, populatesColumnGroups: [] }
+  ],
+  weeklyMetrics: [
+    { id: 'weekly_volunteers', label: 'Weekly Volunteers Total', scope: 'WK', columnId: 'wk_volunteers' },
+    { id: 'weekly_giving_total', label: 'Weekly Giving Total', scope: 'WK', columnId: 'wk_giving_total' }
+  ],
+  monthlyMetrics: []
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
+// GRID BUILDER (simplified inline version)
+// ══════════════════════════════════════════════════════════════════════════════
+
+function flattenColumns(config, collapseState = {}) {
+  const flat = [];
+  
+  function traverse(node, groupPath, depth) {
+    if (node.type === 'data') {
+      flat.push({ ...node, groupPath, depth });
+    } else {
+      const isCollapsed = node.collapsible && (collapseState[node.id] ?? node.defaultCollapsed ?? false);
+      if (isCollapsed) return;
+      
+      for (const child of node.children) {
+        traverse(child, [...groupPath, node.id], depth + 1);
+      }
+    }
+  }
+  
+  for (const col of config.columns) {
+    traverse(col, [], 0);
+  }
+  
+  return flat;
+}
+
+function buildColumnHeaders(config, collapseState = {}) {
+  const maxDepth = getMaxDepth(config.columns);
+  const headerRows = [];
+  
+  for (let level = 0; level <= maxDepth; level++) {
+    headerRows.push({ level, cells: [] });
+  }
+  
+  function traverse(node, currentLevel) {
+    if (node.type === 'data') {
+      headerRows[currentLevel].cells.push({
+        columnId: node.id,
+        label: node.label,
+        colspan: 1,
+        isLeaf: true
+      });
+    } else {
+      const isCollapsed = node.collapsible && (collapseState[node.id] ?? node.defaultCollapsed ?? false);
+      const colspan = isCollapsed ? 0 : countLeafColumns(node, collapseState);
+      
+      if (colspan > 0) {
+        headerRows[currentLevel].cells.push({
+          groupId: node.id,
+          label: node.label,
+          colspan,
+          isCollapsible: node.collapsible,
+          isCollapsed,
+          isLeaf: false
+        });
+        
+        if (!isCollapsed) {
+          for (const child of node.children) {
+            traverse(child, currentLevel + 1);
+          }
+        }
+      }
+    }
+  }
+  
+  for (const col of config.columns) {
+    traverse(col, 0);
+  }
+  
+  return headerRows;
+}
+
+function getMaxDepth(nodes) {
+  let max = 0;
+  function traverse(node, depth) {
+    max = Math.max(max, depth);
+    if (node.type === 'group') {
+      for (const child of node.children) {
+        traverse(child, depth + 1);
+      }
+    }
+  }
+  for (const node of nodes) traverse(node, 0);
+  return max;
+}
+
+function countLeafColumns(group, collapseState) {
+  const isCollapsed = group.collapsible && (collapseState[group.id] ?? group.defaultCollapsed ?? false);
+  if (isCollapsed) return 0;
+  
+  let count = 0;
+  for (const child of group.children) {
+    if (child.type === 'data') {
+      count++;
+    } else {
+      count += countLeafColumns(child, collapseState);
+    }
+  }
+  return count;
+}
+
+function resolveCellState(rowScope, column, metricColumnId, serviceTemplate, config) {
+  if (rowScope !== column.scope) return 'NA';
+  
+  if (rowScope === 'MO' || rowScope === 'WK') {
+    if (column.id === metricColumnId) {
+      return column.editable ? 'EDITABLE' : 'READ_ONLY';
+    }
+    return 'NA';
+  }
+  
+  if (rowScope === 'SV' && serviceTemplate) {
+    const columnGroupId = column.groupPath[0];
+    
+    // If the service template has an empty populatesColumnGroups array,
+    // it means ALL SV-scoped columns are editable (flat pattern)
+    if (serviceTemplate.populatesColumnGroups.length === 0) {
+      return column.editable ? 'EDITABLE' : 'READ_ONLY';
+    }
+    
+    // Otherwise, check if this column's group is in the allowed list
+    if (serviceTemplate.populatesColumnGroups.includes(columnGroupId)) {
+      return column.editable ? 'EDITABLE' : 'READ_ONLY';
+    }
+    return 'NA';
+  }
+  
+  return 'NA';
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MOCK DATA
+// ══════════════════════════════════════════════════════════════════════════════
+
+const mockOccurrences = [
+  { id: '1', serviceTemplateId: 'sunday_9am', serviceDate: new Date('2026-04-27') },
+  { id: '2', serviceTemplateId: 'sunday_11am', serviceDate: new Date('2026-04-27') },
+  { id: '3', serviceTemplateId: 'wednesday_youth', serviceDate: new Date('2026-04-30') }
+];
+
+// ══════════════════════════════════════════════════════════════════════════════
+// CHANGE TRACKING
+// ══════════════════════════════════════════════════════════════════════════════
+
+const changes = new Map(); // key: "rowId-columnId", value: newValue
+
+function trackChange(rowId, columnId, value) {
+  const key = `${rowId}-${columnId}`;
+  changes.set(key, value);
+  updateSaveBar();
+}
+
+function updateSaveBar() {
+  const saveBar = document.getElementById('save-bar');
+  const changeCount = document.getElementById('change-count');
+  
+  if (changes.size > 0) {
+    saveBar.classList.add('visible');
+    changeCount.textContent = changes.size;
+  } else {
+    saveBar.classList.remove('visible');
+  }
+}
+
+window.saveChanges = async function() {
+  console.log('Saving changes:', Array.from(changes.entries()));
+  
+  // TODO: Send changes to backend
+  // await fetch('/api/history/save', {
+  //   method: 'POST',
+  //   body: JSON.stringify(Array.from(changes.entries()))
+  // });
+  
+  // Clear changes and update UI
+  changes.clear();
+  updateSaveBar();
+  
+  // Remove changed styling from cells
+  document.querySelectorAll('.changed').forEach(cell => {
+    cell.classList.remove('changed');
+  });
+  
+  alert(`Saved ${changes.size} changes!`);
+};
+
+window.discardChanges = function() {
+  if (confirm(`Discard ${changes.size} unsaved changes?`)) {
+    changes.clear();
+    updateSaveBar();
+    
+    // Reload grid to restore original values
+    renderGrid();
+  }
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
+// RENDER GRID
+// ══════════════════════════════════════════════════════════════════════════════
+
+window.renderGrid = function() {
+  const select = document.getElementById('config-select');
+  const configKey = select.value;
+  
+  let config;
+  if (configKey === 'v3') config = configV3;
+  else if (configKey === 'v4') config = configV4;
+  else config = configFlat;
+  
+  const flatColumns = flattenColumns(config);
+  const headerRows = buildColumnHeaders(config);
+  
+  // Build header
+  const thead = document.getElementById('grid-header');
+  thead.innerHTML = '';
+  
+  for (const hr of headerRows) {
+    const tr = document.createElement('tr');
+    
+    if (hr.level === 0) {
+      tr.innerHTML += '<th class="scope-column" rowspan="' + (headerRows.length) + '">Scope</th>';
+      tr.innerHTML += '<th class="label-column" rowspan="' + (headerRows.length) + '">Entry</th>';
+    }
+    
+    for (const cell of hr.cells) {
+      const th = document.createElement('th');
+      th.textContent = cell.label;
+      th.colSpan = cell.colspan;
+      
+      if (!cell.isLeaf) {
+        th.classList.add('group-header');
+      }
+      
+      tr.appendChild(th);
+    }
+    
+    thead.appendChild(tr);
+  }
+  
+  // Build body (simplified — one week for demo)
+  const tbody = document.getElementById('grid-body');
+  tbody.innerHTML = '';
+  
+  // Week header
+  let tr = document.createElement('tr');
+  tr.className = 'row-week-header';
+  tr.innerHTML = `<td colspan="${flatColumns.length + 2}">Week of Apr 27 · Wk 18</td>`;
+  tbody.appendChild(tr);
+  
+  // WK rows
+  let rowId = 0;
+  for (const metric of config.weeklyMetrics) {
+    tr = document.createElement('tr');
+    tr.className = 'row-WK';
+    tr.dataset.rowId = rowId;
+    tr.innerHTML = `
+      <td class="scope-cell"><span class="scope-tag scope-WK">WK</span></td>
+      <td class="label-cell">${metric.label}</td>
+    `;
+    
+    for (const col of flatColumns) {
+      const state = resolveCellState('WK', col, metric.columnId, null, config);
+      const td = document.createElement('td');
+      td.className = state.toLowerCase().replace('_', '-');
+      td.dataset.columnId = col.id;
+      
+      if (state === 'EDITABLE') {
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.placeholder = '—';
+        input.addEventListener('input', (e) => {
+          trackChange(rowId, col.id, e.target.value);
+          td.classList.add('changed');
+        });
+        td.appendChild(input);
+      } else if (state === 'READ_ONLY') {
+        td.textContent = '—';
+      } else {
+        td.textContent = '—';
+      }
+      
+      tr.appendChild(td);
+    }
+    
+    tbody.appendChild(tr);
+    rowId++;
+  }
+  
+  // Service date header
+  tr = document.createElement('tr');
+  tr.className = 'row-svc-header';
+  tr.innerHTML = `<td colspan="${flatColumns.length + 2}">Sunday, Apr 27</td>`;
+  tbody.appendChild(tr);
+  
+  // SV rows
+  const sundayTemplates = config.serviceTemplates.filter(t => t.dayOfWeek === 0);
+  for (const template of sundayTemplates) {
+    tr = document.createElement('tr');
+    tr.className = 'row-SV';
+    tr.dataset.rowId = rowId;
+    tr.innerHTML = `
+      <td class="scope-cell"><span class="scope-tag scope-SV">SV</span></td>
+      <td class="label-cell">${template.displayName}</td>
+    `;
+    
+    for (const col of flatColumns) {
+      const state = resolveCellState('SV', col, null, template, config);
+      const td = document.createElement('td');
+      td.className = state.toLowerCase().replace('_', '-');
+      td.dataset.columnId = col.id;
+      
+      if (state === 'EDITABLE') {
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.placeholder = '—';
+        input.addEventListener('input', (e) => {
+          trackChange(rowId, col.id, e.target.value);
+          td.classList.add('changed');
+        });
+        td.appendChild(input);
+      } else if (state === 'READ_ONLY') {
+        td.textContent = '—';
+      } else {
+        td.textContent = '—';
+      }
+      
+      tr.appendChild(td);
+    }
+    
+    tbody.appendChild(tr);
+    rowId++;
+  }
+  
+  // Wednesday service (if exists)
+  const wednesdayTemplates = config.serviceTemplates.filter(t => t.dayOfWeek === 3);
+  if (wednesdayTemplates.length > 0) {
+    tr = document.createElement('tr');
+    tr.className = 'row-svc-header';
+    tr.innerHTML = `<td colspan="${flatColumns.length + 2}">Wednesday, Apr 30</td>`;
+    tbody.appendChild(tr);
+    
+    for (const template of wednesdayTemplates) {
+      tr = document.createElement('tr');
+      tr.className = 'row-SV';
+      tr.dataset.rowId = rowId;
+      tr.innerHTML = `
+        <td class="scope-cell"><span class="scope-tag scope-SV">SV</span></td>
+        <td class="label-cell">${template.displayName}</td>
+      `;
+      
+      for (const col of flatColumns) {
+        const state = resolveCellState('SV', col, null, template, config);
+        const td = document.createElement('td');
+        td.className = state.toLowerCase().replace('_', '-');
+        td.dataset.columnId = col.id;
+        
+        if (state === 'EDITABLE') {
+          const input = document.createElement('input');
+          input.type = 'text';
+          input.placeholder = '—';
+          input.addEventListener('input', (e) => {
+            trackChange(rowId, col.id, e.target.value);
+            td.classList.add('changed');
+          });
+          td.appendChild(input);
+        } else if (state === 'READ_ONLY') {
+          td.textContent = '—';
+        } else {
+          td.textContent = '—';
+        }
+        
+        tr.appendChild(td);
+      }
+      
+      tbody.appendChild(tr);
+      rowId++;
+    }
+  }
+};
+
+// Initial render
+renderGrid();
+</script>
+
+</body>
+</html>
