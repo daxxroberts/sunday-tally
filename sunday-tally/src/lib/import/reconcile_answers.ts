@@ -58,8 +58,14 @@ export function reconcileAnswersIntoMapping(
       continue
     }
 
-    // q_pattern_service_count, q_offering_scope, q_*_audience_meaning_freeform — pass through
-    // as advisory. Stage B's setup writer reads qa_answers context.
+    if (a.id === 'q_pattern_giving_scope') {
+      applyGivingScope(m, a, log)
+      continue
+    }
+
+    // q_pattern_service_count, q_pattern_audience_terms, q_pattern_date_range,
+    // q_offering_scope, q_*_audience_meaning_freeform — pass through as advisory.
+    // Stage B's setup writer reads qa_answers context.
   }
 
   return m
@@ -224,4 +230,37 @@ function applyVolunteerAudience(m: ConfirmedMapping, a: QaAnswer, log: (s: strin
     }
   }
   if (updated > 0) log(`${a.id}: set ${updated} volunteer_categories audience_type → ${target}`)
+}
+
+// ─── q_pattern_giving_scope: meaning_code drives dest_field rewrite ─────────
+// GIVING_PER_SERVICE → rewrite period_giving.<CODE> → giving.<CODE>
+// GIVING_WEEKLY      → rewrite giving.<CODE> → period_giving.<CODE>
+// GIVING_MIXED       → no-op (Stage B may still ask per-column)
+function applyGivingScope(m: ConfirmedMapping, a: QaAnswer, log: (s: string) => void) {
+  const code = a.meaning_code
+  if (code !== 'GIVING_PER_SERVICE' && code !== 'GIVING_WEEKLY') {
+    log(`q_pattern_giving_scope: ${code ?? '(no code)'} — no-op`)
+    return
+  }
+  const fromPrefix = code === 'GIVING_WEEKLY'      ? 'giving.'        : 'period_giving.'
+  const toPrefix   = code === 'GIVING_WEEKLY'      ? 'period_giving.' : 'giving.'
+
+  const rewriteDest = (dest: string): string =>
+    dest.startsWith(fromPrefix) ? toPrefix + dest.slice(fromPrefix.length) : dest
+
+  let rewritten = 0
+  for (const src of m.sources ?? []) {
+    for (const c of src.column_map ?? []) {
+      const next = rewriteDest(c.dest_field)
+      if (next !== c.dest_field) { c.dest_field = next; rewritten++ }
+    }
+    if (src.tall_format?.area_field_map) {
+      const afm = src.tall_format.area_field_map
+      for (const k of Object.keys(afm)) {
+        const next = rewriteDest(afm[k])
+        if (next !== afm[k]) { afm[k] = next; rewritten++ }
+      }
+    }
+  }
+  if (rewritten > 0) log(`q_pattern_giving_scope: rewrote ${rewritten} dest_field(s) ${fromPrefix} → ${toPrefix}`)
 }

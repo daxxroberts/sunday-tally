@@ -4,6 +4,7 @@ import type Anthropic from '@anthropic-ai/sdk'
 import { runToolLoop } from '@/lib/ai/anthropic'
 import { WRITER_TOOLS, WRITER_HANDLERS } from './writers'
 import { getAllRows, type SourceInput } from './sources'
+import { deriveGridConfigFromSchema } from '@/lib/history/derive_grid_config'
 
 const STAGE_B_SYSTEM = `You are the Sunday Tally setup-writer agent.
 
@@ -983,6 +984,20 @@ export async function runStageB(args: {
       if (error) errors.push(`period stat (untagged) batch upsert: ${error.message}`)
       else counts.period_response += chunk.length
     }
+  }
+
+  // V1.5: derive and persist GridConfig from the just-written church state.
+  // Non-blocking — if this fails, the History page derives on next read instead.
+  try {
+    const gridConfig = await deriveGridConfigFromSchema(args.supabase, args.churchId)
+    if (gridConfig) {
+      await args.supabase
+        .from('churches')
+        .update({ grid_config: gridConfig })
+        .eq('id', args.churchId)
+    }
+  } catch (err) {
+    errors.push(`grid_config write skipped: ${err instanceof Error ? err.message : 'unknown'}`)
   }
 
   return { totalCents: setupResult.totalCents, setupSummary, rowsInserted: counts, errors }

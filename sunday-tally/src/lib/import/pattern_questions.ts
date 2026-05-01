@@ -76,6 +76,111 @@ export function generatePatternQuestions(
     }
   }
 
+  // ── Q-PAT-3: Audience terminology check ──────────────────────────────────
+  // Confirm the church's actual words (LifeKids, Switch, etc.) map to the
+  // standard audience buckets we'll display. Non-blocking — answers feed Stage B's
+  // setup-writer prompt for human-friendly category labels.
+  const reportWithAudienceForTerms = patternReports.find(pr =>
+    pr.report?.audience_column &&
+    Object.keys(pr.report.audience_column.proposed_map ?? {}).length >= 2
+  )
+  if (reportWithAudienceForTerms?.report?.audience_column) {
+    const ac = reportWithAudienceForTerms.report.audience_column
+    const detectedTerms = Object.entries(ac.proposed_map)
+      .filter(([k]) => k && k.trim())
+      .slice(0, 6)
+    if (detectedTerms.length >= 2) {
+      const summary = detectedTerms.map(([term, code]) => {
+        const label = code === 'MAIN' ? 'Adults' : code === 'KIDS' ? 'Kids' : code === 'YOUTH' ? 'Students' : 'Unmapped'
+        return `"${term}" → ${label}`
+      }).join(', ')
+      questions.push({
+        id:           'q_pattern_audience_terms',
+        blocking:     false,
+        type:         'choice',
+        topic_group:  'pattern_verification',
+        title:        'Confirm what we read each group as',
+        context:      `We mapped your audience values like this: ${summary}.`,
+        question:     `Does this terminology mapping match how your church refers to these groups?`,
+        options: [
+          { label: 'Yes — these match',           explanation: 'Use this mapping for everything we import.' },
+          { label: 'I\'d call them differently',  explanation: 'You can rename categories after import in Settings — note the change here for context.' },
+        ],
+        data_examples: detectedTerms.map(([term, code]) => `Detected: "${term}" → ${code}`),
+      })
+    }
+  }
+
+  // ── Q-PAT-4: Date range confirmation ─────────────────────────────────────
+  // Always fires when ANY source has a date range. Confirms the data window
+  // upfront so a misread date format or stale snapshot is caught before
+  // routing decisions are made on top of it.
+  const reportWithDates = patternReports.find(pr => pr.report?.date_range?.min && pr.report?.date_range?.max)
+  if (reportWithDates?.report?.date_range) {
+    const dr = reportWithDates.report.date_range
+    const min = dr.min
+    const max = dr.max
+    const dayMs = 24 * 60 * 60 * 1000
+    const weeks = Math.max(1, Math.round(
+      (new Date(max).getTime() - new Date(min).getTime()) / dayMs / 7
+    ))
+    questions.push({
+      id:           'q_pattern_date_range',
+      blocking:     false,
+      type:         'choice',
+      topic_group:  'pattern_verification',
+      title:        `${weeks} weeks of data, ${min} to ${max}`,
+      context:      `Your data spans approximately ${weeks} weeks, from ${min} through ${max}.`,
+      question:     `Does this match what you uploaded?`,
+      options: [
+        { label: 'Yes — looks right',     explanation: 'Continue with this date range.' },
+        { label: 'The range looks wrong', explanation: 'Tell us what was off — wrong file, wrong dates, missing weeks?' },
+      ],
+      data_examples: [`First service date: ${min}`, `Last service date: ${max}`, `~${weeks} weeks`],
+    })
+  }
+
+  // ── Q-PAT-6: Giving scope (per-service vs church-wide weekly) ─────────────
+  // Fires when at least one source has giving columns AND the AI's heuristic
+  // for service-tied vs weekly is genuinely ambiguous (multiple giving columns,
+  // or rows on non-Sunday dates suggesting bank-deposit dates).
+  // Stage A's prompt also asks when uncertain — this question prepended
+  // deterministically so the answer is captured even if Stage A skips.
+  const givingReport = patternReports.find(pr =>
+    pr.report?.observed_metrics?.some(m => m.likely_type === 'giving')
+  )
+  if (givingReport?.report) {
+    const givingCols = givingReport.report.observed_metrics.filter(m => m.likely_type === 'giving').slice(0, 6)
+    const colNames = givingCols.map(m => m.value).join(', ')
+    questions.push({
+      id:           'q_pattern_giving_scope',
+      blocking:     false,
+      type:         'choice',
+      topic_group:  'pattern_verification',
+      title:        'How is giving recorded?',
+      context:      `We see giving-related columns: ${colNames}.`,
+      question:     `Are these amounts collected per service, or as one weekly church-wide total?`,
+      options: [
+        {
+          label:        'Per-service offerings',
+          explanation:  `Each amount belongs to a specific service (e.g. counted at the 9am vs 11am offering).`,
+          meaning_code: 'GIVING_PER_SERVICE',
+        },
+        {
+          label:        'Weekly church-wide total',
+          explanation:  `One amount per week covering everything (online + plate combined at deposit time).`,
+          meaning_code: 'GIVING_WEEKLY',
+        },
+        {
+          label:        'Mixed',
+          explanation:  `Some columns are per-service, some are weekly — we'll ask to clarify each.`,
+          meaning_code: 'GIVING_MIXED',
+        },
+      ],
+      data_examples: givingCols.map(m => `Column: "${m.value}" (${m.likely_type})`),
+    })
+  }
+
   // ── Q-PAT-1: Three-meaning audience structure ────────────────────────────
   // Fires when ANY source's PatternReport has audience-suffixed columns/rows.
   // The same data shape (Adult/Kid/Student counts) can mean three completely
