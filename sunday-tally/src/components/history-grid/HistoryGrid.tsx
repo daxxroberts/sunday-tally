@@ -228,10 +228,11 @@ const GridBody: React.FC<GridBodyProps> = ({
 
             {/* Data columns */}
             {row.cells.map((cell, cellIdx) => {
-              const columnId = columns[cellIdx].id;
+              const column = columns[cellIdx];
+              const columnId = column.id;
               const cellKey = `${rowId}-${columnId}`;
               const isChanged = changes.has(cellKey);
-              
+
               return (
                 <GridCellComponent
                   key={cellKey}
@@ -241,6 +242,8 @@ const GridBody: React.FC<GridBodyProps> = ({
                   value={getCellValue(rowId, columnId)}
                   onChange={onCellChange}
                   isChanged={isChanged}
+                  computedFrom={column.computedFrom}
+                  getCellValue={getCellValue}
                 />
               );
             })}
@@ -262,6 +265,8 @@ interface GridCellComponentProps {
   value: any;
   onChange: (rowId: string, columnId: string, value: any) => void;
   isChanged: boolean;
+  computedFrom?: string[];
+  getCellValue: (rowId: string, columnId: string) => any;
 }
 
 const GridCellComponent: React.FC<GridCellComponentProps> = ({
@@ -270,7 +275,9 @@ const GridCellComponent: React.FC<GridCellComponentProps> = ({
   columnId,
   value,
   onChange,
-  isChanged
+  isChanged,
+  computedFrom,
+  getCellValue,
 }) => {
   const className = `
     ${cell.state.toLowerCase().replace('_', '-')}
@@ -291,6 +298,19 @@ const GridCellComponent: React.FC<GridCellComponentProps> = ({
   }
 
   if (cell.state === 'READ_ONLY') {
+    // Computed total — sum sibling values live so edits update on the fly.
+    if (computedFrom && computedFrom.length > 0) {
+      let sum: number | null = null;
+      for (const sibId of computedFrom) {
+        const sibVal = getCellValue(rowId, sibId);
+        const cleaned = String(sibVal ?? '').replace(/[$,\s]/g, '');
+        const n = Number(cleaned);
+        if (Number.isFinite(n)) {
+          sum = (sum ?? 0) + n;
+        }
+      }
+      return <td className={className}>{sum != null ? sum.toLocaleString() : '—'}</td>;
+    }
     return <td className={className}>{value || '—'}</td>;
   }
 
