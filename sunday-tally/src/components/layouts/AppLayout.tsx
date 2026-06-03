@@ -48,8 +48,8 @@ const SettingsIcon = ({ filled }: { filled?: boolean }) => (
 
 const TABS: Tab[] = [
   {
-    label: 'Services',
-    href: '/services',
+    label: 'Entries',
+    href: '/entries',
     roles: ['owner', 'admin', 'editor'],
     icon: <CalendarIcon />,
     activeIcon: <CalendarIcon filled />,
@@ -88,7 +88,7 @@ export default function AppLayout({ children, role, fillHeight }: AppLayoutProps
 
   function isActive(tab: Tab) {
     const href = tab.label === 'Dashboard' ? getDashboardHref(role) : tab.href
-    if (href === '/services') return pathname.startsWith('/services')
+    if (href === '/entries') return pathname.startsWith('/entries')
     if (href === '/dashboard/ai') return pathname.startsWith('/dashboard/ai')
     if (href === '/dashboard') return pathname.startsWith('/dashboard') && !pathname.startsWith('/dashboard/ai')
     if (href === '/settings') return pathname.startsWith('/settings')
@@ -111,7 +111,7 @@ export default function AppLayout({ children, role, fillHeight }: AppLayoutProps
       </main>
 
       {/* Bottom tab bar */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50">
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
         <div className="flex">
           {visibleTabs.map(tab => {
             const active = isActive(tab)
