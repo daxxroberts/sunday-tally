@@ -213,6 +213,25 @@ function MiniDashboard({ church, data, loading }: {
               </div>
             </div>
 
+            {/* Key Metrics (reporting-tag metrics) */}
+            {data.reportingMetrics && (
+              <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-[0_1px_4px_-1px_rgba(0,0,0,0.06)]">
+                <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-teal-50 to-white border-b border-gray-100">
+                  <div className="w-1.5 h-4 rounded-full bg-teal-500 flex-shrink-0" />
+                  <span className="text-[11px] font-bold text-teal-900 uppercase tracking-widest">Key Metrics</span>
+                </div>
+                <div className="px-4">
+                  <MetricRow label="Avg Weekly Attendance" values={data.reportingMetrics.weeklyAvgAttendance} hideComparisons={hideComparisons} />
+                  {church?.tracks_volunteers && (
+                    <MetricRow label="Volunteers / Attendance %" values={data.reportingMetrics.volToAttendancePct} hideComparisons={hideComparisons} />
+                  )}
+                  {church?.tracks_giving && (
+                    <MetricRow label="Per-Capita Giving" values={data.reportingMetrics.perCapitaGiving} prefix="$" hideComparisons={hideComparisons} />
+                  )}
+                </div>
+              </div>
+            )}
+
             {hideComparisons && (
               <p className="text-center text-xs text-gray-400 italic">
                 Comparisons appear after two weeks of data.
@@ -312,7 +331,6 @@ export default function AnalyticsChatPage() {
       const ch = membership.churches as Church
       setChurch(ch)
       const d = await fetchDashboardData(membership.church_id, {
-        tracks_main_attendance: ch.tracks_main_attendance,
         tracks_volunteers:      ch.tracks_volunteers,
         tracks_responses:       ch.tracks_responses,
         tracks_giving:          ch.tracks_giving,

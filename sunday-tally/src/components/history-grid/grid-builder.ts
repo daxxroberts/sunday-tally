@@ -39,6 +39,7 @@ export interface GridRow {
   label: string;                // row label
   metricId?: string;            // for MO/WK rows
   serviceTemplateId?: string;   // for SV rows
+  depth?: number;               // nesting level for row indentation
   cells: GridCell[];            // one per column
 }
 
@@ -64,6 +65,7 @@ export interface HeaderCell {
   groupId?: string;             // for group headers
   label: string;
   colspan: number;
+  rowspan?: number;             // leaf columns span down to fill remaining header levels
   isCollapsible?: boolean;
   isCollapsed?: boolean;
 }
@@ -100,9 +102,23 @@ export function flattenColumns(
     } else {
       // It's a group — traverse children
       const isCollapsed = node.collapsible && (collapseState[node.id] ?? node.defaultCollapsed ?? false);
-      
+
       if (isCollapsed) {
-        // Don't traverse children if collapsed
+        // Emit a single PLACEHOLDER column for the collapsed group. The header
+        // for this group renders one collapsed cell (with the ▶ icon), and the
+        // body needs a matching column slot so cell indices stay aligned and the
+        // parent's colspan covers all visible children. Without this placeholder,
+        // collapsing a sub-group would leave the parent header hanging short.
+        flat.push({
+          id: `${node.id}__collapsed`,
+          label: node.label,
+          scope: 'SV',          // default; body renders empty so scope doesn't matter
+          editable: false,
+          dataType: 'string',
+          groupPath,
+          depth,
+          isCollapsed: true,
+        });
         return;
       }
 
@@ -139,12 +155,13 @@ export function buildColumnHeaders(
     groupPath: string[]
   ) {
     if (node.type === 'data') {
-      // Leaf column — span down to fill remaining levels
+      // Leaf column — span down to fill remaining header levels
       const rowspan = maxDepth - currentLevel + 1;
       headerRows[currentLevel].cells.push({
         columnId: node.id,
         label: node.label,
-        colspan: 1
+        colspan: 1,
+        rowspan,
       });
     } else {
       // Group — add group header at this level
@@ -199,7 +216,11 @@ function countLeafColumns(
   collapseState: Record<string, boolean>
 ): number {
   const isCollapsed = group.collapsible && (collapseState[group.id] ?? group.defaultCollapsed ?? false);
-  if (isCollapsed) return 0;
+  // A collapsed group still occupies ONE column slot in the body (a placeholder
+  // emitted by flattenColumns) and one cell in its row of the header. Returning
+  // 1 here ensures the PARENT group's colspan stretches across the collapsed
+  // child's footprint so the parent header doesn't end short of its children.
+  if (isCollapsed) return 1;
 
   let count = 0;
   for (const child of group.children) {
@@ -227,13 +248,21 @@ export interface DateRange {
 export function buildRows(
   config: GridConfig,
   dateRange: DateRange,
-  occurrences: ServiceOccurrence[] // actual service occurrences from DB
+  occurrences: ServiceInstance[], // actual service occurrences from DB
+  collapseState: Record<string, boolean> = {}
 ): GridRow[] {
   const rows: GridRow[] = [];
-  const flatColumns = flattenColumns(config);
+  // Use the same collapseState that flattenColumns uses elsewhere so body
+  // cells line up 1:1 with the displayed columns. Without this, rows had the
+  // full expanded cell count while columns reflected collapse — leading to
+  // index drift and the parent-header alignment bug.
+  const flatColumns = flattenColumns(config, collapseState);
 
   // Group by month
   const months = getMonthsInRange(dateRange);
+
+  // Track processed week anchors so weeks that span month boundaries are only emitted once.
+  const processedWeekAnchors = new Set<number>();
 
   for (const month of months) {
     // Month header
@@ -252,6 +281,7 @@ export function buildRows(
         anchor: month.endDate,
         label: metric.label,
         metricId: metric.id,
+        depth: 0,
         cells: flatColumns.map(col => ({
           columnId: col.id,
           state: resolveCellState('MO', col, metric.columnId, null, config)
@@ -263,6 +293,10 @@ export function buildRows(
     const weeks = getWeeksInMonth(month);
 
     for (const week of weeks) {
+      const weekAnchorMs = week.startDate.getTime();
+      if (processedWeekAnchors.has(weekAnchorMs)) continue;
+      processedWeekAnchors.add(weekAnchorMs);
+
       // Week header
       rows.push({
         type: 'week_header',
@@ -279,6 +313,7 @@ export function buildRows(
           anchor: week.startDate,
           label: metric.label,
           metricId: metric.id,
+          depth: 0,
           cells: flatColumns.map(col => ({
             columnId: col.id,
             state: resolveCellState('WK', col, metric.columnId, null, config)
@@ -295,12 +330,13 @@ export function buildRows(
       const occurrencesByDate = groupByDate(weekOccurrences);
 
       for (const [dateStr, dateOccurrences] of Object.entries(occurrencesByDate)) {
-        // Service date sub-header
+        // Service date sub-header (acts as Day row)
         const serviceDate = new Date(dateStr);
         rows.push({
           type: 'svc_header',
           anchor: serviceDate,
           label: formatServiceDate(serviceDate),
+          depth: 1,
           cells: flatColumns.map(col => ({ columnId: col.id, state: 'HEADER' }))
         });
 
@@ -315,6 +351,7 @@ export function buildRows(
             anchor: serviceDate,
             label: template.displayName,
             serviceTemplateId: template.id,
+            depth: 2,
             cells: flatColumns.map(col => ({
               columnId: col.id,
               state: resolveCellState('SV', col, null, template, config)
@@ -347,9 +384,13 @@ function resolveCellState(
     return 'NA';
   }
 
-  // Rule 2: MO/WK rows only populate their specific metric column
+  // Rule 2: MO/WK rows populate their metric column OR all columns within a metric group
   if (rowScope === 'MO' || rowScope === 'WK') {
     if (column.id === metricColumnId) {
+      return column.editable ? 'EDITABLE' : 'READ_ONLY';
+    }
+    // Group metric: columnId references a ColumnGroup — activate every column within it
+    if (metricColumnId && column.groupPath.includes(metricColumnId)) {
       return column.editable ? 'EDITABLE' : 'READ_ONLY';
     }
     return 'NA';
@@ -385,7 +426,7 @@ interface Week {
   endDate: Date;
 }
 
-export interface ServiceOccurrence {
+export interface ServiceInstance {
   id: string;
   serviceTemplateId: string;
   serviceDate: Date;
@@ -393,19 +434,22 @@ export interface ServiceOccurrence {
 
 function getMonthsInRange(range: DateRange): Month[] {
   const months: Month[] = [];
-  let current = new Date(range.startDate);
-  current.setDate(1); // Start of month
+  // Guard: invalid dates (NaN) would cause an infinite loop — bail out early.
+  if (isNaN(range.startDate.getTime()) || isNaN(range.endDate.getTime())) return months;
 
-  while (current <= range.endDate) {
-    const monthStart = new Date(current);
-    const monthEnd = new Date(current.getFullYear(), current.getMonth() + 1, 0); // Last day of month
+  // Use UTC so week/month boundaries are timezone-independent
+  let y = range.startDate.getUTCFullYear();
+  let m = range.startDate.getUTCMonth();
 
-    months.push({
-      startDate: monthStart,
-      endDate: monthEnd
-    });
+  while (true) {
+    const monthStart = new Date(Date.UTC(y, m, 1));
+    if (monthStart > range.endDate) break;
+    const monthEnd   = new Date(Date.UTC(y, m + 1, 0)); // last day of month (UTC)
 
-    current.setMonth(current.getMonth() + 1);
+    months.push({ startDate: monthStart, endDate: monthEnd });
+
+    m++;
+    if (m > 11) { m = 0; y++; }
   }
 
   return months;
@@ -413,38 +457,49 @@ function getMonthsInRange(range: DateRange): Month[] {
 
 function getWeeksInMonth(month: Month): Week[] {
   const weeks: Week[] = [];
+  // Start on the Sunday on or before the first of the month (UTC)
+  const firstDay = month.startDate.getUTCDay(); // 0=Sun
   let current = new Date(month.startDate);
-
-  // Find first Sunday of month (or before if month doesn't start on Sunday)
-  const dayOfWeek = current.getDay();
-  if (dayOfWeek !== 0) {
-    current.setDate(current.getDate() - dayOfWeek);
+  if (firstDay !== 0) {
+    current = new Date(Date.UTC(
+      month.startDate.getUTCFullYear(),
+      month.startDate.getUTCMonth(),
+      month.startDate.getUTCDate() - firstDay,
+    ));
   }
 
   while (current <= month.endDate) {
     const weekStart = new Date(current);
-    const weekEnd = new Date(current);
-    weekEnd.setDate(weekEnd.getDate() + 6);
+    const weekEnd   = new Date(Date.UTC(
+      current.getUTCFullYear(),
+      current.getUTCMonth(),
+      current.getUTCDate() + 6,
+    ));
 
-    weeks.push({
-      startDate: weekStart,
-      endDate: weekEnd
-    });
+    weeks.push({ startDate: weekStart, endDate: weekEnd });
 
-    current.setDate(current.getDate() + 7);
+    current = new Date(Date.UTC(
+      current.getUTCFullYear(),
+      current.getUTCMonth(),
+      current.getUTCDate() + 7,
+    ));
   }
 
   return weeks;
 }
 
 function isSameWeek(date: Date, weekStart: Date): boolean {
-  const weekEnd = new Date(weekStart);
-  weekEnd.setDate(weekEnd.getDate() + 6);
+  const weekEnd = new Date(Date.UTC(
+    weekStart.getUTCFullYear(),
+    weekStart.getUTCMonth(),
+    weekStart.getUTCDate() + 6,
+    23, 59, 59, 999,
+  ));
   return date >= weekStart && date <= weekEnd;
 }
 
-function groupByDate(occurrences: ServiceOccurrence[]): Record<string, ServiceOccurrence[]> {
-  const groups: Record<string, ServiceOccurrence[]> = {};
+function groupByDate(occurrences: ServiceInstance[]): Record<string, ServiceInstance[]> {
+  const groups: Record<string, ServiceInstance[]> = {};
   
   for (const occ of occurrences) {
     const dateStr = occ.serviceDate.toISOString().split('T')[0];
@@ -458,22 +513,23 @@ function groupByDate(occurrences: ServiceOccurrence[]): Record<string, ServiceOc
 }
 
 function formatMonth(date: Date): string {
-  return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }).toUpperCase();
+  return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
 }
 
 function formatWeek(date: Date): string {
   const weekNum = getWeekNumber(date);
-  return `Week of ${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · Wk ${weekNum}`;
+  // Use UTC date for the label so it always shows the Sunday that starts the week
+  return `Week of ${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })} · Wk ${weekNum}`;
 }
 
 function formatServiceDate(date: Date): string {
-  return date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+  return date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', timeZone: 'UTC' });
 }
 
 function getWeekNumber(date: Date): number {
-  const firstDayOfYear = new Date(date.getFullYear(), 0, 1);
+  const firstDayOfYear = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
   const pastDaysOfYear = (date.getTime() - firstDayOfYear.getTime()) / 86400000;
-  return Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
+  return Math.ceil((pastDaysOfYear + firstDayOfYear.getUTCDay() + 1) / 7);
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -486,12 +542,12 @@ function getWeekNumber(date: Date): number {
 export function buildGrid(
   config: GridConfig,
   dateRange: DateRange,
-  occurrences: ServiceOccurrence[],
+  occurrences: ServiceInstance[],
   collapseState: Record<string, boolean> = {}
 ): GridStructure {
   return {
     columns: flattenColumns(config, collapseState),
-    rows: buildRows(config, dateRange, occurrences),
+    rows: buildRows(config, dateRange, occurrences, collapseState),
     headerRows: buildColumnHeaders(config, collapseState)
   };
 }

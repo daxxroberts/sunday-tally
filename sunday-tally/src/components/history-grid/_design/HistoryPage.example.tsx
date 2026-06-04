@@ -17,7 +17,7 @@ export function HistoryPage() {
   };
   
   // Service occurrences (from database)
-  const serviceOccurrences = [
+  const serviceInstances = [
     { id: '1', serviceTemplateId: 'sunday_9am', serviceDate: new Date('2026-04-06') },
     { id: '2', serviceTemplateId: 'sunday_11am', serviceDate: new Date('2026-04-06') },
     { id: '3', serviceTemplateId: 'sunday_9am', serviceDate: new Date('2026-04-13') },
@@ -71,7 +71,7 @@ export function HistoryPage() {
       <HistoryGrid
         config={config}
         dateRange={dateRange}
-        serviceOccurrences={serviceOccurrences}
+        serviceInstances={serviceInstances}
         initialData={initialData}
         onSave={handleSave}
       />

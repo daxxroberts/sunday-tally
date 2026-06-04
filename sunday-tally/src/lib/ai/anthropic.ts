@@ -103,7 +103,7 @@ export async function runToolLoop(args: RunToolLoopArgs): Promise<RunToolLoopRes
 
     const response = await anthropic().messages.create({
       model,
-      max_tokens: 4096,
+      max_tokens: 16384,
       system,
       tools,
       messages,

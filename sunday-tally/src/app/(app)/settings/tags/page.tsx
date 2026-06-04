@@ -1,7 +1,8 @@
 'use client'
 
 // T_TAGS — /settings/tags
-// Manage service_tags: list + add + InlineEditField + date ranges for subtags
+// Manage service_tags (unified schema): list + add + InlineEditField + parent/child tree.
+// Hierarchy is adjacency via parent_tag_id (no closure table, no RPC).
 
 import { useState, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
@@ -10,18 +11,47 @@ import InlineEditField from '@/components/shared/InlineEditField'
 import { createClient } from '@/lib/supabase/client'
 import type { UserRole } from '@/types'
 
-interface Tag { id: string; tag_name: string; tag_code: string; is_active: boolean; effective_start_date: string | null; effective_end_date: string | null }
+type TagRole = 'ADULT_SERVICE' | 'KIDS_MINISTRY' | 'YOUTH_MINISTRY' | 'OTHER'
+
+interface Tag {
+  id: string
+  code: string
+  name: string
+  tag_role: TagRole
+  parent_tag_id: string | null
+  display_order: number | null
+  is_active: boolean
+}
+
+const ROLE_OPTIONS: { value: TagRole; label: string }[] = [
+  { value: 'ADULT_SERVICE', label: 'Adults' },
+  { value: 'KIDS_MINISTRY', label: 'Kids' },
+  { value: 'YOUTH_MINISTRY', label: 'Youth' },
+  { value: 'OTHER', label: 'Other' },
+]
+
+function roleLabel(role: TagRole): string {
+  return ROLE_OPTIONS.find(r => r.value === role)?.label ?? 'Other'
+}
+
+// Slug a name into an UPPERCASE code (non-alphanumeric → _, collapse repeats, trim).
+function slugifyCode(name: string): string {
+  return name
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+}
 
 export default function SettingsTagsPage() {
   const [role, setRole] = useState<UserRole>('admin')
   const [churchId, setChurchId] = useState('')
   const [tags, setTags] = useState<Tag[]>([])
+
+  // Add-tag form state
   const [newName, setNewName] = useState('')
-  // Subtag form state
-  const [newSubName, setNewSubName] = useState('')
-  const [newSubStart, setNewSubStart] = useState('')
-  const [newSubEnd, setNewSubEnd] = useState('')
-  const [showSubForm, setShowSubForm] = useState(false)
+  const [newRole, setNewRole] = useState<TagRole>('OTHER')
+  const [newParentId, setNewParentId] = useState('')
+
   const [isPending, startTransition] = useTransition()
   const router = useRouter()
 
@@ -29,18 +59,47 @@ export default function SettingsTagsPage() {
     const supabase = createClient()
     supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (!user) return
-      const { data: membership } = await supabase.from('church_memberships').select('role, church_id').eq('user_id', user.id).eq('is_active', true).single()
+      const { data: membership } = await supabase
+        .from('church_memberships')
+        .select('role, church_id')
+        .eq('user_id', user.id)
+        .eq('is_active', true)
+        .single()
       if (!membership) return
-      setRole(membership.role as UserRole); setChurchId(membership.church_id)
-      const { data } = await supabase.from('service_tags').select('*').eq('church_id', membership.church_id).eq('is_active', true)
-      setTags(data ?? [])
+      setRole(membership.role as UserRole)
+      setChurchId(membership.church_id)
+
+      const { data: tagsData } = await supabase
+        .from('service_tags')
+        .select('id, code, name, tag_role, parent_tag_id, display_order, is_active')
+        .eq('church_id', membership.church_id)
+        .eq('is_active', true)
+        .order('display_order')
+      setTags((tagsData as Tag[] | null) ?? [])
     })
   }, [])
 
   async function saveName(id: string, name: string) {
     const supabase = createClient()
-    await supabase.from('service_tags').update({ tag_name: name }).eq('id', id)
-    setTags(prev => prev.map(t => t.id === id ? { ...t, tag_name: name } : t))
+    await supabase.from('service_tags').update({ name }).eq('id', id)
+    setTags(prev => prev.map(t => (t.id === id ? { ...t, name } : t)))
+  }
+
+  function saveRole(id: string, tag_role: TagRole) {
+    startTransition(async () => {
+      const supabase = createClient()
+      await supabase.from('service_tags').update({ tag_role }).eq('id', id)
+      setTags(prev => prev.map(t => (t.id === id ? { ...t, tag_role } : t)))
+    })
+  }
+
+  function saveParent(id: string, parentId: string) {
+    const parent_tag_id = parentId || null
+    startTransition(async () => {
+      const supabase = createClient()
+      await supabase.from('service_tags').update({ parent_tag_id }).eq('id', id)
+      setTags(prev => prev.map(t => (t.id === id ? { ...t, parent_tag_id } : t)))
+    })
   }
 
   function addTag() {
@@ -48,34 +107,48 @@ export default function SettingsTagsPage() {
     if (!name) return
     startTransition(async () => {
       const supabase = createClient()
-      const code = `TAG_${name.toUpperCase().replace(/[^A-Z0-9]/g, '_')}_${Date.now()}`
-      const { data } = await supabase.from('service_tags').insert({ church_id: churchId, tag_name: name, tag_code: code, is_active: true, effective_start_date: null, effective_end_date: null }).select('*').single()
-      if (data) { setTags(prev => [...prev, data]); setNewName('') }
-    })
-  }
 
-  function addSubtag() {
-    const name = newSubName.trim()
-    if (!name || !newSubStart) return
-    startTransition(async () => {
-      const supabase = createClient()
-      const code = `SUBTAG_${name.toUpperCase().replace(/[^A-Z0-9]/g, '_')}_${Date.now()}`
-      const { data } = await supabase.from('service_tags').insert({
-        church_id: churchId,
-        tag_name: name,
-        tag_code: code,
-        is_active: true,
-        effective_start_date: newSubStart,
-        effective_end_date: newSubEnd || null,
-      }).select('*').single()
-      if (data) {
-        setTags(prev => [...prev, data])
-        setNewSubName(''); setNewSubStart(''); setNewSubEnd(''); setShowSubForm(false)
+      // Generate a unique code (per church) from the name slug.
+      const base = slugifyCode(name) || 'TAG'
+      const existing = new Set(tags.map(t => t.code))
+      let code = base
+      let suffix = 1
+      while (existing.has(code)) {
+        code = `${base}_${suffix}`
+        suffix++
+      }
+
+      const { data, error } = await supabase
+        .from('service_tags')
+        .insert({
+          church_id: churchId,
+          name,
+          code,
+          tag_role: newRole,
+          parent_tag_id: newParentId || null,
+          is_active: true,
+          is_custom: true,
+        })
+        .select('id, code, name, tag_role, parent_tag_id, display_order, is_active')
+        .single()
+
+      if (data && !error) {
+        setTags(prev => [...prev, data as Tag])
+        setNewName('')
+        setNewRole('OTHER')
+        setNewParentId('')
       }
     })
   }
 
-  function deactivateSubtag(id: string) {
+  function removeTag(id: string) {
+    // Block removal if this tag has active children (re-parent them first).
+    const hasChildren = tags.some(t => t.parent_tag_id === id)
+    if (hasChildren) {
+      window.alert('This tag has child tags. Re-parent or remove its children first.')
+      return
+    }
+    // Soft-delete only — a hard delete would cascade-delete this ministry's metrics.
     startTransition(async () => {
       const supabase = createClient()
       await supabase.from('service_tags').update({ is_active: false }).eq('id', id)
@@ -83,13 +156,89 @@ export default function SettingsTagsPage() {
     })
   }
 
-  function formatDate(d: string | null) {
-    if (!d) return '—'
-    return new Date(d + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  // --- Tree helpers (adjacency via parent_tag_id) ---
+  function getChildren(parentId: string): Tag[] {
+    return tags.filter(t => t.parent_tag_id === parentId)
   }
 
-  const primaryTags = tags.filter(t => !t.effective_start_date && !t.effective_end_date)
-  const subtags = tags.filter(t => t.effective_start_date || t.effective_end_date)
+  // Collect the set of descendant ids of `id` (for cycle-guarding reparent options).
+  function descendantIds(id: string): Set<string> {
+    const result = new Set<string>()
+    const stack = [id]
+    while (stack.length) {
+      const current = stack.pop()!
+      for (const t of tags) {
+        if (t.parent_tag_id === current && !result.has(t.id)) {
+          result.add(t.id)
+          stack.push(t.id)
+        }
+      }
+    }
+    return result
+  }
+
+  // Valid parent options for `tag`: any other tag that is not itself and not one
+  // of its own descendants (prevents cycles).
+  function parentOptionsFor(tag: Tag): Tag[] {
+    const blocked = descendantIds(tag.id)
+    return tags.filter(t => t.id !== tag.id && !blocked.has(t.id))
+  }
+
+  const rootTags = tags.filter(t => t.parent_tag_id === null)
+
+  function renderTagNode(tag: Tag, level: number = 0) {
+    const children = getChildren(tag.id)
+    const parentOptions = parentOptionsFor(tag)
+    return (
+      <div key={tag.id}>
+        <div
+          className="px-4 py-3 flex items-center gap-3 bg-white border-b border-gray-100"
+          style={{ paddingLeft: `${1 + Math.max(0, level * 2)}rem` }}
+        >
+          {level > 0 && <span className="text-gray-300 flex-shrink-0">↳</span>}
+          <div className="flex-1 min-w-0">
+            <InlineEditField value={tag.name} onSave={v => saveName(tag.id, v)} aria-label={tag.name} />
+          </div>
+
+          {/* Role */}
+          <select
+            value={tag.tag_role}
+            onChange={e => saveRole(tag.id, e.target.value as TagRole)}
+            disabled={isPending}
+            aria-label={`Role for ${tag.name}`}
+            className="text-xs border border-gray-200 rounded-lg px-2 py-1 outline-none text-gray-600 bg-white flex-shrink-0"
+          >
+            {ROLE_OPTIONS.map(r => (
+              <option key={r.value} value={r.value}>{r.label}</option>
+            ))}
+          </select>
+
+          {/* Parent (reparent) */}
+          <select
+            value={tag.parent_tag_id ?? ''}
+            onChange={e => saveParent(tag.id, e.target.value)}
+            disabled={isPending}
+            aria-label={`Parent for ${tag.name}`}
+            className="text-xs border border-gray-200 rounded-lg px-2 py-1 outline-none text-gray-600 bg-white flex-shrink-0 max-w-[8rem]"
+          >
+            <option value="">No parent (root)</option>
+            {parentOptions.map(p => (
+              <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+          </select>
+
+          <button
+            onClick={() => removeTag(tag.id)}
+            disabled={isPending}
+            className="text-xs text-gray-400 hover:text-red-500 transition-colors flex-shrink-0"
+          >
+            Remove
+          </button>
+        </div>
+        {children.map(child => renderTagNode(child, level + 1))}
+      </div>
+    )
+  }
 
   return (
     <AppLayout role={role}>
@@ -97,115 +246,62 @@ export default function SettingsTagsPage() {
         <button onClick={() => router.push('/settings')} className="text-gray-400 hover:text-gray-600 transition-colors cursor-pointer">
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
         </button>
-        <p className="font-bold text-gray-900 text-sm">Service Tags</p>
+        <p className="font-bold text-gray-900 text-sm">Ministry Tags</p>
       </div>
 
       <div className="px-4 py-4 space-y-6">
-        {/* Primary tags */}
         <div>
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Primary Tags</p>
-          <p className="text-xs text-gray-500 mb-3">These permanently group your services in the dashboard — Morning, Evening, Midweek, etc.</p>
-          <div className="bg-white border border-gray-200 rounded-2xl divide-y divide-gray-100 overflow-hidden shadow-[0_1px_4px_-1px_rgba(0,0,0,0.04)]">
-            {primaryTags.map(tag => (
-              <div key={tag.id} className="px-4 py-3">
-                <InlineEditField value={tag.tag_name} onSave={v => saveName(tag.id, v)} aria-label={tag.tag_name} />
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Tags &amp; Hierarchies</p>
+          <p className="text-xs text-gray-500 mb-3">Organize your ministries here. Nest a tag under a parent to build groups (e.g. Experience &rarr; LifeKids).</p>
+
+          <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-[0_1px_4px_-1px_rgba(0,0,0,0.04)]">
+            {rootTags.length === 0 && (
+              <div className="px-4 py-4 text-center">
+                <p className="text-sm text-gray-400">No tags yet.</p>
               </div>
-            ))}
-            <div className="px-4 py-3 flex items-center gap-2">
+            )}
+
+            {rootTags.map(tag => renderTagNode(tag, 0))}
+
+            {/* Add tag form */}
+            <div className="px-4 py-3 flex flex-wrap items-center gap-2 bg-gray-50/50">
               <input
                 type="text"
                 value={newName}
                 onChange={e => setNewName(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && addTag()}
-                placeholder="Add a tag..."
-                className="flex-1 text-sm border-b border-gray-200 focus:border-blue-500 outline-none py-1 text-gray-900 placeholder-gray-400 bg-transparent"
+                placeholder="Add a new tag..."
+                className="flex-1 min-w-[8rem] text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none text-gray-900 placeholder-gray-400 bg-white"
               />
-              <button onClick={addTag} disabled={!newName.trim() || isPending} className="text-sm text-blue-600 font-semibold hover:text-blue-700 disabled:opacity-40 transition-colors">Add</button>
+              <select
+                value={newRole}
+                onChange={e => setNewRole(e.target.value as TagRole)}
+                aria-label="New tag role"
+                className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 outline-none text-gray-600 bg-white"
+              >
+                {ROLE_OPTIONS.map(r => (
+                  <option key={r.value} value={r.value}>{r.label}</option>
+                ))}
+              </select>
+              <select
+                value={newParentId}
+                onChange={e => setNewParentId(e.target.value)}
+                aria-label="New tag parent"
+                className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 outline-none text-gray-600 bg-white"
+              >
+                <option value="">No parent (root)</option>
+                {tags.map(t => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </select>
+              <button
+                onClick={addTag}
+                disabled={!newName.trim() || isPending}
+                className="text-sm bg-blue-600 text-white rounded-lg px-4 py-1.5 font-semibold hover:bg-blue-700 disabled:opacity-40 transition-colors"
+              >
+                Add
+              </button>
             </div>
-          </div>
-        </div>
-
-        {/* Campaign / Series subtags */}
-        <div>
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Campaign &amp; Series Tags</p>
-          <p className="text-xs text-gray-500 mb-3">Time-bounded tags for campaigns or series — appear in the dashboard during their active date range.</p>
-
-          <div className="bg-white border border-gray-200 rounded-2xl divide-y divide-gray-100 overflow-hidden shadow-[0_1px_4px_-1px_rgba(0,0,0,0.04)]">
-            {subtags.length === 0 && !showSubForm && (
-              <div className="px-4 py-4 text-center">
-                <p className="text-sm text-gray-400">No campaign tags yet.</p>
-              </div>
-            )}
-
-            {subtags.map(tag => (
-              <div key={tag.id} className="px-4 py-3 flex items-start justify-between gap-3">
-                <div className="flex-1 min-w-0">
-                  <InlineEditField value={tag.tag_name} onSave={v => saveName(tag.id, v)} aria-label={tag.tag_name} />
-                  <p className="text-xs text-gray-400 mt-0.5 tabular-nums">
-                    {formatDate(tag.effective_start_date)} → {tag.effective_end_date ? formatDate(tag.effective_end_date) : 'ongoing'}
-                  </p>
-                </div>
-                <button onClick={() => deactivateSubtag(tag.id)} className="text-xs text-gray-400 hover:text-red-500 transition-colors flex-shrink-0 mt-0.5">Remove</button>
-              </div>
-            ))}
-
-            {/* Add subtag form */}
-            {showSubForm ? (
-              <div className="px-4 py-4 space-y-3">
-                <input
-                  type="text"
-                  value={newSubName}
-                  onChange={e => setNewSubName(e.target.value)}
-                  placeholder="Campaign name (e.g. Easter Series)"
-                  className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder-gray-400"
-                  autoFocus
-                />
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Start date</label>
-                    <input
-                      type="date"
-                      value={newSubStart}
-                      onChange={e => setNewSubStart(e.target.value)}
-                      className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">End date <span className="normal-case font-normal">(optional)</span></label>
-                    <input
-                      type="date"
-                      value={newSubEnd}
-                      onChange={e => setNewSubEnd(e.target.value)}
-                      className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                    />
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={addSubtag}
-                    disabled={!newSubName.trim() || !newSubStart || isPending}
-                    className="flex-1 bg-blue-600 text-white rounded-xl py-2.5 text-sm font-semibold hover:bg-blue-700 transition-colors disabled:opacity-40"
-                  >
-                    {isPending ? 'Saving...' : 'Add campaign tag'}
-                  </button>
-                  <button
-                    onClick={() => { setShowSubForm(false); setNewSubName(''); setNewSubStart(''); setNewSubEnd('') }}
-                    className="px-4 border border-gray-200 text-gray-500 rounded-xl text-sm hover:bg-gray-50 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="px-4 py-3">
-                <button
-                  onClick={() => setShowSubForm(true)}
-                  className="text-sm text-blue-600 font-semibold hover:text-blue-700 transition-colors"
-                >
-                  + Add campaign tag
-                </button>
-              </div>
-            )}
           </div>
         </div>
       </div>

@@ -1,29 +1,25 @@
 /**
  * derive_grid_config.ts — synthesize a GridConfig from existing church state.
  *
- * Path Q2 = (b): when `churches.grid_config` is NULL, the History page derives
- * a default config from the church's current schema (templates, categories,
- * sources, tracking flags) so the page always renders without a prior AI
- * import. Stage B and Settings updates persist explicit configs that override
- * this fallback.
+ * Rewritten for the unified tag-first ("metric-centric") schema (IMPORT_IR_V2.md,
+ * decisions D-062…D-068). The grid is now built entirely from `service_templates`,
+ * `service_tags`, `reporting_tags` and `metrics` — the old per-kind category/entry
+ * tables (response_categories, volunteer_categories, giving_sources,
+ * tag_relationships, attendance_entries) are GONE and are not queried.
  *
- * Layout produced (matches legacy /services/history visible columns):
- *   Per active service_template (with primary_tag):
- *     - Attendance: Main, Kids, Youth (gated by tracks_*)
- *     - Stats: one column per response_category (stat_scope='service')
- *     - Giving (computed total) + collapsible "Sources" subgroup, one column
- *       per giving_source
- *     - Volunteers (computed total) + collapsible "Roles" subgroup, one column
- *       per volunteer_category (each carries audience_group_code in the label)
- *   Weekly column (single, holds all WK metrics — period_giving + week-scope
- *     response_categories), distinguished by row labels per the validation rule
- *     "multiple WK metrics share one column unless sub-categorized"
- *   Monthly column (single, all month-scope categories)
- *   Daily column (single, all day-scope categories) — only when day-scope
- *     categories exist
+ * Key changes vs. the v2 (`2.0-pivot`) builder:
+ *   - Audience bucketing derives from `service_tags.tag_role`
+ *     (ADULT_SERVICE → adults, KIDS_MINISTRY → kids, YOUTH_MINISTRY → youth,
+ *      OTHER → a misc/"Stats" group) — NOT from root-tag display order.
+ *   - Every data column is a metric. Column leaf IDs use the new grammar
+ *     `metric.<METRIC_CODE>` (the metric's `code`).
+ *   - A metric's bucket = its ministry_tag's tag_role.
+ *   - The reporting dimension (ATTENDANCE / VOLUNTEERS / GIVING / RESPONSE_STAT)
+ *     is read from the metric's reporting_tag; tracking flags gate which
+ *     reporting dimensions appear (ATTENDANCE always on).
  *
- * Audience-scoped stats are intentionally not emitted as columns — matches the
- * legacy page (those are entered in T4, not in History).
+ * Output `GridConfig` shape is unchanged (see grid-config-schema.ts); only the
+ * source queries and column-ID construction differ. `version` is `'3.0-metrics'`.
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type {
@@ -34,69 +30,91 @@ import type {
   ServiceTemplate,
 } from '@/components/history-grid/grid-config-schema'
 
+// ── Row types ──────────────────────────────────────────────────────────────────
+
 interface ChurchRow {
-  id:                       string
-  tracks_main_attendance:   boolean
-  tracks_kids_attendance:   boolean
-  tracks_youth_attendance:  boolean
-  tracks_volunteers:        boolean
-  tracks_responses:         boolean
-  tracks_giving:            boolean
+  id:                 string
+  tracks_volunteers:  boolean
+  tracks_responses:   boolean
+  tracks_giving:      boolean
 }
 
 interface TemplateRow {
   id:             string
   service_code:   string
   display_name:   string
-  sort_order:     number
+  sort_order:     number | null
   primary_tag_id: string | null
 }
 
-interface ResponseCategoryRow {
+type TagRole = 'ADULT_SERVICE' | 'KIDS_MINISTRY' | 'YOUTH_MINISTRY' | 'OTHER'
+
+interface ServiceTagRow {
   id:             string
-  category_code:  string
-  category_name:  string
-  stat_scope:     'audience' | 'service' | 'week' | 'month' | 'day'
-  display_order:  number
+  code:           string
+  name:           string
+  tag_role:       TagRole | null
+  parent_tag_id:  string | null
+  display_order:  number | null
 }
 
-interface VolunteerCategoryRow {
-  id:                  string
-  category_code:       string
-  category_name:       string
-  audience_group_code: 'MAIN' | 'KIDS' | 'YOUTH'
-  sort_order:          number
+interface ReportingTagRow {
+  id:         string
+  code:       string
+  name:       string
+  unit_kind:  string | null
+  agg_default: string | null
 }
 
-interface GivingSourceRow {
-  id:            string
-  source_code:   string
-  source_name:   string
-  display_order: number
+interface MetricRow {
+  id:                string
+  code:              string
+  name:              string
+  ministry_tag_id:   string | null
+  reporting_tag_id:  string | null
+  scope:             'instance' | 'period'
+  is_canonical:      boolean
+  is_active:         boolean
 }
 
-interface ScheduleRow {
-  service_template_id: string
-  day_of_week:         number
-  start_time:          string | null
+// ── Bucket configuration ─────────────────────────────────────────────────────
+// Four buckets keyed by tag_role. Each renders one top-level column group whose
+// children are sub-grouped by reporting dimension. OTHER → the misc/"Stats" group.
+type Bucket = 'adults' | 'kids' | 'youth' | 'other'
+
+const BUCKET_ORDER: Bucket[] = ['adults', 'kids', 'youth', 'other']
+
+const ROLE_TO_BUCKET: Record<TagRole, Bucket> = {
+  ADULT_SERVICE:  'adults',
+  KIDS_MINISTRY:  'kids',
+  YOUTH_MINISTRY: 'youth',
+  OTHER:          'other',
 }
 
-/**
- * Derive a GridConfig from the church's existing schema state.
- * Returns null when the church has no active templates with a primary tag —
- * the page should show "set up your services first" in that case.
- */
+const BUCKET_META: Record<Bucket, { groupId: string; defaultLabel: string }> = {
+  adults: { groupId: 'group_adults', defaultLabel: 'Experience' },
+  kids:   { groupId: 'group_kids',   defaultLabel: 'Kids'       },
+  youth:  { groupId: 'group_youth',  defaultLabel: 'Youth'      },
+  other:  { groupId: 'group_stats',  defaultLabel: 'Stats'      },
+}
+
+// Reporting dimensions we sub-group by, in display order. GIVING is rendered as
+// its own weekly (WK) top-level group, not inside an audience bucket.
+const ATTENDANCE = 'ATTENDANCE'
+const VOLUNTEERS = 'VOLUNTEERS'
+const RESPONSE_STAT = 'RESPONSE_STAT'
+const GIVING = 'GIVING'
+
+// ── Main export ────────────────────────────────────────────────────────────────
+
 export async function deriveGridConfigFromSchema(
   supabase: SupabaseClient,
   churchId: string,
 ): Promise<GridConfig | null> {
-  const [churchRes, tmplRes, respRes, volRes, giveRes, schedRes] = await Promise.all([
+  const [churchRes, tmplRes, tagsRes, repRes, metricsRes] = await Promise.all([
     supabase
       .from('churches')
-      .select(
-        'id, tracks_main_attendance, tracks_kids_attendance, tracks_youth_attendance, ' +
-        'tracks_volunteers, tracks_responses, tracks_giving',
-      )
+      .select('id, tracks_volunteers, tracks_responses, tracks_giving')
       .eq('id', churchId)
       .single(),
     supabase
@@ -104,250 +122,248 @@ export async function deriveGridConfigFromSchema(
       .select('id, service_code, display_name, sort_order, primary_tag_id')
       .eq('church_id', churchId)
       .eq('is_active', true)
-      .not('primary_tag_id', 'is', null)
       .order('sort_order', { ascending: true }),
     supabase
-      .from('response_categories')
-      .select('id, category_code, category_name, stat_scope, display_order')
+      .from('service_tags')
+      .select('id, code, name, tag_role, parent_tag_id, display_order')
       .eq('church_id', churchId)
       .eq('is_active', true)
       .order('display_order', { ascending: true }),
     supabase
-      .from('volunteer_categories')
-      .select('id, category_code, category_name, audience_group_code, sort_order')
-      .eq('church_id', churchId)
-      .eq('is_active', true)
-      .order('audience_group_code', { ascending: true })
-      .order('sort_order', { ascending: true }),
+      .from('reporting_tags')
+      .select('id, code, name, unit_kind, agg_default')
+      .eq('church_id', churchId),
     supabase
-      .from('giving_sources')
-      .select('id, source_code, source_name, display_order')
+      .from('metrics')
+      .select('id, code, name, ministry_tag_id, reporting_tag_id, scope, is_canonical, is_active')
       .eq('church_id', churchId)
-      .eq('is_active', true)
-      .order('display_order', { ascending: true }),
-    supabase
-      .from('service_schedule_versions')
-      .select('service_template_id, day_of_week, start_time')
       .eq('is_active', true),
   ])
 
   const church    = churchRes.data as ChurchRow | null
-  const templates = (tmplRes.data ?? []) as TemplateRow[]
-  const responses = (respRes.data ?? []) as ResponseCategoryRow[]
-  const volCats   = (volRes.data ?? []) as VolunteerCategoryRow[]
-  const sources   = (giveRes.data ?? []) as GivingSourceRow[]
-  const schedules = (schedRes.data ?? []) as ScheduleRow[]
+  const templates = (tmplRes.data    ?? []) as TemplateRow[]
+  const tags      = (tagsRes.data    ?? []) as ServiceTagRow[]
+  const repTags   = (repRes.data     ?? []) as ReportingTagRow[]
+  const metrics   = (metricsRes.data ?? []) as MetricRow[]
 
   if (!church || templates.length === 0) return null
 
-  const dowByTemplate = new Map<string, number>()
-  for (const s of schedules) dowByTemplate.set(s.service_template_id, s.day_of_week)
+  // ── Lookups ─────────────────────────────────────────────────────────────────
+  const tagById = new Map<string, ServiceTagRow>()
+  for (const t of tags) tagById.set(t.id, t)
 
-  // ── Per-template column groups (SV-scoped) ────────────────────────────────
+  const repTagById = new Map<string, ReportingTagRow>()
+  for (const r of repTags) repTagById.set(r.id, r)
+
+  // tag_role of a ministry tag → bucket. Default OTHER if role missing.
+  const tagIdToBucket = (tagId: string | null): Bucket => {
+    if (!tagId) return 'other'
+    const tag = tagById.get(tagId)
+    const role = tag?.tag_role ?? 'OTHER'
+    return ROLE_TO_BUCKET[role] ?? 'other'
+  }
+
+  // ── Tracking-flag gate per reporting dimension ───────────────────────────────
+  // ATTENDANCE always on. The others gate on their church flag. Unknown/custom
+  // reporting tags pass through (treated as always-on stats-like dimensions).
+  const reportingDimEnabled = (reportingCode: string | null): boolean => {
+    switch (reportingCode) {
+      case VOLUNTEERS:    return church.tracks_volunteers ?? false
+      case RESPONSE_STAT: return church.tracks_responses  ?? false
+      case GIVING:        return church.tracks_giving      ?? false
+      case ATTENDANCE:    return true
+      default:            return true // custom reporting tag — always include
+    }
+  }
+
+  // ── Dynamic bucket labels from a representative ministry tag per bucket ───────
+  // Pick the lowest-display_order active tag of each role for the group label.
+  const bucketLabel: Record<Bucket, string> = {
+    adults: BUCKET_META.adults.defaultLabel,
+    kids:   BUCKET_META.kids.defaultLabel,
+    youth:  BUCKET_META.youth.defaultLabel,
+    other:  BUCKET_META.other.defaultLabel,
+  }
+  const labelClaimed: Record<Bucket, boolean> = { adults: false, kids: false, youth: false, other: false }
+  for (const t of tags) {
+    const bucket = tagIdToBucket(t.id)
+    if (bucket === 'other') continue // 'other' keeps the static "Stats" label
+    if (!labelClaimed[bucket]) {
+      bucketLabel[bucket] = t.name
+      labelClaimed[bucket] = true
+    }
+  }
+
+  // ── Classify metrics ─────────────────────────────────────────────────────────
+  // GIVING metrics → weekly top-level group. All other metrics → audience bucket
+  // sub-grouped by reporting dimension.
+  interface ClassifiedMetric {
+    code:          string
+    name:          string
+    bucket:        Bucket
+    reportingCode: string
+    scope:         'instance' | 'period'
+  }
+
+  const givingMetrics: ClassifiedMetric[] = []
+  // bucket → reportingCode → metrics[]
+  const byBucketDim = new Map<Bucket, Map<string, ClassifiedMetric[]>>()
+  for (const b of BUCKET_ORDER) byBucketDim.set(b, new Map())
+
+  for (const m of metrics) {
+    const repCode = m.reporting_tag_id ? (repTagById.get(m.reporting_tag_id)?.code ?? null) : null
+    if (!reportingDimEnabled(repCode)) continue
+
+    const classified: ClassifiedMetric = {
+      code:          m.code,
+      name:          m.name,
+      bucket:        tagIdToBucket(m.ministry_tag_id),
+      reportingCode: repCode ?? 'OTHER',
+      scope:         m.scope,
+    }
+
+    if (repCode === GIVING) {
+      givingMetrics.push(classified)
+      continue
+    }
+
+    const dimMap = byBucketDim.get(classified.bucket)!
+    const arr = dimMap.get(classified.reportingCode) ?? []
+    arr.push(classified)
+    dimMap.set(classified.reportingCode, arr)
+  }
+
+  // ── Build columns ─────────────────────────────────────────────────────────────
   const columns: (DataColumn | ColumnGroup)[] = []
-  const svcStats = responses.filter(r => r.stat_scope === 'service')
+  const serviceTemplates: ServiceTemplate[]   = []
+  const weeklyMetrics: MetricDefinition[]     = []
+  const existingGroups: string[]              = []
 
-  for (const tmpl of templates) {
-    const children: (DataColumn | ColumnGroup)[] = []
+  const leafColId = (code: string) => `metric.${code}`
 
-    // Attendance
-    if (church.tracks_main_attendance) {
-      children.push({
-        type: 'data', id: 'attendance.main', label: 'Main',
-        scope: 'SV', editable: true, dataType: 'number',
-      })
-    }
-    if (church.tracks_kids_attendance) {
-      children.push({
-        type: 'data', id: 'attendance.kids', label: 'Kids',
-        scope: 'SV', editable: true, dataType: 'number',
-      })
-    }
-    if (church.tracks_youth_attendance) {
-      children.push({
-        type: 'data', id: 'attendance.youth', label: 'Youth',
-        scope: 'SV', editable: true, dataType: 'number',
-      })
-    }
+  // GIVING (weekly, WK scope) — one top-level group, one child per giving metric.
+  if (givingMetrics.length > 0) {
+    columns.push({
+      type: 'group', id: 'group_giving', label: 'Giving', scope: 'WK',
+      children: givingMetrics.map<DataColumn>(m => ({
+        type: 'data', id: leafColId(m.code), label: m.name,
+        scope: 'WK', editable: true, dataType: 'number',
+      })),
+    })
+    existingGroups.push('group_giving')
+    weeklyMetrics.push({ id: 'wk_giving', label: 'Giving', scope: 'WK', columnId: 'group_giving' })
+  }
 
-    // Service-scope stats — one editable column per category
-    if (church.tracks_responses) {
-      for (const cat of svcStats) {
-        children.push({
-          type: 'data',
-          id:    `response.${cat.category_code}`,
-          label: cat.category_name,
-          scope: 'SV',
-          editable: true,
-          dataType: 'number',
+  // Reporting-dimension sub-group display order + labels within an audience bucket.
+  const DIM_ORDER: { code: string; label: string }[] = [
+    { code: ATTENDANCE,    label: 'Attendance' },
+    { code: VOLUNTEERS,    label: 'Volunteers' },
+    { code: RESPONSE_STAT, label: 'Stats'      },
+  ]
+
+  // Build the ordered set of reporting dimensions actually present for a bucket,
+  // preferring the known order then any custom dimensions alphabetically.
+  const orderedDimsForBucket = (dimMap: Map<string, ClassifiedMetric[]>): { code: string; label: string }[] => {
+    const present = new Set(dimMap.keys())
+    const result: { code: string; label: string }[] = []
+    for (const d of DIM_ORDER) {
+      if (present.has(d.code)) { result.push(d); present.delete(d.code) }
+    }
+    for (const code of Array.from(present).sort()) {
+      // label for a custom reporting tag: its display name if known, else code
+      result.push({ code, label: code })
+    }
+    return result
+  }
+
+  // AUDIENCE BUCKETS — adults / kids / youth / other(stats)
+  for (const bucket of BUCKET_ORDER) {
+    const dimMap = byBucketDim.get(bucket)!
+    const dims = orderedDimsForBucket(dimMap)
+    if (dims.length === 0) continue
+
+    const meta = BUCKET_META[bucket]
+    const groupChildren: (DataColumn | ColumnGroup)[] = []
+
+    for (const dim of dims) {
+      const dimMetrics = dimMap.get(dim.code) ?? []
+      if (dimMetrics.length === 0) continue
+
+      if (dim.code === ATTENDANCE) {
+        // Attendance metrics render as flat data columns inside the bucket.
+        for (const m of dimMetrics) {
+          groupChildren.push({
+            type: 'data', id: leafColId(m.code), label: m.name,
+            scope: 'SV', editable: true, dataType: 'number',
+          })
+        }
+      } else {
+        // Other dimensions render as a collapsible sub-group of metric columns.
+        groupChildren.push({
+          type: 'group', id: `${meta.groupId}__${dim.code.toLowerCase()}`, label: dim.label,
+          scope: 'SV', collapsible: true, defaultCollapsed: false,
+          children: dimMetrics.map<DataColumn>(m => ({
+            type: 'data', id: leafColId(m.code), label: m.name,
+            scope: 'SV', editable: dim.code !== RESPONSE_STAT, dataType: 'number',
+          })),
         })
       }
     }
 
-    // Giving — Total (read-only computed) + collapsible Sources subgroup
-    if (church.tracks_giving && sources.length > 0) {
-      children.push({
-        type: 'data',
-        id:    'giving.total',
-        label: 'Giving',
-        scope: 'SV',
-        editable: false,
-        dataType: 'currency',
-        computedFrom: sources.map(s => `giving.${s.source_code}`),
+    if (groupChildren.length > 0) {
+      columns.push({
+        type: 'group', id: meta.groupId, label: bucketLabel[bucket],
+        scope: 'SV', children: groupChildren,
       })
-      children.push({
-        type: 'group',
-        id:    `${tmpl.service_code}__giving_sources`,
-        label: 'Sources',
-        scope: 'SV',
-        collapsible: true,
-        defaultCollapsed: true,
-        children: sources.map<DataColumn>(s => ({
-          type: 'data',
-          id:    `giving.${s.source_code}`,
-          label: s.source_name,
-          scope: 'SV',
-          editable: true,
-          dataType: 'currency',
-        })),
-      })
-    }
-
-    // Volunteers — Total + collapsible Roles subgroup. Audience encoded in label
-    // so a single column tree handles MAIN/KIDS/YOUTH-tagged categories.
-    if (church.tracks_volunteers && volCats.length > 0) {
-      children.push({
-        type: 'data',
-        id:    'volunteer.total',
-        label: 'Vols',
-        scope: 'SV',
-        editable: false,
-        dataType: 'number',
-        computedFrom: volCats.map(v => `volunteer.${v.category_code}`),
-      })
-      children.push({
-        type: 'group',
-        id:    `${tmpl.service_code}__vol_roles`,
-        label: 'Roles',
-        scope: 'SV',
-        collapsible: true,
-        defaultCollapsed: true,
-        children: volCats.map<DataColumn>(v => ({
-          type: 'data',
-          id:    `volunteer.${v.category_code}`,
-          label: audienceLabelPrefix(v.audience_group_code) + v.category_name,
-          scope: 'SV',
-          editable: true,
-          dataType: 'number',
-        })),
-      })
-    }
-
-    columns.push({
-      type: 'group',
-      id:    tmpl.service_code,
-      label: tmpl.display_name,
-      scope: 'SV',
-      children,
-    })
-  }
-
-  // ── Period-scoped columns (single column per scope, distinguished by rows) ─
-  const wkCats   = responses.filter(r => r.stat_scope === 'week')
-  const moCats   = responses.filter(r => r.stat_scope === 'month')
-  const sdCats   = responses.filter(r => r.stat_scope === 'day')
-
-  const hasWeekly = (church.tracks_giving && sources.length > 0) || wkCats.length > 0
-  if (hasWeekly) {
-    columns.push({
-      type: 'data',
-      id:    'weekly_total',
-      label: 'Weekly',
-      scope: 'WK',
-      editable: true,
-      dataType: 'number',
-    })
-  }
-
-  if (moCats.length > 0) {
-    columns.push({
-      type: 'data',
-      id:    'monthly_total',
-      label: 'Monthly',
-      scope: 'MO',
-      editable: true,
-      dataType: 'number',
-    })
-  }
-
-  if (sdCats.length > 0) {
-    columns.push({
-      type: 'data',
-      id:    'daily_total',
-      label: 'Daily',
-      scope: 'SD',
-      editable: true,
-      dataType: 'number',
-    })
-  }
-
-  // ── Service templates — bind each to its own column group for SV cell state
-  const serviceTemplates: ServiceTemplate[] = templates.map(t => ({
-    id:                    t.service_code,
-    displayName:           t.display_name,
-    dayOfWeek:             dowByTemplate.get(t.id) ?? 0,
-    populatesColumnGroups: [t.service_code],
-  }))
-
-  // ── Metric definitions: one row per logical metric per period ─────────────
-  const weeklyMetrics: MetricDefinition[] = []
-  if (church.tracks_giving) {
-    for (const s of sources) {
-      weeklyMetrics.push({
-        id:       `wk_giving_${s.source_code}`,
-        label:    `${s.source_name} (weekly)`,
-        scope:    'WK',
-        columnId: 'weekly_total',
-      })
+      existingGroups.push(meta.groupId)
     }
   }
-  for (const c of wkCats) {
-    weeklyMetrics.push({
-      id:       `wk_${c.category_code}`,
-      label:    c.category_name,
-      scope:    'WK',
-      columnId: 'weekly_total',
+
+  // MASS TAG ASSIGNMENT
+  columns.push({
+    type: 'group', id: 'group_tags', label: 'Tags', scope: 'SV',
+    children: [
+      { type: 'data', id: 'occurrence_tags', label: 'Assignments', scope: 'SV', editable: true, dataType: 'tags' },
+    ],
+  })
+  existingGroups.push('group_tags')
+
+  // ── Map Service Templates to Column Groups ───────────────────────────────────
+  for (const tmpl of templates) {
+    const populates: string[] = ['group_tags']
+
+    const bucket = tagIdToBucket(tmpl.primary_tag_id)
+    const primaryGroupId = BUCKET_META[bucket].groupId
+    if (existingGroups.includes(primaryGroupId)) {
+      populates.push(primaryGroupId)
+      // Adult services commonly run alongside kids ministry — populate both.
+      if (bucket === 'adults' && existingGroups.includes(BUCKET_META.kids.groupId)) {
+        populates.push(BUCKET_META.kids.groupId)
+      }
+    } else {
+      // primary bucket not present — fall to first available audience group.
+      for (const b of BUCKET_ORDER) {
+        const gid = BUCKET_META[b].groupId
+        if (existingGroups.includes(gid)) { populates.push(gid); break }
+      }
+    }
+
+    serviceTemplates.push({
+      id:                    tmpl.service_code,
+      displayName:           tmpl.display_name,
+      dayOfWeek:             0, // Unused by Unified Pivot Grid — grouped by exact date
+      populatesColumnGroups: populates,
     })
   }
-
-  const monthlyMetrics: MetricDefinition[] = moCats.map(c => ({
-    id:       `mo_${c.category_code}`,
-    label:    c.category_name,
-    scope:    'MO',
-    columnId: 'monthly_total',
-  }))
-
-  const singleDayMetrics: MetricDefinition[] = sdCats.map(c => ({
-    id:       `sd_${c.category_code}`,
-    label:    c.category_name,
-    scope:    'SD',
-    columnId: 'daily_total',
-  }))
 
   return {
     churchId:         church.id,
-    version:          '1.0-derived',
+    version:          '3.0-metrics',
     columns,
     serviceTemplates,
-    monthlyMetrics,
+    monthlyMetrics:   [],
     weeklyMetrics,
-    singleDayMetrics,
+    singleDayMetrics: [],
     serviceMetrics:   [],
   }
-}
-
-function audienceLabelPrefix(code: 'MAIN' | 'KIDS' | 'YOUTH'): string {
-  if (code === 'MAIN')  return ''
-  if (code === 'KIDS')  return 'Kids · '
-  return 'Youth · '
 }

@@ -1,7 +1,11 @@
 /**
  * HistoryGrid.css
- * 
- * Styles for the production History grid component
+ *
+ * Styles for the production History grid component.
+ * Visual hierarchy rules:
+ *   Group headers (parent)  — darkest bg, bold uppercase, distinct bottom border
+ *   Leaf headers  (child)   — lighter bg, normal case, separator lines between columns
+ *   Row hierarchy           — Month > Week > ServiceDate > Service row, each a different shade
  */
 
 /* ══════════════════════════════════════════════════════════════════════════════
@@ -12,14 +16,24 @@
   display: flex;
   flex-direction: column;
   height: 100%;
+  min-height: 0;
+  min-width: 0;
   position: relative;
 }
 
 .grid-wrapper {
   flex: 1;
+  min-height: 0;
+  min-width: 0;
   overflow: auto;
+  /* Cap to viewport so the grid scrolls INTERNALLY (x + y) and the horizontal
+     scrollbar stays on-screen. The flex chain above isn't height-bounded
+     (layout root is min-h-screen), so without this the wrapper grows to full
+     content height and the horizontal bar ends up far below the fold. */
+  max-height: calc(100dvh - 168px);
   background: #f8fafc;
-  padding: 12px 16px 40px;
+  /* bottom padding so horizontal scrollbar is always visible above any save-bar */
+  padding: 8px 12px 16px;
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
@@ -31,20 +45,20 @@
   width: max-content;
   min-width: 100%;
   background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
   overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.04);
-  font-family: 'Inter', sans-serif;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.04);
+  font-family: 'Inter', -apple-system, sans-serif;
+  font-size: 11.5px;
 }
 
 .history-grid-table th,
 .history-grid-table td {
   border-right: 1px solid #e5e7eb;
   border-bottom: 1px solid #e5e7eb;
-  padding: 0 10px;
-  height: 34px;
-  font-size: 12px;
+  padding: 0 8px;
+  height: 30px;
   white-space: nowrap;
   vertical-align: middle;
 }
@@ -63,66 +77,98 @@
   position: sticky;
   left: 0;
   z-index: 2;
-  width: 52px;
-  min-width: 52px;
+  width: 44px;
+  min-width: 44px;
   text-align: center;
   background: #f1f5f9;
-  border-right: 1px solid #e2e8f0;
+  border-right: 1px solid #cbd5e1;
 }
 
 .history-grid-table th.col-label,
 .history-grid-table td.col-label {
   position: sticky;
-  left: 52px;
+  left: 44px;
   z-index: 2;
-  width: 260px;
-  min-width: 260px;
+  width: 220px;
+  min-width: 180px;
   text-align: left;
   background: #f1f5f9;
-  border-right: 2px solid #e2e8f0;
+  /* Strong right separator — visually anchors the frozen pane */
+  border-right: 2px solid #94a3b8;
 }
 
+/* Sticky headers stack above sticky body cells */
 .history-grid-table th.col-scope,
 .history-grid-table th.col-label {
-  z-index: 3;
+  z-index: 11;
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
-   HEADER ROWS
+   COLUMN HEADERS — two-level hierarchy
+   Level 0 = group header (parent)  → strong visual weight
+   Level 1 = leaf header  (child)   → lighter, sits directly above data
    ══════════════════════════════════════════════════════════════════════════════ */
 
+/* All thead th: leaf-level defaults */
 .history-grid-table thead th {
-  background: #f1f5f9;
+  background: #e8edf2;         /* light slate — clearly a header, not data */
   color: #475569;
   font-weight: 600;
+  font-size: 10.5px;
   text-align: center;
-  padding: 10px 8px;
+  padding: 0 8px;
+  height: 28px;
   position: sticky;
   top: 0;
   z-index: 10;
+  border-bottom: 1px solid #cbd5e1;
 }
 
+/* Group-level parent header — darker, taller, uppercase, thick bottom border */
 .history-grid-table thead th.group-header {
-  background: #e2e8f0;
-  color: #0f172a;
+  background: #1e293b;         /* dark slate — unmistakably a parent */
+  color: #e2e8f0;
   font-weight: 700;
-  font-size: 10.5px;
-  letter-spacing: 0.08em;
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
+  height: 24px;
+  /* Heavy bottom border separates group header row from leaf header row */
+  border-bottom: 2px solid #0f172a;
 }
 
+/* Level 1 (row 2): sub-groups and rowspan leaves — sits below the group header row */
+.history-grid-table thead tr:nth-child(2) th {
+  top: 24px; /* matches group-header height */
+  border-bottom: 2px solid #94a3b8;
+}
+
+/* Level 2 (row 3): deepest leaves — 3-level grid only */
+.history-grid-table thead tr:nth-child(3) th {
+  top: 52px; /* 24px group + 28px level-1 */
+  border-bottom: 2px solid #94a3b8;
+}
+
+/* Only one header row? Keep it at top */
+.history-grid-table thead tr:only-child th {
+  top: 0;
+  border-bottom: 2px solid #94a3b8;
+}
+
+/* Collapsible group headers */
 .history-grid-table thead th.collapsible {
   cursor: pointer;
   user-select: none;
 }
 
 .history-grid-table thead th.collapsible:hover {
-  background: #cbd5e1;
+  background: #334155;
 }
 
 .collapse-icon {
-  font-size: 10px;
+  font-size: 8px;
   margin-left: 4px;
+  opacity: 0.7;
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
@@ -133,11 +179,11 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 9.5px;
+  font-size: 8.5px;
   font-weight: 800;
   letter-spacing: 0.06em;
-  border-radius: 4px;
-  padding: 2px 5px;
+  border-radius: 3px;
+  padding: 1px 4px;
   line-height: 1;
 }
 
@@ -166,82 +212,141 @@
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
-   ROW TYPES
+   ROW TYPES — visual hierarchy ladder
+   Month (deepest blue) > Week (green tint) > Service date (sky) > Service (white)
+   Each level is visually distinct in background, label color, and left accent stripe
    ══════════════════════════════════════════════════════════════════════════════ */
 
+/* ── MONTH HEADER — subtle blue, shows WK/Avg data ── */
 .row-month_header td {
-  background: #3b82f6;
-  color: white;
-  font-weight: 700;
-  font-size: 12px;
-  padding: 10px;
-}
-
-.row-mo td {
   background: #eff6ff;
+  color: #1e40af;
+  font-weight: 600;
+  font-size: 11px;
+  height: 32px;
+  border-top: 2px solid #93c5fd;
+  border-bottom: 1px solid #bfdbfe;
+  text-align: center;
 }
-
-.row-mo td.col-label {
+.row-month_header td.col-scope {
+  background: #dbeafe;
+  color: #1e40af;
+}
+.row-month_header td.col-label {
   background: #dbeafe;
   color: #1e40af;
   border-left: 3px solid #3b82f6;
-  font-weight: 500;
+  font-weight: 700;
+  text-align: left;
 }
 
-.row-week_header td {
-  background: #10b981;
-  color: white;
-  font-weight: 600;
+/* WK/Avg badge inside month label */
+.wk-avg-badge {
+  display: inline-block;
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #1d4ed8;
+  background: #bfdbfe;
+  border: 1px solid #93c5fd;
+  border-radius: 3px;
+  padding: 1px 4px;
+  margin-left: 6px;
+  text-transform: uppercase;
+  vertical-align: middle;
+  line-height: 1.4;
+}
+
+/* Month avg cells — NA variant (no data) */
+.row-month_header td.month-avg-na {
+  color: #bfdbfe;
+  font-weight: 400;
+}
+
+/* ── MONTH DATA ROW ── */
+.row-mo td {
+  background: #eff6ff;
   font-size: 11px;
-  padding: 8px;
+}
+.row-mo td.col-scope { background: #dbeafe; }
+.row-mo td.col-label {
+  background: #dbeafe;
+  color: #1e3a8a;
+  border-left: 3px solid #3b82f6;
+  font-weight: 600;
 }
 
+/* ── WEEK HEADER — emerald, white text ── */
+.row-week_header td {
+  background: #059669;
+  color: white;
+  font-weight: 700;
+  font-size: 10.5px;
+  height: 28px;
+}
+.row-week_header td.col-scope,
+.row-week_header td.col-label {
+  background: #059669;
+  color: white;
+}
+
+/* ── WEEK DATA ROW ── */
 .row-wk td {
   background: #f0fdf4;
-}
-
-.row-wk td.col-label {
-  background: #d1fae5;
-  color: #065f46;
-  border-left: 3px solid #22c55e;
-  padding-left: 16px;
-  font-weight: 500;
-}
-
-.row-svc_header td {
-  background: #dbeafe;
-  color: #1e40af;
-  font-weight: 600;
   font-size: 11px;
-  padding: 6px;
+}
+.row-wk td.col-scope { background: #dcfce7; }
+.row-wk td.col-label {
+  background: #dcfce7;
+  color: #14532d;
+  border-left: 3px solid #22c55e;
+  padding-left: 14px;
+  font-weight: 600;
 }
 
+/* ── SERVICE DATE HEADER — sky blue band ── */
+.row-svc_header td {
+  background: #bae6fd;
+  color: #0c4a6e;
+  font-weight: 600;
+  font-size: 10.5px;
+  height: 26px;
+}
+.row-svc_header td.col-scope,
+.row-svc_header td.col-label {
+  background: #bae6fd;
+  color: #0c4a6e;
+}
+
+/* ── SERVICE OCCURRENCE ROW — clean white with accent ── */
 .row-sv td {
   background: #ffffff;
+  font-size: 11.5px;
 }
-
 .row-sv td.col-label {
   background: #f0f9ff;
   color: #0369a1;
-  border-left: 3px solid #3b82f6;
-  padding-left: 22px;
+  border-left: 3px solid #38bdf8;
+  padding-left: 20px;
   font-weight: 500;
 }
-
 .row-sv:hover td {
   background: #f8fafc;
 }
-
-/* SD rows (single-day events) */
-.row-sd td {
-  background: #fffbeb;
+.row-sv:hover td.col-label {
+  background: #e0f2fe;
 }
 
+/* ── SINGLE-DAY EVENT ROW ── */
+.row-sd td {
+  background: #fffbeb;
+  font-size: 11px;
+}
 .row-sd td.col-label {
-  background: #fef3c7;
-  color: #92400e;
+  background: #fef9c3;
+  color: #713f12;
   border-left: 3px solid #f59e0b;
-  padding-left: 22px;
+  padding-left: 20px;
   font-weight: 500;
 }
 
@@ -252,7 +357,7 @@
 .history-grid-table td.editable {
   background: white;
   cursor: text;
-  padding: 4px;
+  padding: 3px;
 }
 
 .history-grid-table td.editable:hover {
@@ -265,9 +370,9 @@
   border: none;
   background: transparent;
   text-align: center;
-  font-size: 13px;
+  font-size: 11.5px;
   font-family: inherit;
-  padding: 4px;
+  padding: 3px;
   color: #0f172a;
 }
 
@@ -288,12 +393,13 @@
   font-weight: 600;
   cursor: not-allowed;
   text-align: center;
+  font-size: 11.5px;
 }
 
 .history-grid-table td.na {
   background: #f8fafc;
   color: #cbd5e1;
-  font-size: 11px;
+  font-size: 10.5px;
   text-align: center;
 }
 
@@ -302,20 +408,46 @@
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
+   COLUMN GROUP SEPARATORS
+   Left accent on the first td/th of every top-level column group.
+   Applied via .group-separator class set in HistoryGrid.tsx.
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+.history-grid-table td.group-separator,
+.history-grid-table th.group-separator {
+  border-left: 2px solid #94a3b8 !important;
+}
+
+/* Group-level header row: separator between grandparent header cells */
+.history-grid-table thead th.group-header.group-separator {
+  border-left: 2px solid #475569 !important;
+}
+
+/* Collapsed-group placeholder cell: visually blank — never shows a value or
+   borrowed content. Slight background tint communicates "this is a spacer for
+   a collapsed group, not a real data column." */
+.history-grid-table tbody td.collapsed-placeholder,
+.history-grid-table thead td.collapsed-placeholder {
+  background: #f8fafc;
+  cursor: default;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
    SAVE BAR
    ══════════════════════════════════════════════════════════════════════════════ */
 
 .save-bar {
-  position: fixed;
+  position: sticky;
   bottom: 0;
   left: 0;
   right: 0;
   background: white;
   border-top: 2px solid #f59e0b;
-  padding: 12px 20px;
+  padding: 10px 16px;
+  padding-bottom: max(10px, env(safe-area-inset-bottom));
   display: none;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
   box-shadow: 0 -4px 12px rgba(0,0,0,0.1);
   z-index: 100;
 }
@@ -325,7 +457,7 @@
 }
 
 .save-bar-text {
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 600;
   color: #0f172a;
 }
@@ -333,9 +465,9 @@
 .save-bar-count {
   background: #f59e0b;
   color: white;
-  padding: 2px 8px;
-  border-radius: 12px;
-  font-size: 12px;
+  padding: 1px 7px;
+  border-radius: 10px;
+  font-size: 11px;
   font-weight: 700;
 }
 
@@ -344,9 +476,9 @@
 }
 
 .save-bar button {
-  padding: 8px 16px;
+  padding: 6px 14px;
   border-radius: 6px;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   border: none;

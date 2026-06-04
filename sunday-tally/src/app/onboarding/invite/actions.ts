@@ -54,10 +54,12 @@ export async function sendInviteAction(
   const token = crypto.randomBytes(32).toString('hex') // N60 / D-009
   const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/auth/invite/${token}`
 
-  // INSERT church_invites
+  // INSERT church_invites — status='pending' + expires_at so the canonical
+  // Members screen (/settings/team) lists onboarding-created invites correctly.
+  const expiresAt = new Date(Date.now() + 14 * 86400_000).toISOString()
   const { error: insertError } = await supabase
     .from('church_invites')
-    .insert({ church_id: churchId, email, role, token })
+    .insert({ church_id: churchId, email, role, token, status: 'pending', expires_at: expiresAt })
 
   if (insertError) return { error: 'Failed to create invite.' }
 
@@ -116,7 +118,10 @@ export async function removeMemberAction(membershipId: string): Promise<{ error?
 
 export async function cancelInviteAction(inviteId: string): Promise<{ error?: string }> {
   const supabase = await createClient()
-  await supabase.from('church_invites').delete().eq('id', inviteId)
+  // Soft-cancel via status (keeps an audit row) instead of a hard DELETE so the
+  // canonical Members screen's status-based list (status IN pending/expired)
+  // correctly hides cancelled invites.
+  await supabase.from('church_invites').update({ status: 'cancelled' }).eq('id', inviteId)
   revalidatePath('/onboarding/invite')
   return {}
 }

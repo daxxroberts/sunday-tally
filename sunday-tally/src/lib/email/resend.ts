@@ -85,7 +85,7 @@ function render(template: EmailTemplate, d: TemplateData): { subject: string; ht
         html: wrap(`
           <p>Hi,</p>
           <p>${d.inviterName ?? 'A team member'} invited you to join <strong>${church}</strong> on Sunday Tally as <strong>${d.role ?? 'a team member'}</strong>.</p>
-          <p><a href="${d.inviteUrl}" style="background:#2563eb;color:#fff;padding:10px 16px;border-radius:6px;text-decoration:none;">Accept invitation</a></p>
+          <p><a href="${d.inviteUrl}" style="background:#4F6EF7;color:#fff;padding:10px 16px;border-radius:6px;text-decoration:none;">Accept invitation</a></p>
           <p style="color:#6b7280;font-size:12px;">This link expires in 7 days.</p>
         `),
       }

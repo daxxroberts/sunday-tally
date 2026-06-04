@@ -1,5 +1,5 @@
 # Provisioning — Church Analytics
-Version: 1.1 | 2026-04-10 | Owner: NOVA
+Version: 1.2 | 2026-05-29 | Owner: NOVA
 
 ---
 
@@ -36,9 +36,10 @@ Step 3: INSERT church_locations (church_id, name = 'Main Campus')
   → fails: DELETE churches WHERE id = church_id
            auth.admin.deleteUser(user_id) → return error
 
-Step 4: seed_default_service_tags(church_id)
-        seed_default_stat_categories(church_id)
-        seed_default_giving_sources(church_id)
+Step 4: seed_system_reporting_tags(church_id)
+        → inserts the 4 system reporting tags (ATTENDANCE, VOLUNTEERS,
+          GIVING, RESPONSE_STAT). Ministry tags are NOT seeded here —
+          they are created later during service setup / import.
   → fails: DELETE churches WHERE id = church_id (cascades locations + seeds)
            auth.admin.deleteUser(user_id) → return error
 
@@ -69,9 +70,13 @@ All defined in migrations. All idempotent — safe to run twice (ON CONFLICT DO 
 
 | Function | Migration | Creates |
 |---|---|---|
-| `seed_default_service_tags(church_id)` | 0008 | Morning · Evening · Midweek tags (no date range) |
-| `seed_default_stat_categories(church_id)` | 0006 | First-Time Decision · Rededication · Baptism (audience-scoped) |
-| `seed_default_giving_sources(church_id)` | 0007 | Plate · Online |
+| `seed_system_reporting_tags(church_id)` | 0024 | 4 system reporting tags: ATTENDANCE · VOLUNTEERS · GIVING · RESPONSE_STAT |
+
+Ministry tags (`service_tags`: `code`, `name`, `parent_tag_id`, `tag_role`)
+are NOT seeded at signup — they are created later during service setup / import.
+The former `response_categories`, `giving_sources`, and `volunteer_categories`
+tables (and their `seed_default_*` functions) have been dropped in the schema
+redesign and are no longer provisioned.
 
 ---
 
@@ -95,10 +100,8 @@ All defined in migrations. All idempotent — safe to run twice (ON CONFLICT DO 
 **Verify provisioning:**
 
 8. Check `church_locations` — one row with `church_id` matching the new church
-9. Check `service_tags` — three rows (MORNING, EVENING, MIDWEEK) for this church
-10. Check `response_categories` — three rows for this church
-11. Check `giving_sources` — two rows (Plate, Online) for this church
-12. Check `church_memberships` — one row with role = 'owner' for this church
+9. Check `service_tags` — four system reporting tags (ATTENDANCE, VOLUNTEERS, GIVING, RESPONSE_STAT) for this church; no ministry tags yet
+10. Check `church_memberships` — one row with role = 'owner' for this church
 
 ---
 
@@ -109,15 +112,13 @@ What a newly provisioned church looks like on first login:
 **Exists:**
 - One church record
 - One location ("Main Campus")
-- Three service tags (Morning · Evening · Midweek)
-- Three stat categories (First-Time Decision · Rededication · Baptism)
-- Two giving sources (Plate · Online)
+- Four system reporting tags (ATTENDANCE · VOLUNTEERS · GIVING · RESPONSE_STAT)
 - One Owner membership
 
 **Empty (owner sets up during onboarding):**
+- No ministry tags — created during service setup / import
 - No service templates — owner creates in T6
 - No schedules — owner creates in T-sched
-- No volunteer categories — owner creates in T7
 - No occurrences — generated when Sunday loop runs
 
 **Owner's first screen:**

@@ -4,7 +4,7 @@
 // IRIS_AUTH_ELEMENT_MAP.md: E1-E8 all implemented
 // D-015: magic link for viewers. D-048: viewer re-auth self-serve.
 
-import { useState, useTransition } from 'react'
+import { useEffect, useState, useTransition } from 'react'
 import Link from 'next/link'
 import AuthLayout from '@/components/layouts/AuthLayout'
 import { signInWithPasswordAction, sendMagicLinkAction } from './actions'
@@ -18,7 +18,13 @@ export default function AuthLoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [magicSent, setMagicSent] = useState(false)
   const [resendCooldown, setResendCooldown] = useState(0)
+  const [resetDone, setResetDone] = useState(false) // E-22 follow-through: success flash after /auth/reset
   const [isPending, startTransition] = useTransition()
+
+  // Read ?reset=1 flash client-side (avoids a Suspense boundary refactor; non-destructive to working auth).
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('reset') === '1') setResetDone(true)
+  }, [])
 
   function startResendCooldown() {
     setResendCooldown(60)
@@ -60,13 +66,22 @@ export default function AuthLoginPage() {
         <p className="mt-1 text-gray-500 text-sm">Track what matters. See what&apos;s growing.</p>
       </div>
 
+      {/* E-22 follow-through — password updated flash (sage, NO RED) */}
+      {resetDone && (
+        <div className="mb-6 rounded-xl border border-[#22C55E]/40 bg-[#22C55E]/5 px-3 py-2">
+          <p className="text-sm font-medium text-[#15803D]">
+            Password updated — sign in with your new password.
+          </p>
+        </div>
+      )}
+
       {/* Tab toggle — password vs magic link */}
       <div className="flex border border-gray-200 rounded-xl p-0.5 mb-6 bg-gray-50">
         <button
           type="button"
           onClick={() => { setMode('password'); setError(null); setMagicSent(false) }}
           className={`flex-1 text-sm py-1.5 rounded-lg transition-all font-medium ${
-            mode === 'password' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'
+            mode === 'password' ? 'bg-[#4F6EF7] text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'
           }`}
         >
           Password
@@ -75,7 +90,7 @@ export default function AuthLoginPage() {
           type="button"
           onClick={() => { setMode('magic'); setError(null) }}
           className={`flex-1 text-sm py-1.5 rounded-lg transition-all font-medium ${
-            mode === 'magic' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'
+            mode === 'magic' ? 'bg-[#4F6EF7] text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'
           }`}
         >
           Email link
@@ -94,7 +109,7 @@ export default function AuthLoginPage() {
           value={email}
           onChange={e => setEmail(e.target.value)}
           disabled={isPending}
-          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 text-sm"
+          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#4F6EF7] focus:border-transparent disabled:opacity-50 text-sm"
         />
       </div>
 
@@ -112,12 +127,16 @@ export default function AuthLoginPage() {
               value={password}
               onChange={e => setPassword(e.target.value)}
               disabled={isPending}
-              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 text-sm"
+              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#4F6EF7] focus:border-transparent disabled:opacity-50 text-sm"
             />
           </div>
 
           {error && (
-            <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
+            <p
+              role="alert"
+              aria-live="assertive"
+              className="text-sm text-[#B45309] bg-[#F59E0B]/10 border border-[#F59E0B]/40 rounded-xl px-3 py-2"
+            >
               {error}
             </p>
           )}
@@ -125,18 +144,27 @@ export default function AuthLoginPage() {
           <button
             type="submit"
             disabled={!email || !password || isPending}
-            className="w-full bg-blue-600 text-white rounded-xl py-3 font-semibold text-sm hover:bg-blue-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="w-full bg-[#4F6EF7] text-white rounded-xl py-3 font-semibold text-sm hover:bg-[#3D5BD4] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {isPending ? 'Signing in...' : 'Sign in'}
           </button>
 
-          <button
-            type="button"
-            onClick={() => { setMode('magic'); setError(null) }}
-            className="w-full text-center text-xs text-gray-400 hover:text-gray-600 transition-colors py-1"
-          >
-            Sign in with a link instead
-          </button>
+          {/* E-50 — Forgot password? (additive, password mode only). DESIGN_SYSTEM DS-1 brand. */}
+          <div className="flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => { setMode('magic'); setError(null) }}
+              className="text-xs text-gray-400 hover:text-gray-600 transition-colors py-1"
+            >
+              Sign in with a link instead
+            </button>
+            <Link
+              href="/auth/forgot"
+              className="text-xs font-medium text-[#3D5BD4] hover:text-[#4F6EF7] transition-colors py-1"
+            >
+              Forgot password?
+            </Link>
+          </div>
         </form>
       )}
 
@@ -144,30 +172,34 @@ export default function AuthLoginPage() {
       {mode === 'magic' && (
         <form onSubmit={handleMagicSubmit} className="space-y-4">
           {magicSent ? (
-            <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">
-              <p className="text-sm text-blue-800 font-semibold">Check your email</p>
-              <p className="text-xs text-blue-600 mt-1">
+            <div className="bg-[#4F6EF7]/5 border border-[#4F6EF7]/30 rounded-xl px-4 py-3">
+              <p className="text-sm text-[#3D5BD4] font-semibold">Check your email</p>
+              <p className="text-xs text-[#3D5BD4] mt-1">
                 We sent a link to {email}. Click it to sign in.
               </p>
               <button
                 type="submit"
                 disabled={resendCooldown > 0 || isPending}
-                className="mt-3 text-xs text-blue-600 hover:text-blue-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors font-medium"
+                className="mt-3 text-xs text-[#3D5BD4] hover:text-[#4F6EF7] disabled:opacity-40 disabled:cursor-not-allowed transition-colors font-medium"
               >
-                {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend link'}
+                {resendCooldown > 0 ? <>Resend in <span className="font-num">{resendCooldown}</span>s</> : 'Resend link'}
               </button>
             </div>
           ) : (
             <>
               {error && (
-                <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
+                <p
+                  role="alert"
+                  aria-live="assertive"
+                  className="text-sm text-[#B45309] bg-[#F59E0B]/10 border border-[#F59E0B]/40 rounded-xl px-3 py-2"
+                >
                   {error}
                 </p>
               )}
               <button
                 type="submit"
                 disabled={!email || isPending}
-                className="w-full bg-blue-600 text-white rounded-xl py-3 font-semibold text-sm hover:bg-blue-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className="w-full bg-[#4F6EF7] text-white rounded-xl py-3 font-semibold text-sm hover:bg-[#3D5BD4] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {isPending ? 'Sending...' : 'Send me a link'}
               </button>
@@ -184,7 +216,7 @@ export default function AuthLoginPage() {
       {/* New church */}
       <p className="mt-3 text-center text-xs text-gray-400">
         New church?{' '}
-        <Link href="/signup" className="text-blue-600 hover:text-blue-700 font-medium">
+        <Link href="/signup" className="text-[#3D5BD4] hover:text-[#4F6EF7] font-medium">
           Set up your account →
         </Link>
       </p>

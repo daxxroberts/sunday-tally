@@ -58,6 +58,9 @@ export async function POST(req: NextRequest) {
       case 'invoice.payment_failed':
         await handlePaymentFailed(supabase, event.data.object as Stripe.Invoice)
         break
+      case 'invoice.paid':
+        await handleInvoicePaid(supabase, event.data.object as Stripe.Invoice)
+        break
     }
 
     await supabase
@@ -145,32 +148,32 @@ async function handlePaymentFailed(
     ? invoice.customer
     : invoice.customer?.id
   if (!customerId) return
+  // Stripe owns the dunning email natively (Revenue recovery toggle). The app
+  // only flips the DB status; it does NOT send a failed-payment email — see
+  // STRIPE_AND_EMAIL_PLAN.md §5 (single source of truth = Stripe).
   await supabase
     .from('churches')
     .update({ subscription_status: 'past_due' })
     .eq('stripe_customer_id', customerId)
+}
 
-  const { data: church } = await supabase
+/**
+ * invoice.paid — a previously failed payment recovered (Smart Retries) or a
+ * normal renewal succeeded. Flip past_due → active so a recovered church is not
+ * left stuck until a later subscription.updated arrives. Idempotent: re-running
+ * on an already-active church is a no-op write of the same value.
+ */
+async function handleInvoicePaid(
+  supabase: ReturnType<typeof createServiceRoleClient>,
+  invoice: Stripe.Invoice,
+) {
+  const customerId = typeof invoice.customer === 'string'
+    ? invoice.customer
+    : invoice.customer?.id
+  if (!customerId) return
+  await supabase
     .from('churches')
-    .select('id, name')
+    .update({ subscription_status: 'active' })
     .eq('stripe_customer_id', customerId)
-    .maybeSingle()
-  if (!church) return
-
-  const { data: owner } = await supabase
-    .from('church_memberships')
-    .select('user_id')
-    .eq('church_id', church.id)
-    .eq('role', 'owner')
-    .eq('is_active', true)
-    .limit(1)
-    .maybeSingle()
-  if (!owner) return
-
-  const { data: userData } = await supabase.auth.admin.getUserById(owner.user_id)
-  const email = userData?.user?.email
-  if (!email) return
-
-  const { sendEmail } = await import('@/lib/email/resend')
-  await sendEmail(email, 'paymentFailed', { churchName: church.name })
+    .eq('subscription_status', 'past_due')
 }

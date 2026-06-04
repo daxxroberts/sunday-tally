@@ -191,8 +191,8 @@ export async function POST(req: Request) {
               const [templates, locations, volCats, respCats, givSrcs, tags] = await Promise.all([
                 ctx.supabase.from('service_templates').select('id, display_name, service_code').eq('church_id', ctx.churchId).eq('is_active', true),
                 ctx.supabase.from('church_locations').select('id, name, code').eq('church_id', ctx.churchId).eq('is_active', true),
-                ctx.supabase.from('volunteer_categories').select('category_code, category_name, audience_group_code').eq('church_id', ctx.churchId).eq('is_active', true),
-                ctx.supabase.from('response_categories').select('category_code, category_name, stat_scope').eq('church_id', ctx.churchId).eq('is_active', true),
+                ctx.supabase.from('volunteer_categories').select('category_code, category_name, primary_tag_id').eq('church_id', ctx.churchId).eq('is_active', true),
+                ctx.supabase.from('response_categories').select('category_code, category_name, stat_scope, primary_tag_id').eq('church_id', ctx.churchId).eq('is_active', true),
                 ctx.supabase.from('giving_sources').select('source_code, source_name').eq('church_id', ctx.churchId).eq('is_active', true),
                 ctx.supabase.from('service_tags').select('tag_code, tag_name').eq('church_id', ctx.churchId).eq('is_active', true),
               ])

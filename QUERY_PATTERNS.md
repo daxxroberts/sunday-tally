@@ -1,4 +1,18 @@
-# Church Analytics — Dashboard Query Patterns
+# Church Analytics — Query Patterns
+Version: 1.2 | Date: 2026-04-10
+
+> [!WARNING]
+> **ARCHITECTURAL SHIFT (V2)**
+> The patterns below were written for the V1 `service_occurrences` paradigm. The database has since been migrated to a **Timeframe-centric architecture** (Migration 0012).
+> 1. `service_occurrences` is now `service_instances`.
+> 2. The new God Node is the `occurrences` table (Daily, Weekly, Monthly timeframes).
+> 3. Dashboard queries must roll up through the `tag_relationships` Closure Table, rather than relying on flat primary tags.
+> 4. `service_occurrence_tags` is now `instance_tags`.
+> 
+> When writing queries, adapt the patterns below to JOIN through `occurrences` and `tag_relationships`.
+
+---
+
 ## Version 1.0 | Required reading before writing any dashboard query
 
 This document exists because the schema has several design decisions that are

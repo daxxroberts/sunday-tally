@@ -129,7 +129,7 @@ export default function OnboardingInvitePage() {
         {/* E7 — Done (after ≥1 sent) */}
         {sentCount > 0 && (
           <button
-            onClick={() => router.push('/services')}
+            onClick={() => router.push('/entries')}
             className="w-full bg-gray-900 text-white rounded-lg py-3 font-medium text-sm hover:bg-gray-700 transition-colors"
           >
             Done — let&apos;s see your services. →
@@ -138,7 +138,7 @@ export default function OnboardingInvitePage() {
 
         {/* E6 — Skip */}
         <button
-          onClick={() => router.push('/services')}
+          onClick={() => router.push('/entries')}
           className="w-full text-center text-sm text-gray-400 hover:text-gray-700 transition-colors py-2"
         >
           Skip for now — you can invite your team from Settings anytime.

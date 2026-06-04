@@ -78,7 +78,9 @@ function cadenceLabel(c: Metric['cadence']) {
 
 /* ── completion (N-6) ──────────────────────────────────────────────────── */
 function ministryStatus(m: Ministry, instId: string, entries: EntryMap): Stat {
-  const canon = m.metrics
+  // completion is measured against REQUIRED (canonical) metrics only — non-canonical
+  // metrics still render for entry but don't gate "complete"
+  const canon = m.metrics.filter(x => x.is_canonical)
   if (canon.length === 0) return 'complete'
   let done = 0
   for (const metric of canon) {
@@ -234,7 +236,6 @@ export default function EntriesPage() {
           .eq('church_id', churchId)
           .eq('scope', 'instance')
           .eq('is_active', true)
-          .eq('is_canonical', true)
           .in('ministry_tag_id', tagIds)
         for (const m of (metricRows ?? []) as any[]) {
           const metric: Metric = {
@@ -500,11 +501,18 @@ export default function EntriesPage() {
                 </div>
               </div>
             </div>
-            {/* E-3 — week navigator */}
-            <div className="flex items-center gap-1 rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
-              <button aria-label="Previous week" onClick={() => setWeekStart(w => addDays(w, -7))} className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-slate-400 transition-colors duration-200 hover:bg-slate-100 hover:text-slate-700 focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/40"><Ico.left className="h-4 w-4" /></button>
-              <span className="flex items-center gap-1.5 px-2 text-[13px] font-semibold text-slate-700"><Ico.calendar className="h-4 w-4 text-slate-400" />Week of {fmtWeek(weekStart)}</span>
-              <button aria-label="Next week" onClick={() => setWeekStart(w => addDays(w, 7))} className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-slate-400 transition-colors duration-200 hover:bg-slate-100 hover:text-slate-700 focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/40"><Ico.right className="h-4 w-4" /></button>
+            <div className="flex items-center gap-2">
+              {/* History link → past weeks (E-3b) */}
+              <a href="/history" className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-2.5 py-2 text-[13px] font-semibold text-slate-600 shadow-sm transition-colors duration-200 hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/40">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-slate-400"><path d="M12 8v4l3 2" /><path d="M3.05 11a9 9 0 1 1 .5 4M3 11V6m0 5h5" /></svg>
+                History
+              </a>
+              {/* E-3 — week navigator */}
+              <div className="flex items-center gap-1 rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
+                <button aria-label="Previous week" onClick={() => setWeekStart(w => addDays(w, -7))} className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-slate-400 transition-colors duration-200 hover:bg-slate-100 hover:text-slate-700 focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/40"><Ico.left className="h-4 w-4" /></button>
+                <span className="flex items-center gap-1.5 px-2 text-[13px] font-semibold text-slate-700"><Ico.calendar className="h-4 w-4 text-slate-400" />Week of {fmtWeek(weekStart)}</span>
+                <button aria-label="Next week" onClick={() => setWeekStart(w => addDays(w, 7))} className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-slate-400 transition-colors duration-200 hover:bg-slate-100 hover:text-slate-700 focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/40"><Ico.right className="h-4 w-4" /></button>
+              </div>
             </div>
           </div>
         </header>
@@ -752,14 +760,14 @@ function MinistryCard({ ministry, instId, entries, readOnly, onCommit, onToggleD
         <div className="space-y-1 px-3 py-2">
           {att.map(m => (
             <Field key={m.id} fieldId={`f-${m.id}-${instId}`} label={m.name} value={entries[`${m.id}|${instId}`]?.value ?? null}
-              needs readOnly={readOnly} onCommit={(v) => onCommit(m, instId, v)} />
+              needs={m.is_canonical} readOnly={readOnly} onCommit={(v) => onCommit(m, instId, v)} />
           ))}
           {vols.length > 0 && (
             <VolunteersGroup vols={vols} instId={instId} entries={entries} readOnly={readOnly} onCommit={onCommit} />
           )}
           {others.map(m => (
             <Field key={m.id} fieldId={`f-${m.id}-${instId}`} label={m.name} value={entries[`${m.id}|${instId}`]?.value ?? null}
-              needs readOnly={readOnly} onCommit={(v) => onCommit(m, instId, v)} />
+              needs={m.is_canonical} readOnly={readOnly} onCommit={(v) => onCommit(m, instId, v)} />
           ))}
         </div>
       )}

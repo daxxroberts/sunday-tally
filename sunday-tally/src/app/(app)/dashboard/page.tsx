@@ -1,18 +1,30 @@
 'use client'
 
-// D1 — Full Dashboard — /dashboard
-// IRIS_D1_ELEMENT_MAP.md v2.0 · E1–E10
-// D-033 revised (four columns) · D-041 revised (tag only in Other Stats) · D-044 superseded
-// D-045 carries (tracking flags) · D-053 (delta placement) · D-054 (localStorage prefs) · D-055 (grand total)
+// ─────────────────────────────────────────────────────────────────────────
+// DASHBOARD — D1 full dashboard — /(app)/dashboard (editor/admin/owner).
+// Build spec: IRIS_DASHBOARD_ELEMENT_MAP.md (E-1..E-83). UI rules: DESIGN_SYSTEM.md.
+// Reference look (wired + verified): /(app)/entries — primitives reused via dashboard/ui.
+//
+// This is a VISUAL + CONTEXT redesign over the existing dashboard.ts data layer.
+// The 4-window math (FourWin, D-053/055), deltas, tagSections, reportingMetrics,
+// highlights shapes are PRESERVED verbatim — only the JSX changes to the
+// DESIGN_SYSTEM/Entries look, plus campus context (E-2) + scope toggle (E-3).
+//
+// SCOPE (O-1 / N-3): dashboard.ts is currently church-wide (no campus filter).
+// MVP ships church-wide; the E-3 toggle is rendered locked to "All campuses"
+// with an honest title. Campus-scoped fetch is a flagged fast-follow (see report).
+// ─────────────────────────────────────────────────────────────────────────
 
 import { useState, useEffect, useMemo } from 'react'
 import AppLayout from '@/components/layouts/AppLayout'
 import { createClient } from '@/lib/supabase/client'
 import {
   fetchDashboardData,
+  emptyFourWin,
   type DashboardData,
   type FourWin,
-  type AudienceSection,
+  type TagSection,
+  type ReportingMetrics,
 } from '@/lib/dashboard'
 import {
   loadSummaryMetrics,
@@ -24,114 +36,88 @@ import {
   type SummaryMetricKey,
 } from '@/lib/dashboardPrefs'
 import type { UserRole, Church } from '@/types'
+import {
+  DashHeader, ColumnHeaders, FourColRow, CardHeader, NotInTotalTag, KpiCard,
+  KeyMetricCard, LaneLabel, EmptyState, fmtVal, Ico, accentForRole,
+} from './ui'
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+type Tracks = { tracks_volunteers: boolean; tracks_responses: boolean; tracks_giving: boolean }
+interface GridPrefs { excludedTotalMinistries?: string[] }
 
-function DeltaBadge({ delta }: { delta: number | null }) {
-  if (delta === null) return <span className="text-[10px] text-gray-300 font-medium tabular-nums">—</span>
-  const up = delta >= 0
-  return (
-    <span className={`inline-flex items-center gap-0.5 text-[10px] font-semibold tabular-nums px-1.5 py-0.5 rounded-full ${
-      up ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600'
-    }`}>
-      {up ? '▲' : '▼'}{Math.abs(delta)}%
-    </span>
-  )
+// ── derive a grandTotal FourWin honouring excludedTotalMinistries (E-22/E-54).
+//
+//    IMPORTANT (correctness — see review of D-082): dashboard.ts builds every
+//    TagSection's `attendance` via attendanceForRole(tag.tag_role) — the FULL
+//    audience aggregate for that role (all ADULT_SERVICE tags share one adults
+//    pivot, all KIDS_MINISTRY share kids, etc.). It is NOT a per-tag slice.
+//    Re-summing per-section attendance therefore double-counts the moment two
+//    tags share a role. So we MUST NOT sum section pivots.
+//
+//    Instead we work at the ROLE level, off summary.{adults,kids,youth,other}:
+//    a role's audience total is subtracted from the grand total only when EVERY
+//    tag carrying that role is excluded. Excluding one of several same-role
+//    ministries cannot be sliced from the role aggregate (the data layer does
+//    not expose a per-tag contribution), so that role stays fully counted and
+//    its excluded card is badged "not in total" (E-54 visual) — honest, never
+//    double-counted. Single-tag-per-role (the common case, incl. the demo
+//    church) behaves exactly as the map intends. DS-9 derived; metric_entries
+//    untouched. (To make partial same-role exclusion subtract precisely, the
+//    data layer would need a per-tag attendance contribution — flagged.) ───────
+
+type AudienceRole = 'ADULT_SERVICE' | 'KIDS_MINISTRY' | 'YOUTH_MINISTRY'
+
+// role → summary key whose FourWin is that role's full audience aggregate
+const ROLE_TO_SUMMARY: Record<AudienceRole, 'adults' | 'kids' | 'youth'> = {
+  ADULT_SERVICE: 'adults',
+  KIDS_MINISTRY: 'kids',
+  YOUTH_MINISTRY: 'youth',
 }
 
-function fmtNum(n: number | null, prefix = '') {
-  if (n === null) return <span className="text-gray-300">—</span>
-  return <>{prefix}{n.toLocaleString()}</>
+// subtract `b` from `a` window-by-window (nulls treated as 0 contribution; a
+// null in `a` stays null since there's nothing to subtract from).
+function subtractFourWin(a: FourWin, b: FourWin): FourWin {
+  const sub = (av: number | null, bv: number | null): number | null =>
+    av === null ? null : av - (bv ?? 0)
+  const pct = (cur: number | null, prior: number | null) =>
+    cur === null || prior === null || prior === 0 ? null : Math.round(((cur - prior) / prior) * 100)
+  const w = sub(a.w, b.w), m4 = sub(a.m4, b.m4), ytd = sub(a.ytd, b.ytd), priorYtd = sub(a.priorYtd, b.priorYtd)
+  return { w, m4, ytd, priorYtd, delta_w_m4: pct(w, m4), delta_ytd_prior: pct(ytd, priorYtd) }
 }
 
-/**
- * A four-column value row with deltas beneath Col1 and Col3 (D-053).
- * If `hideComparisons`, only Col1 shows a value; Col2-4 show "—" and deltas hide.
- */
-function FourColRow({
-  label,
-  values,
-  prefix,
-  indent,
-  hideComparisons,
-}: {
-  label: string
-  values: FourWin
-  prefix?: string
-  indent?: boolean
-  hideComparisons?: boolean
-}) {
-  const dash = <span className="text-gray-300">—</span>
-  return (
-    <div className="grid grid-cols-[minmax(0,1.6fr)_repeat(4,minmax(0,1fr))] gap-2 px-4 py-2 items-start border-b border-gray-50 last:border-b-0">
-      <div className={`text-xs font-medium text-gray-600 leading-tight ${indent ? 'pl-4' : ''}`}>{label}</div>
-      <div className="text-right">
-        <p className="text-sm font-semibold text-gray-900 tabular-nums leading-tight">{fmtNum(values.w, prefix)}</p>
-        {!hideComparisons && <div className="mt-0.5"><DeltaBadge delta={values.delta_w_m4} /></div>}
-      </div>
-      <div className="text-right">
-        <p className="text-sm font-semibold text-gray-700 tabular-nums leading-tight">{hideComparisons ? dash : fmtNum(values.m4, prefix)}</p>
-      </div>
-      <div className="text-right">
-        <p className="text-sm font-semibold text-gray-900 tabular-nums leading-tight">{hideComparisons ? dash : fmtNum(values.ytd, prefix)}</p>
-        {!hideComparisons && <div className="mt-0.5"><DeltaBadge delta={values.delta_ytd_prior} /></div>}
-      </div>
-      <div className="text-right">
-        <p className="text-sm font-semibold text-gray-700 tabular-nums leading-tight">{hideComparisons ? dash : fmtNum(values.priorYtd, prefix)}</p>
-      </div>
-    </div>
-  )
-}
-
-function ColumnHeaders() {
-  return (
-    <div className="grid grid-cols-[minmax(0,1.6fr)_repeat(4,minmax(0,1fr))] gap-2 px-4 pb-2 border-b border-gray-200">
-      <div />
-      <div className="text-right text-[11px] font-bold text-gray-500 uppercase tracking-wide">Curr Wk</div>
-      <div className="text-right text-[11px] font-bold text-gray-500 uppercase tracking-wide">Last 4-Wk</div>
-      <div className="text-right text-[11px] font-bold text-gray-500 uppercase tracking-wide">Curr YTD</div>
-      <div className="text-right text-[11px] font-bold text-gray-500 uppercase tracking-wide">Prior YTD</div>
-    </div>
-  )
-}
-
-function SectionHeader({ label, accent }: { label: string; accent: string }) {
-  return (
-    <div className="flex items-center gap-2 px-4 py-2 bg-gray-50 border-b border-gray-100">
-      <div className={`w-1.5 h-4 rounded-full flex-shrink-0 ${accent}`} />
-      <span className="text-[11px] font-bold text-gray-700 uppercase tracking-widest">{label}</span>
-    </div>
-  )
-}
-
-// ─── Summary Card (E3) ────────────────────────────────────────────────────────
-
+// ── Zone D — Summary card (E-30..E-33) + include-in-total edit (E-22 / I) ─────
 function SummaryCard({
-  summary,
-  flags,
-  onChange,
-  tracks,
-  hideComparisons,
+  summary, grandTotalOverride, tagSections, roleByTag, excluded, flags, onChangeFlags, onSavePrefs,
+  tracks, hideComparisons, readOnly,
 }: {
   summary: DashboardData['summary']
+  grandTotalOverride: FourWin
+  tagSections: TagSection[]
+  roleByTag: Map<string, string | null>
+  excluded: Set<string>
   flags: SummaryMetricFlags
-  onChange: (flags: SummaryMetricFlags) => void
-  tracks: { tracks_volunteers: boolean; tracks_responses: boolean; tracks_giving: boolean }
+  onChangeFlags: (flags: SummaryMetricFlags) => void
+  onSavePrefs: (next: GridPrefs) => void
+  tracks: Tracks
   hideComparisons: boolean
+  readOnly: boolean
 }) {
-  const [open, setOpen] = useState(false)
+  const [customize, setCustomize] = useState(false)
+  const [editTotals, setEditTotals] = useState(false)
+  const [draft, setDraft] = useState<Set<string>>(new Set(excluded))
+  useEffect(() => { setDraft(new Set(excluded)) }, [editTotals, excluded])
 
-  // Per D-045: tracking flags take precedence over user prefs — a metric is shown
-  // only when BOTH its flag (if any) is true AND user has it toggled on.
+  // ministries eligible for the include-in-total panel: real (non-unassigned) sections
+  const ministrySections = tagSections.filter(s => s.tag_id !== 'UNASSIGNED')
+
   const effectivelyHidden = (k: SummaryMetricKey): boolean => {
-    if (k === 'volunteers'         && !tracks.tracks_volunteers) return true
-    if (k === 'firstTimeDecisions' && !tracks.tracks_responses)  return true
-    if (k === 'giving'             && !tracks.tracks_giving)     return true
+    if (k === 'volunteers' && !tracks.tracks_volunteers) return true
+    if (k === 'firstTimeDecisions' && !tracks.tracks_responses) return true
+    if (k === 'giving' && !tracks.tracks_giving) return true
     return !flags[k]
   }
 
   const metricValues: Record<SummaryMetricKey, { values: FourWin; prefix?: string }> = {
-    grandTotal:         { values: summary.grandTotal },
+    grandTotal:         { values: grandTotalOverride },          // honours exclusions (E-54)
     adults:             { values: summary.adults },
     kids:               { values: summary.kids },
     youth:              { values: summary.youth },
@@ -141,47 +127,93 @@ function SummaryCard({
   }
 
   return (
-    <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-[0_1px_4px_-1px_rgba(0,0,0,0.06)]">
-      <div className="flex items-center justify-between px-4 py-2 bg-gradient-to-r from-blue-50 to-white border-b border-gray-100">
-        <div className="flex items-center gap-2">
-          <div className="w-1.5 h-4 rounded-full bg-blue-500 flex-shrink-0" />
-          <span className="text-[11px] font-bold text-blue-900 uppercase tracking-widest">Summary</span>
-        </div>
-        <button
-          onClick={() => setOpen(!open)}
-          className="text-[11px] font-medium text-blue-600 hover:text-blue-800 flex items-center gap-1"
-          aria-label="Customize summary metrics"
-        >
-          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-          {open ? 'Done' : 'Customize'}
-        </button>
-      </div>
+    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <CardHeader
+        label="Totals"
+        accentStyle={{ background: '#4F6EF7' }}
+        trailing={
+          !readOnly && (
+            <div className="flex items-center gap-1">
+              {/* E-22 — include-in-total edit (filled pencil, chrome on hover, DS-15) */}
+              <button
+                onClick={() => { setEditTotals(e => !e); setCustomize(false) }}
+                title="Edit what counts toward the grand total"
+                aria-label="Edit what counts toward the grand total"
+                className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full text-slate-400 transition-colors duration-200 hover:bg-slate-100 hover:text-slate-700 focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/40"
+              >
+                <Ico.pencilFill className="h-3 w-3" />
+              </button>
+              {/* E-32 — per-user customize */}
+              <button
+                onClick={() => { setCustomize(c => !c); setEditTotals(false) }}
+                className="flex cursor-pointer items-center gap-1 rounded-lg px-2 py-1 text-[12px] font-medium text-slate-500 transition-colors duration-200 hover:bg-slate-100 hover:text-slate-800 focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/40"
+              >
+                <Ico.gear className="h-3.5 w-3.5" />{customize ? 'Done' : 'Customize'}
+              </button>
+            </div>
+          )
+        }
+      />
 
-      {open && (
-        <div className="px-4 py-3 bg-blue-50/40 border-b border-blue-100">
-          <p className="text-[11px] font-semibold text-blue-900 mb-2">Show which metrics?</p>
+      {/* E-33 — per-user visibility checkboxes */}
+      {customize && !readOnly && (
+        <div className="border-b border-slate-100 bg-slate-50/60 px-4 py-3">
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Show which metrics?</p>
           <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
             {SUMMARY_METRIC_ORDER.map(key => {
               const disabled =
-                (key === 'volunteers'         && !tracks.tracks_volunteers) ||
+                (key === 'volunteers' && !tracks.tracks_volunteers) ||
                 (key === 'firstTimeDecisions' && !tracks.tracks_responses) ||
-                (key === 'giving'             && !tracks.tracks_giving)
+                (key === 'giving' && !tracks.tracks_giving)
               return (
-                <label key={key} className={`flex items-center gap-2 text-xs ${disabled ? 'text-gray-400' : 'text-gray-700 cursor-pointer'}`}>
+                <label key={key} className={`flex items-center gap-2 text-[12px] ${disabled ? 'text-slate-400' : 'cursor-pointer text-slate-700'}`}>
                   <input
                     type="checkbox"
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    className="rounded border-slate-300 text-[#4F6EF7] focus:ring-[#4F6EF7]"
                     checked={!disabled && flags[key]}
                     disabled={disabled}
-                    onChange={e => onChange({ ...flags, [key]: e.target.checked })}
+                    onChange={e => onChangeFlags({ ...flags, [key]: e.target.checked })}
                   />
                   <span>{SUMMARY_METRIC_LABELS[key]}{disabled && ' (tracking off)'}</span>
                 </label>
               )
             })}
+          </div>
+        </div>
+      )}
+
+      {/* E-22 panel — church-wide include-in-total (mirrors Entries TotalsView) */}
+      {editTotals && !readOnly && (
+        <div className="border-b border-slate-100 bg-slate-50/60 px-4 py-3">
+          <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Include in grand total</p>
+          <div className="space-y-1.5">
+            {ministrySections.map(s => {
+              const included = !draft.has(s.tag_id)
+              return (
+                <button
+                  key={s.tag_id}
+                  onClick={() => setDraft(d => { const n = new Set(d); if (included) n.add(s.tag_id); else n.delete(s.tag_id); return n })}
+                  className="flex w-full cursor-pointer items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 text-left transition-colors duration-200 hover:bg-slate-50"
+                >
+                  <span className="flex items-center gap-2.5">
+                    <span className={`flex h-5 w-5 items-center justify-center rounded-md border-2 transition-colors duration-200 ${included ? 'border-transparent' : 'border-slate-300'}`} style={included ? { background: '#4F6EF7' } : undefined}>
+                      {included && <Ico.check className="h-3 w-3 text-white" />}
+                    </span>
+                    <span className={`h-4 w-1.5 rounded-full ${accentForRole(roleByTag.get(s.tag_id) ?? null)}`} aria-hidden />
+                    <span className="text-[14px] font-semibold text-slate-800">{s.tag_name}</span>
+                  </span>
+                  <span className="font-num text-[13px] text-slate-500">{fmtVal(s.attendance.w)}</span>
+                </button>
+              )
+            })}
+          </div>
+          <div className="mt-3 flex items-center justify-between">
+            <span className="text-[11px] text-slate-400">Saved for the whole church · doesn’t change entered numbers</span>
+            <button
+              onClick={() => { onSavePrefs({ excludedTotalMinistries: Array.from(draft) }); setEditTotals(false) }}
+              className="cursor-pointer rounded-lg px-4 py-2 text-[13px] font-semibold text-white shadow-sm transition-opacity duration-200 hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/40"
+              style={{ background: '#4F6EF7' }}
+            >Save</button>
           </div>
         </div>
       )}
@@ -201,67 +233,54 @@ function SummaryCard({
   )
 }
 
-// ─── Audience Section (E4/E5/E6) ─────────────────────────────────────────────
+// tag_role lives on the underlying service_tag; dashboard.ts doesn't surface it on
+// TagSection. The page fetches a tag_id → tag_role lookup (roleByTag) so per-ministry
+// cards bind their accent lane / role label deterministically (E-50, D-074/081/082).
 
-function AudienceBlock({
-  title,
-  accent,
-  section,
-  tracks,
-  attendanceLabel,
-  hideComparisons,
+// ── Zone F — per-ministry breakdown card (E-50..E-54) ─────────────────────────
+function TagBlock({
+  section, role, excluded, tracks, hideComparisons,
 }: {
-  title: string
-  accent: string
-  section: AudienceSection
+  section: TagSection
+  role: string | null
+  excluded: boolean
   tracks: { tracks_volunteers: boolean; tracks_responses: boolean }
-  attendanceLabel?: string
   hideComparisons: boolean
 }) {
+  const isUnassigned = section.tag_id === 'UNASSIGNED'
   return (
-    <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-[0_1px_4px_-1px_rgba(0,0,0,0.06)]">
-      <SectionHeader label={title} accent={accent} />
+    <div className={`overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-opacity duration-200 ${excluded ? 'opacity-60' : ''}`}>
+      <CardHeader
+        label={section.tag_name}
+        role={isUnassigned ? undefined : role}
+        accentClass={isUnassigned ? 'bg-slate-300' : accentForRole(role)}
+        suffix={excluded ? <NotInTotalTag /> : undefined}
+      />
       <div>
-        <FourColRow
-          label={attendanceLabel ?? 'Attendance'}
-          values={section.attendance}
-          hideComparisons={hideComparisons}
-        />
-        {tracks.tracks_volunteers && (
-          <FourColRow label="Volunteers" values={section.volunteers} hideComparisons={hideComparisons} />
-        )}
+        {!isUnassigned && <FourColRow label="Attendance" values={section.attendance} hideComparisons={hideComparisons} />}
+        {tracks.tracks_volunteers && <FourColRow label="Volunteers" values={section.volunteers} hideComparisons={hideComparisons} />}
         {tracks.tracks_responses && section.stats.map(s => (
-          <FourColRow
-            key={s.category_id}
-            label={s.category_name}
-            values={s.values}
-            hideComparisons={hideComparisons}
-          />
+          <FourColRow key={s.category_id} label={s.category_name} values={s.values} hideComparisons={hideComparisons} />
         ))}
       </div>
     </div>
   )
 }
 
-// ─── Volunteer Breakout (E7) ─────────────────────────────────────────────────
-
-function VolunteerBreakoutBlock({
-  breakout,
-  hideComparisons,
-}: {
+// ── Zone G — Volunteer breakout (E-60..E-62), editor+ only ────────────────────
+function VolunteerBreakoutBlock({ breakout, hideComparisons }: {
   breakout: DashboardData['volunteerBreakout']
   hideComparisons: boolean
 }) {
-  const audienceLabel = { MAIN: 'Adults', KIDS: 'Kids', YOUTH: 'Youth' } as const
   return (
-    <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-[0_1px_4px_-1px_rgba(0,0,0,0.06)]">
-      <SectionHeader label="Volunteer Breakout" accent="bg-violet-500" />
+    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <CardHeader label="Volunteer Breakout" accentStyle={{ background: '#8B5CF6' }} />
       <div>
-        <FourColRow label="Total" values={breakout.total} hideComparisons={hideComparisons} />
+        <FourColRow label="Total" sub="calculated" values={breakout.total} hideComparisons={hideComparisons} />
         {breakout.rows.map(r => (
           <FourColRow
             key={r.category_id}
-            label={`${audienceLabel[r.audience_group_code]} · ${r.category_name}`}
+            label={`${r.tag_id !== 'UNASSIGNED' ? 'Assigned' : 'General'} · ${r.category_name}`}
             values={r.values}
             indent
             hideComparisons={hideComparisons}
@@ -272,74 +291,107 @@ function VolunteerBreakoutBlock({
   )
 }
 
-// ─── Other Stats (E8) ────────────────────────────────────────────────────────
-
-function OtherStatsBlock({
-  rows,
-  hideComparisons,
-}: {
+// ── Zone H — Other stats (church-wide remainder, E-70) ────────────────────────
+function OtherStatsBlock({ rows, hideComparisons }: {
   rows: DashboardData['otherStats']
   hideComparisons: boolean
 }) {
   return (
-    <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-[0_1px_4px_-1px_rgba(0,0,0,0.06)]">
-      <SectionHeader label="Other Stats" accent="bg-amber-500" />
+    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <CardHeader label="Other Stats" accentClass="bg-slate-300" />
       <div>
         {rows.length === 0 ? (
-          <p className="px-4 py-3 text-xs text-gray-400 italic">No other stats tracked.</p>
+          <p className="px-4 py-4 text-[12px] text-slate-400">No other stats tracked.</p>
         ) : rows.map(r => (
-          <FourColRow
-            key={r.key}
-            label={r.tag_code ? `${r.category_name} (${r.tag_code})` : r.category_name}
-            values={r.values}
-            hideComparisons={hideComparisons}
-          />
+          <FourColRow key={r.key} label={r.category_name} values={r.values} hideComparisons={hideComparisons} />
         ))}
       </div>
     </div>
   )
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
-
+// ── Page ──────────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
+  const supabase = useMemo(() => createClient(), [])
+
   const [role, setRole] = useState<UserRole>('admin')
   const [church, setChurch] = useState<Church | null>(null)
+  const [churchId, setChurchId] = useState<string | null>(null)
   const [userId, setUserId] = useState<string | null>(null)
+  const [campus, setCampus] = useState<{ id: string; name: string } | null>(null)
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [flags, setFlags] = useState<SummaryMetricFlags>(DEFAULT_SUMMARY_METRICS)
+  const [gridPrefs, setGridPrefs] = useState<GridPrefs>({})
+  const [roleByTag, setRoleByTag] = useState<Map<string, string | null>>(new Map())
+
+  const readOnly = role === 'viewer'
 
   useEffect(() => {
-    const supabase = createClient()
-    supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (!user) return
+    let cancelled = false
+    ;(async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) { if (!cancelled) setLoading(false); return }
       setUserId(user.id)
+
       const { data: membership } = await supabase
         .from('church_memberships')
-        .select('role, church_id, churches(*)')
+        .select('role, church_id, default_location_id, churches(*)')
         .eq('user_id', user.id).eq('is_active', true).single()
-      if (!membership) return
+      if (!membership || cancelled) { if (!cancelled) setLoading(false); return }
+
+      const ch = (Array.isArray(membership.churches) ? membership.churches[0] : membership.churches) as Church
       setRole(membership.role as UserRole)
-      // @ts-expect-error join
-      const ch = membership.churches as Church
       setChurch(ch)
+      setChurchId(membership.church_id)
       setFlags(loadSummaryMetrics(user.id, membership.church_id))
+      setGridPrefs(((ch as unknown as { grid_config?: GridPrefs })?.grid_config as GridPrefs) ?? {})
+
+      // active campus (N-2 / D-088): default_location_id → fallback first active by sort_order
+      let campusRow: { id: string; name: string } | null = null
+      if (membership.default_location_id) {
+        const { data: loc } = await supabase
+          .from('church_locations').select('id, name').eq('id', membership.default_location_id).maybeSingle()
+        if (loc) campusRow = loc
+      }
+      if (!campusRow) {
+        const { data: locs } = await supabase
+          .from('church_locations').select('id, name')
+          .eq('church_id', membership.church_id).eq('is_active', true)
+          .order('sort_order', { ascending: true }).limit(1)
+        if (locs && locs[0]) campusRow = locs[0]
+      }
+      if (!cancelled) setCampus(campusRow)
+
+      // tag_role lookup so per-ministry cards bind accent/label by role (E-50, D-074/081)
+      const { data: tagRows } = await supabase
+        .from('service_tags').select('id, tag_role')
+        .eq('church_id', membership.church_id).eq('is_active', true)
+      const rbt = new Map<string, string | null>()
+      for (const t of (tagRows ?? []) as { id: string; tag_role: string | null }[]) rbt.set(t.id, t.tag_role)
+      if (!cancelled) setRoleByTag(rbt)
 
       const d = await fetchDashboardData(membership.church_id, {
-        tracks_main_attendance: ch.tracks_main_attendance,
-        tracks_volunteers:      ch.tracks_volunteers,
-        tracks_responses:       ch.tracks_responses,
-        tracks_giving:          ch.tracks_giving,
+        tracks_volunteers: ch.tracks_volunteers,
+        tracks_responses:  ch.tracks_responses,
+        tracks_giving:     ch.tracks_giving,
       })
-      setData(d)
-      setLoading(false)
-    })
-  }, [])
+      if (!cancelled) { setData(d); setLoading(false) }
+    })()
+    return () => { cancelled = true }
+  }, [supabase])
 
   function handleFlagsChange(next: SummaryMetricFlags) {
     setFlags(next)
     if (userId && church) saveSummaryMetrics(userId, church.id, next)
+  }
+
+  // E-22 / N-6 — persist church-wide include-in-total to churches.grid_config
+  async function handleSavePrefs(next: GridPrefs) {
+    if (!churchId) return
+    setGridPrefs(next)
+    const existing = ((church as unknown as { grid_config?: object } | null)?.grid_config as object) ?? {}
+    await supabase.from('churches').update({ grid_config: { ...existing, ...next } }).eq('id', churchId)
   }
 
   const todayLabel = useMemo(
@@ -350,146 +402,183 @@ export default function DashboardPage() {
   const highlightDelta = (h: { current: number; prior: number }) =>
     h.prior === 0 ? null : Math.round(((h.current - h.prior) / h.prior) * 100)
 
-  // E10 — one-week state: when there's data for a single week only, hide comparisons.
   const hideComparisons = !!data && data.weeksWithData < 2
+  const excluded = useMemo(() => new Set(gridPrefs.excludedTotalMinistries ?? []), [gridPrefs])
 
-  if (!church) return null
+  // E-54 — recompute the headline grandTotal honouring exclusions, at the ROLE
+  // level (never by summing per-section pivots — those share a role aggregate and
+  // would double-count). Subtract a role's audience aggregate only when EVERY tag
+  // of that role is excluded; partial same-role exclusion leaves the role counted.
+  const grandTotalOverride = useMemo(() => {
+    if (!data) return emptyFourWin()
+    // if nothing is excluded, trust the data layer's grandTotal verbatim (D-082)
+    if (excluded.size === 0) return data.summary.grandTotal
+
+    // group real ministry tags by their audience role
+    const tagsByRole = new Map<AudienceRole, string[]>()
+    for (const s of data.tagSections) {
+      if (s.tag_id === 'UNASSIGNED') continue
+      const role = roleByTag.get(s.tag_id) ?? null
+      if (role !== 'ADULT_SERVICE' && role !== 'KIDS_MINISTRY' && role !== 'YOUTH_MINISTRY') continue
+      const arr = tagsByRole.get(role) ?? []
+      arr.push(s.tag_id)
+      tagsByRole.set(role, arr)
+    }
+
+    let total = data.summary.grandTotal
+    for (const [role, tagIds] of tagsByRole) {
+      const allExcluded = tagIds.length > 0 && tagIds.every(id => excluded.has(id))
+      if (allExcluded) {
+        total = subtractFourWin(total, data.summary[ROLE_TO_SUMMARY[role]])
+      }
+    }
+    return total
+  }, [data, excluded, roleByTag])
+
+  const tracks: Tracks = church
+    ? { tracks_volunteers: church.tracks_volunteers, tracks_responses: church.tracks_responses, tracks_giving: church.tracks_giving }
+    : { tracks_volunteers: false, tracks_responses: false, tracks_giving: false }
 
   return (
-    <AppLayout role={role}>
-      {/* E1 — Header */}
-      <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm border-b border-gray-100 px-4 py-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="font-bold text-gray-900 text-base leading-tight">Dashboard</p>
-            <p className="text-[11px] text-gray-400 leading-tight mt-0.5">{church.name ?? 'Church Analytics'}</p>
-          </div>
-          <span className="text-[11px] font-medium text-gray-400 bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1">{todayLabel}</span>
-        </div>
-      </div>
+    <AppLayout role={readOnly ? 'viewer' : role}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap');
+        .font-num{font-family:'Fira Code',ui-monospace,monospace;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+        @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+      `}</style>
 
-      <div className="px-4 py-4">
-        {loading ? (
-          <div className="space-y-3">
-            <div className="grid grid-cols-3 gap-3">
-              {[1, 2, 3].map(i => <div key={i} className="h-24 bg-gray-100 rounded-2xl animate-pulse" />)}
-            </div>
-            <div className="h-48 bg-gray-100 rounded-2xl animate-pulse mt-4" />
-            <div className="h-48 bg-gray-100 rounded-2xl animate-pulse" />
-          </div>
-        ) : !data || !data.hasAnyData ? (
-          /* E9 — Empty state */
-          <div className="text-center py-20">
-            <div className="w-14 h-14 rounded-2xl bg-blue-50 flex items-center justify-center mx-auto mb-4">
-              <svg className="w-7 h-7 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
-              </svg>
-            </div>
-            <p className="font-semibold text-gray-900 mb-1">No data yet</p>
-            <p className="text-sm text-gray-500">Data appears here after your first Sunday entry.</p>
+      <div className="bg-slate-50" style={{ fontFamily: "'Fira Sans', ui-sans-serif, system-ui, sans-serif" }}>
+        {!church ? (
+          <div className="mx-auto max-w-3xl px-4 py-10">
+            <div className="h-16 animate-pulse rounded-2xl bg-slate-100" />
           </div>
         ) : (
-          <div className="space-y-5">
+          <>
+            {/* ── Zone A — Header (E-1/E-2/E-3/E-4) ───────────────────────── */}
+            <DashHeader
+              eyebrow="Dashboard"
+              churchName={church.name}
+              campusName={campus?.name ?? null}
+              todayLabel={todayLabel}
+              scope={
+                // E-3 — scope toggle. MVP: data layer is church-wide (O-1/N-3),
+                // so this reflects "All campuses" and is locked with an honest hint.
+                <span
+                  title="Showing all campuses. Per-campus scoping is coming soon — campus is selected on the Locations page."
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[12px] font-semibold text-slate-600"
+                >
+                  <Ico.layers className="h-3.5 w-3.5 text-[#4F6EF7]" />All campuses
+                </span>
+              }
+            />
 
-            {/* E2 — KPI Highlight Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="relative bg-white rounded-2xl border border-gray-100 p-4 shadow-[0_1px_8px_-2px_rgba(0,0,0,0.08)] overflow-hidden">
-                <div className="absolute top-0 left-0 right-0 h-0.5 bg-blue-500 rounded-t-2xl" />
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Attendance</p>
-                <div className="flex items-end justify-between gap-2">
-                  <p className="text-3xl font-black text-gray-900 tabular-nums leading-none">{data.highlights.attendance.current.toLocaleString()}</p>
-                  <DeltaBadge delta={highlightDelta(data.highlights.attendance)} />
-                </div>
-                <p className="text-[11px] text-gray-400 mt-2 tabular-nums">vs {data.highlights.attendance.prior.toLocaleString()} last week</p>
-              </div>
-
-              {church.tracks_giving && (
-                <div className="relative bg-white rounded-2xl border border-gray-100 p-4 shadow-[0_1px_8px_-2px_rgba(0,0,0,0.08)] overflow-hidden">
-                  <div className="absolute top-0 left-0 right-0 h-0.5 bg-emerald-500 rounded-t-2xl" />
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Giving</p>
-                  <div className="flex items-end justify-between gap-2">
-                    <p className="text-3xl font-black text-gray-900 tabular-nums leading-none">${data.highlights.giving.current.toLocaleString()}</p>
-                    <DeltaBadge delta={highlightDelta(data.highlights.giving)} />
+            <main className="mx-auto max-w-3xl px-4 py-6">
+              {loading ? (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    {[1, 2, 3].map(i => <div key={i} className="h-24 animate-pulse rounded-2xl bg-slate-100" />)}
                   </div>
-                  <p className="text-[11px] text-gray-400 mt-2 tabular-nums">vs ${data.highlights.giving.prior.toLocaleString()} last week</p>
+                  <div className="h-48 animate-pulse rounded-2xl bg-slate-100" />
+                  <div className="h-48 animate-pulse rounded-2xl bg-slate-100" />
+                </div>
+              ) : !data || !data.hasAnyData ? (
+                <EmptyState message="Data appears here after your first Sunday entry." />
+              ) : (
+                <div className="space-y-5">
+                  {/* ── Zone B — highlight KPI cards (E-10..E-13) ───────────── */}
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    <KpiCard
+                      label="Attendance"
+                      value={data.highlights.attendance.current}
+                      delta={highlightDelta(data.highlights.attendance)}
+                      prior={data.highlights.attendance.prior}
+                    />
+                    {tracks.tracks_giving && (
+                      <KpiCard
+                        label="Giving" prefix="$"
+                        value={data.highlights.giving.current}
+                        delta={highlightDelta(data.highlights.giving)}
+                        prior={data.highlights.giving.prior}
+                      />
+                    )}
+                    {tracks.tracks_volunteers && (
+                      <KpiCard
+                        label="Serving"
+                        value={data.highlights.volunteers.current}
+                        delta={highlightDelta(data.highlights.volunteers)}
+                        prior={data.highlights.volunteers.prior}
+                      />
+                    )}
+                  </div>
+
+                  {/* ── Zone C — comparison column headers (E-20) ───────────── */}
+                  <ColumnHeaders />
+
+                  {/* ── Zone D — Summary card (E-30..E-33) + E-22 edit ──────── */}
+                  <SummaryCard
+                    summary={data.summary}
+                    grandTotalOverride={grandTotalOverride}
+                    tagSections={data.tagSections}
+                    roleByTag={roleByTag}
+                    excluded={excluded}
+                    flags={flags}
+                    onChangeFlags={handleFlagsChange}
+                    onSavePrefs={handleSavePrefs}
+                    tracks={tracks}
+                    hideComparisons={hideComparisons}
+                    readOnly={readOnly}
+                  />
+
+                  {/* ── Zone E — Key Metrics strip (E-40..E-43) ─────────────── */}
+                  <div>
+                    <LaneLabel label="Key Metrics" accentStyle={{ background: '#06B6D4' }} />
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                      <KeyMetricCard label="Avg Weekly Attendance" values={data.reportingMetrics.weeklyAvgAttendance} />
+                      {tracks.tracks_volunteers && (
+                        <KeyMetricCard label="Volunteers / Attendance" values={data.reportingMetrics.volToAttendancePct} suffix="%" />
+                      )}
+                      {tracks.tracks_giving && (
+                        <KeyMetricCard label="Per-Capita Giving" values={data.reportingMetrics.perCapitaGiving} prefix="$" />
+                      )}
+                    </div>
+                  </div>
+
+                  {/* ── Zone F — per-ministry breakdown (E-50..E-55) ────────── */}
+                  {data.tagSections.map(section => (
+                    <TagBlock
+                      key={section.tag_id}
+                      section={section}
+                      role={roleByTag.get(section.tag_id) ?? null}
+                      excluded={excluded.has(section.tag_id)}
+                      tracks={{ tracks_volunteers: tracks.tracks_volunteers, tracks_responses: tracks.tracks_responses }}
+                      hideComparisons={hideComparisons}
+                    />
+                  ))}
+
+                  {/* ── Zone G — Volunteer breakout (E-60..E-62) ────────────── */}
+                  {tracks.tracks_volunteers && (
+                    <VolunteerBreakoutBlock breakout={data.volunteerBreakout} hideComparisons={hideComparisons} />
+                  )}
+
+                  {/* ── Zone H — Other stats (E-70) ─────────────────────────── */}
+                  {tracks.tracks_responses && (
+                    <OtherStatsBlock rows={data.otherStats} hideComparisons={hideComparisons} />
+                  )}
+
+                  {/* ── E-82 — comparisons-pending note ─────────────────────── */}
+                  {hideComparisons && (
+                    <p className="flex items-center justify-center gap-1.5 py-2 text-center text-[12px] text-slate-400">
+                      <Ico.calendar className="h-3.5 w-3.5" />Comparisons appear after two weeks of data.
+                    </p>
+                  )}
+
+                  <p className="px-1 text-[12px] leading-relaxed text-slate-400">
+                    Every value is derived from your entries — never edited here. Totals roll up across the week’s sittings.
+                  </p>
                 </div>
               )}
-
-              {church.tracks_volunteers && (
-                <div className="relative bg-white rounded-2xl border border-gray-100 p-4 shadow-[0_1px_8px_-2px_rgba(0,0,0,0.08)] overflow-hidden">
-                  <div className="absolute top-0 left-0 right-0 h-0.5 bg-violet-500 rounded-t-2xl" />
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Serving</p>
-                  <div className="flex items-end justify-between gap-2">
-                    <p className="text-3xl font-black text-gray-900 tabular-nums leading-none">{data.highlights.volunteers.current.toLocaleString()}</p>
-                    <DeltaBadge delta={highlightDelta(data.highlights.volunteers)} />
-                  </div>
-                  <p className="text-[11px] text-gray-400 mt-2 tabular-nums">vs {data.highlights.volunteers.prior.toLocaleString()} last week</p>
-                </div>
-              )}
-            </div>
-
-            {/* Column headers (shared across all sections) */}
-            <ColumnHeaders />
-
-            {/* E3 — Summary Card */}
-            <SummaryCard
-              summary={data.summary}
-              flags={flags}
-              onChange={handleFlagsChange}
-              tracks={{
-                tracks_volunteers: church.tracks_volunteers,
-                tracks_responses:  church.tracks_responses,
-                tracks_giving:     church.tracks_giving,
-              }}
-              hideComparisons={hideComparisons}
-            />
-
-            {/* E4 — Adults */}
-            <AudienceBlock
-              title="Adults"
-              accent="bg-blue-500"
-              section={data.adults}
-              tracks={{ tracks_volunteers: church.tracks_volunteers, tracks_responses: church.tracks_responses }}
-              hideComparisons={hideComparisons}
-            />
-
-            {/* E5 — Kids */}
-            <AudienceBlock
-              title="Kids"
-              accent="bg-pink-500"
-              section={data.kids}
-              tracks={{ tracks_volunteers: church.tracks_volunteers, tracks_responses: church.tracks_responses }}
-              hideComparisons={hideComparisons}
-            />
-
-            {/* E6 — Youth (attendance labeled "Students") */}
-            <AudienceBlock
-              title="Youth"
-              accent="bg-orange-500"
-              section={data.youth}
-              tracks={{ tracks_volunteers: church.tracks_volunteers, tracks_responses: church.tracks_responses }}
-              attendanceLabel="Students"
-              hideComparisons={hideComparisons}
-            />
-
-            {/* E7 — Volunteer Breakout */}
-            {church.tracks_volunteers && (
-              <VolunteerBreakoutBlock breakout={data.volunteerBreakout} hideComparisons={hideComparisons} />
-            )}
-
-            {/* E8 — Other Stats */}
-            {church.tracks_responses && (
-              <OtherStatsBlock rows={data.otherStats} hideComparisons={hideComparisons} />
-            )}
-
-            {/* E10 — One Week footnote */}
-            {hideComparisons && (
-              <p className="text-center text-xs text-gray-400 italic py-2">
-                Comparisons appear after two weeks of data.
-              </p>
-            )}
-
-          </div>
+            </main>
+          </>
         )}
       </div>
     </AppLayout>

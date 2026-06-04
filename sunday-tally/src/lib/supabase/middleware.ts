@@ -34,11 +34,15 @@ export async function updateSession(request: NextRequest) {
   // Public routes — allow unauthenticated. Stripe webhooks and cron
   // jobs authenticate via their own signatures/bearer tokens.
   // API routes (/api/*) are also excluded — they return JSON 401, not HTML redirects.
+  // Broadened to '/auth/' so every auth surface is reachable while logged out:
+  // login, invite, forgot, reset, and the recovery/OTP landing at /auth/callback.
+  // The forgot/reset flow specifically depends on an unauthenticated user (they
+  // forgot their password) being able to load /auth/reset to process the token.
   const publicRoutes = [
-    '/auth/login',
-    '/auth/invite',
+    '/auth/',
     '/signup',
     '/api/',
+    '/services-prototype',
   ]
   const isPublic = publicRoutes.some(r => pathname.startsWith(r))
 
@@ -67,26 +71,70 @@ export async function updateSession(request: NextRequest) {
 
     const role = membership?.role
 
-    // Gate 3 — Viewer containment: viewer trying to access non-dashboard routes
-    if (role === 'viewer' && !pathname.startsWith('/dashboard') && !isPublic) {
+    // Retired Sunday-loop routes (T1–T5). The legacy /services tree was deleted
+    // when entry moved to /entries and History moved to /history (SESSION_HANDOFF
+    // item 8). NOTE: flow/NAV_MANIFEST.json does not exist in this repo, so there
+    // is no manifest authority — the Builder's logged instruction is the authority.
+    // /services/history → /history specifically; everything else under /services
+    // bounces role-aware. Guard against matching /services-prototype (public) or
+    // any future /services... by requiring an exact match or a trailing slash.
+    const isRetiredServices =
+      pathname === '/services' || pathname.startsWith('/services/')
+    if (isRetiredServices) {
+      const url = request.nextUrl.clone()
+      if (pathname === '/services/history') {
+        url.pathname = '/history'
+      } else if (role === 'viewer') {
+        url.pathname = '/dashboard/viewer'
+      } else {
+        url.pathname = '/entries'
+      }
+      return NextResponse.redirect(url)
+    }
+
+    // /settings/account is role-agnostic (display name, default campus, password) and the
+    // Settings nav tab is exposed to ALL roles specifically so everyone can reach it. Every
+    // /settings/* gate below makes an exception for it; the rest of /settings/* (hub config)
+    // stays owner/admin-only.
+    const isAccountSettings = pathname.startsWith('/settings/account')
+
+    // Gate 3 — Viewer containment: viewers live in /dashboard*, plus the shared
+    // /settings/account page. Anything else bounces them to the viewer dashboard.
+    if (
+      role === 'viewer' &&
+      !pathname.startsWith('/dashboard') &&
+      !isAccountSettings &&
+      !isPublic
+    ) {
       const url = request.nextUrl.clone()
       url.pathname = '/dashboard/viewer'
       return NextResponse.redirect(url)
     }
 
-    // Gate: Editor trying to access dashboard or settings
+    // Gate: Editor trying to access dashboard or settings — but allow /settings/account.
+    // Editors land on /entries (the retired /services route is gone).
     if (role === 'editor') {
-      if (pathname.startsWith('/dashboard') || pathname.startsWith('/settings')) {
+      if (
+        pathname.startsWith('/dashboard') ||
+        (pathname.startsWith('/settings') && !isAccountSettings)
+      ) {
         const url = request.nextUrl.clone()
-        url.pathname = '/services'
+        url.pathname = '/entries'
         return NextResponse.redirect(url)
       }
     }
 
-    // Gate: Settings only for owner/admin
-    if (pathname.startsWith('/settings') && role !== 'owner' && role !== 'admin') {
+    // Gate: hub config under /settings is owner/admin-only. /settings/account is allowed for
+    // every authenticated member. Non-owner/admin hitting other /settings/* bounces
+    // role-aware: editors → /entries, viewers → /dashboard/viewer.
+    if (
+      pathname.startsWith('/settings') &&
+      !isAccountSettings &&
+      role !== 'owner' &&
+      role !== 'admin'
+    ) {
       const url = request.nextUrl.clone()
-      url.pathname = '/services'
+      url.pathname = role === 'viewer' ? '/dashboard/viewer' : '/entries'
       return NextResponse.redirect(url)
     }
 

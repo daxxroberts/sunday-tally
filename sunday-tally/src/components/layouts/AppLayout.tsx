@@ -69,9 +69,17 @@ const TABS: Tab[] = [
     activeIcon: <SparkleIcon filled />,
   },
   {
+    // N-6 / IRIS_ACCOUNT: the Settings hub is the only in-app path to the
+    // role-agnostic /settings/account screen (display name, default campus,
+    // and E-46 "Set a password" — the password path OTP/magic-link viewers
+    // most need). Expose the tab to ALL roles so the route is reachable from
+    // the bottom nav, not just a raw URL. The hub itself stays role-gated:
+    // config rows render "View only" for non-writers and the owner/admin-only
+    // Data section is hidden, so editors/viewers see Account + read-only
+    // church structure exactly as the hub already intends.
     label: 'Settings',
     href: '/settings',
-    roles: ['owner', 'admin'],
+    roles: ['owner', 'admin', 'editor', 'viewer'],
     icon: <SettingsIcon />,
     activeIcon: <SettingsIcon filled />,
   },
@@ -120,11 +128,11 @@ export default function AppLayout({ children, role, fillHeight }: AppLayoutProps
                 key={tab.label}
                 href={tabHref(tab)}
                 className={`flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-colors ${
-                  active ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'
+                  active ? 'text-[#4F6EF7]' : 'text-gray-400 hover:text-gray-600'
                 }`}
               >
                 {active ? tab.activeIcon : tab.icon}
-                <span className={`text-xs font-medium ${active ? 'text-blue-600' : ''}`}>{tab.label}</span>
+                <span className={`text-xs font-medium ${active ? 'text-[#4F6EF7]' : ''}`}>{tab.label}</span>
               </Link>
             )
           })}
