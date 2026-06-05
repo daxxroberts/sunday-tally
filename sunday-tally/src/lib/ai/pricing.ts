@@ -15,11 +15,16 @@ interface ModelRates {
 }
 
 const RATES: Record<AiModel, ModelRates> = {
+  // Opus is NOT on any default path (Pattern Reader defaults to Sonnet; only the
+  // IMPORT_PATTERN_READER_MODEL env override reaches Opus). Rates verified against
+  // platform.claude.com pricing 2026-06-05: $5 in / $25 out, cache read $0.50 /
+  // 5m-write $6.25. NOTE: Opus 4.7+ uses a new tokenizer that can consume up to
+  // ~35% more tokens for the same text — a further reason to stay on Sonnet.
   'claude-opus-4-7': {
-    inputPerMTok:       15.00,
-    outputPerMTok:      75.00,
-    cacheReadPerMTok:    1.50,
-    cacheCreatePerMTok: 18.75,
+    inputPerMTok:        5.00,
+    outputPerMTok:      25.00,
+    cacheReadPerMTok:    0.50,
+    cacheCreatePerMTok:  6.25,
   },
   'claude-sonnet-4-6': {
     inputPerMTok:       3.00,
