@@ -1158,6 +1158,7 @@ export async function runStageA(args: {
   sources:      NormalizedSource[]
   sourceInputs: SourceInput[]
   freeText?:    string
+  jobId?:       string | null
 }): Promise<StageAResult> {
   let totalCents = 0
 
@@ -1195,6 +1196,7 @@ export async function runStageA(args: {
       churchId: args.churchId,
       source,
       allRows:  allRowsBySource[i],
+      jobId:    args.jobId,
     })
     totalCents += cents
     patternReports.push({ sourceName: source.name, report })
@@ -1222,6 +1224,7 @@ export async function runStageA(args: {
     handlers:    { propose_mapping: async (input) => input },
     terminateOn: ['propose_mapping'],
     maxTurns:    3,
+    jobId:       args.jobId,
     initialUser: userPrompt,
   })
   totalCents += result.totalCents
@@ -1251,6 +1254,7 @@ export async function runStageA(args: {
       handlers:    { propose_mapping: async (input) => input },
       terminateOn: ['propose_mapping'],
       maxTurns:    3,
+      jobId:       args.jobId,
       initialUser: correctionPrompt,
     })
     totalCents += correction.totalCents
@@ -1306,6 +1310,7 @@ export async function runStageA(args: {
       violations:  validation.violations,
       description: args.freeText ?? '',
       existingQuestions,
+      jobId:       args.jobId,
       mappingDigest: {
         sources: workingMapping.sources.map(s => ({
           source_name: s.source_name,

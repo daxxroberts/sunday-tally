@@ -539,6 +539,7 @@ export async function runPatternReader(args: {
   source:   NormalizedSource
   /** All rows already fetched by the caller — do NOT re-fetch inside here. */
   allRows:  Record<string, string>[]
+  jobId?:   string | null
 }): Promise<{ report: PatternReport | null; totalCents: number }> {
   const headers   = args.source.columns
   const allRows   = args.allRows
@@ -612,6 +613,7 @@ export async function runPatternReader(args: {
     handlers:    { report_patterns: async (input) => input },
     terminateOn: ['report_patterns'],
     maxTurns:    2,
+    jobId:       args.jobId,
     initialUser: userPrompt,
   })
 

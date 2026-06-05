@@ -55,6 +55,8 @@ export interface RunToolLoopArgs {
   /** Final tool name that terminates the loop (e.g. 'done', 'final_answer'). */
   terminateOn?: string[]
   maxTurns?:    number
+  /** Import job this loop belongs to — attributes usage events for per-import cost. */
+  jobId?:       string | null
   initialUser:  string | Anthropic.Messages.ContentBlockParam[]
   /** Invoked after each assistant turn with delta text for streaming surfaces. */
   onAssistantText?: (text: string) => void
@@ -81,7 +83,7 @@ export interface RunToolLoopResult {
 export async function runToolLoop(args: RunToolLoopArgs): Promise<RunToolLoopResult> {
   const {
     supabase, churchId, kind, model, system, tools, handlers,
-    terminateOn = [], maxTurns = 12, initialUser,
+    terminateOn = [], maxTurns = 12, jobId, initialUser,
     onAssistantText, onToolResult,
   } = args
 
@@ -115,7 +117,7 @@ export async function runToolLoop(args: RunToolLoopArgs): Promise<RunToolLoopRes
       cacheRead:   response.usage.cache_read_input_tokens     ?? 0,
       cacheCreate: response.usage.cache_creation_input_tokens ?? 0,
     }
-    const { cents } = await recordUsage(supabase, churchId, kind, model, usage)
+    const { cents } = await recordUsage(supabase, churchId, kind, model, usage, jobId)
     totalCents += cents
 
     // Collect assistant content

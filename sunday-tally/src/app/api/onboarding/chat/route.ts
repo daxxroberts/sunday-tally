@@ -197,7 +197,7 @@ ${
       output: response.usage.output_tokens || 0,
       cacheRead: response.usage.cache_read_input_tokens || 0,
       cacheCreate: response.usage.cache_creation_input_tokens || 0,
-    })
+    }, body.jobId)
 
     // Extract text + tool calls from the content blocks
     let text = ''

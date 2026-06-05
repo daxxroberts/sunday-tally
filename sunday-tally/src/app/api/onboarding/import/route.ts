@@ -70,6 +70,7 @@ export async function POST(req: Request) {
       sources:      normalized,
       sourceInputs: rawSources,
       freeText:     freeText || undefined,
+      jobId:        job.id,
     })
     await supabase
       .from('import_jobs')

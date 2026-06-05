@@ -61,6 +61,7 @@ export async function runStageARound2(args: {
   churchId:        string
   proposedMapping: Record<string, unknown> | null
   qaAnswers:       Array<Record<string, unknown>>
+  jobId?:          string | null
 }): Promise<Round2Result> {
   const userPrompt = [
     `Here is the mapping Round 1 produced:`,
@@ -82,6 +83,7 @@ export async function runStageARound2(args: {
     handlers:    { propose_round_2: async (input) => input },
     terminateOn: ['propose_round_2'],
     maxTurns:    2,
+    jobId:       args.jobId,
     initialUser: userPrompt,
   })
 

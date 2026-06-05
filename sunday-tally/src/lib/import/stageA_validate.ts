@@ -933,6 +933,7 @@ export async function interpretViolations(args: {
   /** Questions Sonnet already asked. Haiku must NOT duplicate any of these —
    *  even if a violation seems to call for the same kind of clarification. */
   existingQuestions?: Array<{ id: string; question: string }>
+  jobId?: string | null
 }): Promise<{ interpretation: HaikuInterpretation | null; totalCents: number }> {
   if (args.violations.length === 0) {
     return {
@@ -964,6 +965,7 @@ export async function interpretViolations(args: {
     handlers:    { propose_resolution: async (input) => input },
     terminateOn: ['propose_resolution'],
     maxTurns:    2,
+    jobId:       args.jobId,
     initialUser: userPrompt,
   })
 

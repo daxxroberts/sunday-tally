@@ -65,6 +65,7 @@ export async function recordUsage(
   kind: AiRequestKind,
   model: AiModel,
   usage: UsageTokens,
+  jobId?: string | null,   // import job this call belongs to; null for analytics_chat
 ): Promise<{ cents: number; remainingCents: number }> {
   const cents = tokensToCents(model, usage)
   const sel = await resolveBucket(supabase, churchId, kind)
@@ -88,6 +89,7 @@ export async function recordUsage(
       cents,
       bucket:              sel.bucket,
       period_key:          sel.periodKey,
+      job_id:              jobId ?? null,   // per-import attribution (migration 0030)
     })
 
   return {

@@ -58,6 +58,7 @@ export async function POST(req: Request) {
       churchId:        membership.church_id,
       proposedMapping: job.proposed_mapping as Record<string, unknown> | null,
       qaAnswers:       body.qa_answers,
+      jobId:           job.id,
     })
     return NextResponse.json(result)
   } catch (err) {
