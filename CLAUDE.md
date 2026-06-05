@@ -14,6 +14,20 @@ Stack: Next.js (App Router) · TypeScript · Supabase · Vercel · Tailwind CSS
 
 ---
 
+## Sub-Agents — Apply the Standard Every Time
+
+Before dispatching ANY sub-agent, load and apply `SUBAGENT_STANDARD.md` (repo root).
+Every sub-agent prompt MUST include the §1 Context Header (project + READ-FIRST
+pointers + Six Critical DB Rules + hard constraints + disjoint file scope + structured
+report format). The hard constraints are sealed: no DB mutations, no applying
+migrations (write FILES + flag NEEDS-APPROVAL), no external accounts/credentials,
+revert all test writes, stay on-branch/uncommitted, "wire-it-up = real integration,"
+stop-and-flag instead of guessing on navigation/schema/roles/copy. The brain reviews
+real diffs + build, gates through FELIX/LENS/SAGE, and always separates the Builder's
+"Your Turn" list. This is a rule, not a suggestion.
+
+---
+
 ## Read These Before Writing Any Code
 
 In this order. Confirm each one before moving to the next.

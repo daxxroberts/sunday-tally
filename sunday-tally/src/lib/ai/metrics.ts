@@ -7,7 +7,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
  * injects — the AI never provides it. No free-form SQL reaches the database.
  *
  * Every metric:
- *   - filters service_occurrences.status = 'active'
+ *   - filters service_instances.status = 'active'
  *   - treats NULL attendance as "not entered" (never coalesced to 0 in averages)
  *   - returns a tidy array the AI can either reason over or pass to render_chart
  */
@@ -117,7 +117,7 @@ async function attendanceByWeek(ctx: MetricContext, p: Record<string, unknown>) 
   }
 
   let query = ctx.supabase
-    .from('service_occurrences')
+    .from('service_instances')
     .select('service_date, attendance_entries(main_attendance, kids_attendance, youth_attendance)')
     .eq('church_id', ctx.churchId)
     .eq('status', 'active')
@@ -161,7 +161,7 @@ async function attendanceByTemplateMonth(ctx: MetricContext, p: Record<string, u
   const end   = `${year}-12-31`
 
   const { data, error } = await ctx.supabase
-    .from('service_occurrences')
+    .from('service_instances')
     .select(`
       service_date,
       service_template_id,
@@ -205,7 +205,7 @@ async function givingBySourceMonth(ctx: MetricContext, p: Record<string, unknown
   const end   = String(p.end_date)
 
   const { data, error } = await ctx.supabase
-    .from('service_occurrences')
+    .from('service_instances')
     .select(`
       service_date,
       giving_entries(giving_amount, giving_source_id, giving_sources(source_name))
@@ -249,7 +249,7 @@ async function ytdVsPrior(ctx: MetricContext, p: Record<string, unknown>) {
 
   async function sumRange(a: string, b: string) {
     const { data, error } = await ctx.supabase
-      .from('service_occurrences')
+      .from('service_instances')
       .select('attendance_entries(main_attendance, kids_attendance, youth_attendance)')
       .eq('church_id', ctx.churchId)
       .eq('status', 'active')
@@ -294,7 +294,7 @@ async function volunteerCountsMonth(ctx: MetricContext, p: Record<string, unknow
   const end   = String(p.end_date)
 
   const { data, error } = await ctx.supabase
-    .from('service_occurrences')
+    .from('service_instances')
     .select(`
       service_date,
       volunteer_entries(volunteer_count, is_not_applicable, volunteer_categories(category_name))
@@ -332,7 +332,7 @@ async function responseTotalRange(ctx: MetricContext, p: Record<string, unknown>
   const end   = String(p.end_date)
 
   const { data, error } = await ctx.supabase
-    .from('service_occurrences')
+    .from('service_instances')
     .select(`
       response_entries(stat_value, is_not_applicable, response_categories(category_name))
     `)

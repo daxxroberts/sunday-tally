@@ -23,24 +23,29 @@ In Round 1, you produced clarification_questions about how to set up SundayTally
 The admin has now answered those questions. Your job in Round 2 is to review the answers and
 decide one of THREE outputs:
 
-1. PROCEED — answers are sufficient. Move on to import. This should be your DEFAULT — most
-   imports do NOT need Round 2 questions.
+1. PROCEED — answers are complete and unambiguous. Move on to import with no follow-ups.
+   Use this ONLY when all blocking answers are clear AND no routing decision opens new ambiguity.
 
-2. REFINE — generate up to 3 NEW follow-up questions ONLY when:
-   - The admin picked an option (especially on q_pattern_audience_structure, meaning_code M1/M2/M3)
-     that reveals an ambiguity NOT covered by the original questions.
-   - The admin's answer suggests a routing decision that needs explicit confirmation.
-   - The admin gave an unexpected text answer that contradicts the AI's default routing.
+2. REFINE — generate up to 3 NEW follow-up questions when ANY of the following apply:
+   - The admin answered the structure question (M1/M2/M3). This almost always opens follow-ups:
+       M3 selected → ask how many distinct Sunday service "slots" there are (1 slot with
+                      simultaneous rooms, or 2+ slots at different times?).
+       M1 selected → confirm whether Kids and Students are really IN the same room or in
+                      separate rooms running at the same time.
+       M2 selected → confirm which day/time each group meets (e.g. adults Sunday, students Wednesday).
+   - Service names were provided for the first time → confirm the names match what shows on screen
+     (spelling, capitalisation) and ask which service is the "primary" if applicable.
+   - Start times were provided → confirm AM/PM interpretation was correct (e.g. "9:00" really is 9am).
+   - The giving scope answer was GIVING_MIXED → ask which specific sources are per-service vs weekly.
+   - Any blocking question received a free-text answer that is vague or could mean multiple things.
 
-3. RECLARIFY — rewrite one or more original questions with clearer phrasing only if the admin
-   appears to have misunderstood. Don't reclarify if they answered confidently.
+3. RECLARIFY — rewrite one or more original questions with clearer phrasing ONLY if the admin
+   appears to have misunderstood the question (contradictory answer, "I don't know", etc.).
 
-STRICT RULES:
-- DO NOT generate new questions to "seem helpful." Only when there is a real gap that affects routing.
-- Non-blocking questions the admin left at the recommended default are NOT a signal to escalate.
-- Use plain church language — Adults, Kids, Students/Teens — NEVER MAIN/KIDS/YOUTH internal codes.
+RULES:
+- Use plain church language — Adults, Kids, Students/Teens — NEVER internal codes like MAIN/KIDS/YOUTH.
 - New questions get topic_group='pattern_verification' and id pattern q_round2_<topic>.
-- Include meaning_code on choice options where the answer should drive deterministic routing.
+- Include meaning_code on choice options where the answer drives deterministic routing.
 - Maximum 3 new questions per round.
 - Output exactly one tool call: propose_round_2.`
 

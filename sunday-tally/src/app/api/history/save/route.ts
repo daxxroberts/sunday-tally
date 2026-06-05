@@ -3,15 +3,32 @@
  *
  * Save handler for the dynamic History grid (HistoryGrid component).
  * Decodes a flat list of (key, value) edits where the key follows
- * grid-builder.ts's row-id format:
+ * HistoryGrid's cell-key format:
  *
- *   ${rowType}-${anchor.toISOString()}-${metricId | serviceTemplateCode}-${columnId}
+ *   ${rowType}-${anchor.toISOString()}-${third}-${columnId}
  *
- * Dispatches by rowType + columnId prefix to the same tables Stage B writes
- * to (attendance/volunteer/response/giving entries, church_period_giving,
- * church_period_entries) using the existing dest_field grammar conventions.
+ * where:
+ *   rowType  = SV | WK | MO
+ *   anchor   = full ISO datetime (contains its own hyphens)
+ *   third    = serviceTemplateCode (SV) | weeklyMetric.id e.g. "wk_giving" (WK/MO)
+ *   columnId = the grid_config leaf column id, `metric.<CODE>` (or "occurrence_tags")
  *
- * Empty-string values DELETE the row (D-003: NULL ≠ 0).
+ * IR v2: ALL numeric data lands in `metric_entries`. We resolve the metric by
+ * its `code` (the `<CODE>` in `metric.<CODE>`) for the church, then:
+ *   - scope 'instance' → resolve/create the service_instance for (template, date)
+ *     and upsert with service_instance_id set, period_anchor NULL.
+ *   - scope 'period'   → snap the row date to its Sunday and upsert with
+ *     period_anchor set, service_instance_id NULL.
+ * Upsert conflict target is the single constraint
+ *   uq_metric_entry (metric_id, service_instance_id, period_anchor) NULLS NOT DISTINCT.
+ * reporting_tag_code is denormalized by a BEFORE-INSERT trigger — never set here.
+ *
+ * Empty-string / non-numeric values DELETE the entry row (D-003: NULL ≠ 0).
+ *
+ * Tag assignments (the `occurrence_tags` column) are NOT persisted: the unified
+ * tag schema (migrations 0022/0023) dropped the per-instance tag junction table
+ * and has no replacement yet. Those edits are skipped with a note rather than
+ * written to a non-existent table. (Out of scope for the metric_entries cutover.)
  */
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
@@ -28,27 +45,37 @@ interface ChangeEntry {
 interface DecodedKey {
   rowType:  'SV' | 'WK' | 'MO'
   anchorIso: string  // full ISO datetime
-  third:    string   // metricId for WK/MO, serviceTemplateCode for SV
-  columnId: string
+  third:    string   // serviceTemplateCode for SV, weeklyMetric id for WK/MO
+  columnId: string   // grid_config leaf column id (metric.<CODE> | occurrence_tags)
 }
 
 /**
- * Parse "SV-2026-04-26T05:00:00.000Z-sunday_9am-attendance.main"
- * into { rowType, anchorIso, third, columnId } when possible.
- * Returns null when the row type isn't editable (headers) or format is wrong.
+ * Parse "SV-2026-04-26T05:00:00.000Z-MORNING-metric.ADULT__ATTENDANCE".
+ * Anchored on the ISO timestamp so hyphens inside the third/columnId segments
+ * (service codes, metric codes) don't break the split. The ISO token has a
+ * fixed shape: YYYY-MM-DDTHH:MM:SS.sssZ.
  */
 function decodeKey(key: string): DecodedKey | null {
-  const parts = key.split('-')
-  if (parts.length !== 6) return null
-  const rowType = parts[0]
-  if (rowType !== 'SV' && rowType !== 'WK' && rowType !== 'MO') return null
-  const anchorIso = `${parts[1]}-${parts[2]}-${parts[3]}`
-  return {
-    rowType,
-    anchorIso,
-    third:    parts[4],
-    columnId: parts[5],
+  const m = key.match(
+    /^(SV|WK|MO)-(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z)-(.+)$/,
+  )
+  if (!m) return null
+  const rowType = m[1] as 'SV' | 'WK' | 'MO'
+  const anchorIso = m[2]
+  const rest = m[3] // "<third>-<columnId>"
+
+  // The columnId is the trailing `metric.<CODE>` or `occurrence_tags` token. Split
+  // on the LAST "-metric." / "-occurrence_tags" boundary so `third` keeps any
+  // hyphens it may contain.
+  const idx = rest.lastIndexOf('-metric.')
+  if (idx >= 0) {
+    return { rowType, anchorIso, third: rest.slice(0, idx), columnId: rest.slice(idx + 1) }
   }
+  const tagIdx = rest.lastIndexOf('-occurrence_tags')
+  if (tagIdx >= 0) {
+    return { rowType, anchorIso, third: rest.slice(0, tagIdx), columnId: 'occurrence_tags' }
+  }
+  return null
 }
 
 function isoToDateOnly(iso: string): string {
@@ -56,15 +83,12 @@ function isoToDateOnly(iso: string): string {
   return new Date(iso).toISOString().slice(0, 10)
 }
 
+/** Returns the ISO date string (YYYY-MM-DD) of the Sunday on or before the date. */
 function sundayOfWeek(isoDate: string): string {
   const d = new Date(isoDate + 'T00:00:00Z')
   const day = d.getUTCDay()
   d.setUTCDate(d.getUTCDate() - day)
   return d.toISOString().slice(0, 10)
-}
-
-function firstOfMonth(isoDate: string): string {
-  return isoDate.slice(0, 7) + '-01'
 }
 
 function parseNumber(raw: unknown): number | null {
@@ -74,54 +98,45 @@ function parseNumber(raw: unknown): number | null {
   return Number.isFinite(n) && n >= 0 ? n : null
 }
 
-function parseInteger(raw: unknown): number | null {
-  if (raw === null || raw === undefined || raw === '') return null
-  const cleaned = String(raw).replace(/[,\s]/g, '')
-  const n = Number(cleaned)
-  return Number.isInteger(n) && n >= 0 ? n : null
+// ── Code maps ──────────────────────────────────────────────────────────────────
+
+interface MetricInfo {
+  id:    string
+  scope: 'instance' | 'period'
 }
 
 interface CodeMaps {
-  templateUuidByCode: Map<string, string>
-  templateLocationId: Map<string, string>  // template_code → location_id (for occurrence creation)
-  categoryByCode:     Map<string, { id: string; scope: string }>
-  sourceUuidByCode:   Map<string, string>
-  volCatUuidByCode:   Map<string, string>
+  templateUuidByCode: Map<string, string>   // service_code → service_template UUID
+  templateLocationId: Map<string, string>   // service_code → location_id (for instance creation)
+  metricByCode:       Map<string, MetricInfo> // metric code → { id, scope }
 }
 
 async function loadCodeMaps(
   supabase: SupabaseClient,
   churchId: string,
 ): Promise<CodeMaps> {
-  const [tmpl, resp, src, vol] = await Promise.all([
+  const [tmpl, met] = await Promise.all([
     supabase.from('service_templates')
       .select('id, service_code, location_id')
       .eq('church_id', churchId),
-    supabase.from('response_categories')
-      .select('id, category_code, stat_scope')
-      .eq('church_id', churchId),
-    supabase.from('giving_sources')
-      .select('id, source_code')
-      .eq('church_id', churchId),
-    supabase.from('volunteer_categories')
-      .select('id, category_code')
-      .eq('church_id', churchId),
+    supabase.from('metrics')
+      .select('id, code, scope, is_active')
+      .eq('church_id', churchId)
+      .eq('is_active', true),
   ])
 
   const m: CodeMaps = {
     templateUuidByCode: new Map(),
     templateLocationId: new Map(),
-    categoryByCode:     new Map(),
-    sourceUuidByCode:   new Map(),
-    volCatUuidByCode:   new Map(),
+    metricByCode:       new Map(),
   }
   for (const r of tmpl.data ?? []) {
     m.templateUuidByCode.set(r.service_code, r.id)
     m.templateLocationId.set(r.service_code, r.location_id)
   }
-  for (const r of resp.data ?? []) m.categoryByCode.set(r.category_code, { id: r.id, scope: r.stat_scope })
-  for (const r of src.data  ?? []) m.sourceUuidByCode.set(r.source_code, r.id)
-  for (const r of vol.data  ?? []) m.volCatUuidByCode.set(r.category_code, r.id)
+  for (const r of met.data ?? []) {
+    m.metricByCode.set(r.code, { id: r.id, scope: r.scope as 'instance' | 'period' })
+  }
   return m
 }
 
@@ -133,7 +148,7 @@ async function findOrCreateOccurrence(
   serviceDate: string,
 ): Promise<string | null> {
   const existing = await supabase
-    .from('service_occurrences')
+    .from('service_instances')
     .select('id')
     .eq('church_id',           churchId)
     .eq('service_template_id', templateUuid)
@@ -143,7 +158,7 @@ async function findOrCreateOccurrence(
   if (existing.data) return existing.data.id
 
   const { data, error } = await supabase
-    .from('service_occurrences')
+    .from('service_instances')
     .insert({
       church_id:           churchId,
       service_template_id: templateUuid,
@@ -157,6 +172,76 @@ async function findOrCreateOccurrence(
   return data?.id ?? null
 }
 
+/**
+ * Upsert (or delete) one metric_entries row for an instance-scope metric.
+ * value === null → delete the row (D-003 NULL ≠ 0).
+ */
+async function upsertInstanceEntry(
+  supabase:  SupabaseClient,
+  churchId:  string,
+  metricId:  string,
+  occId:     string,
+  value:     number | null,
+  userId:    string,
+): Promise<string | null> {
+  if (value === null) {
+    const { error } = await supabase.from('metric_entries')
+      .delete()
+      .eq('metric_id', metricId)
+      .eq('service_instance_id', occId)
+    return error ? error.message : null
+  }
+  const { error } = await supabase.from('metric_entries')
+    .upsert(
+      {
+        church_id:           churchId,
+        metric_id:           metricId,
+        service_instance_id: occId,
+        period_anchor:       null,
+        value,
+        is_not_applicable:   false,
+        created_by:          userId,
+      },
+      { onConflict: 'metric_id,service_instance_id,period_anchor' },
+    )
+  return error ? error.message : null
+}
+
+/**
+ * Upsert (or delete) one metric_entries row for a period-scope metric.
+ * value === null → delete the row (D-003 NULL ≠ 0).
+ */
+async function upsertPeriodEntry(
+  supabase:  SupabaseClient,
+  churchId:  string,
+  metricId:  string,
+  anchor:    string,   // Sunday YYYY-MM-DD
+  value:     number | null,
+  userId:    string,
+): Promise<string | null> {
+  if (value === null) {
+    const { error } = await supabase.from('metric_entries')
+      .delete()
+      .eq('metric_id', metricId)
+      .eq('period_anchor', anchor)
+    return error ? error.message : null
+  }
+  const { error } = await supabase.from('metric_entries')
+    .upsert(
+      {
+        church_id:           churchId,
+        metric_id:           metricId,
+        service_instance_id: null,
+        period_anchor:       anchor,
+        value,
+        is_not_applicable:   false,
+        created_by:          userId,
+      },
+      { onConflict: 'metric_id,service_instance_id,period_anchor' },
+    )
+  return error ? error.message : null
+}
+
 export async function POST(req: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -166,12 +251,13 @@ export async function POST(req: Request) {
   if (!body.church_id || !Array.isArray(body.changes)) {
     return NextResponse.json({ error: 'bad_request' }, { status: 400 })
   }
+  const churchId = body.church_id
 
   const { data: membership } = await supabase
     .from('church_memberships')
     .select('role')
     .eq('user_id',   user.id)
-    .eq('church_id', body.church_id)
+    .eq('church_id', churchId)
     .eq('is_active', true)
     .maybeSingle()
   if (!membership) return NextResponse.json({ error: 'forbidden' }, { status: 403 })
@@ -179,9 +265,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 })
   }
 
-  const codeMaps = await loadCodeMaps(supabase, body.church_id)
+  const codeMaps = await loadCodeMaps(supabase, churchId)
   const errors:  string[] = []
-  const counts = { attendance: 0, response: 0, giving: 0, volunteer: 0, period_giving: 0, period_response: 0 }
+  const counts = { instance: 0, period: 0, tags: 0 }
+
+  // Resolve a `metric.<CODE>` columnId to its metric. Returns null for the
+  // non-metric tags column or unknown codes.
+  const resolveMetric = (columnId: string): MetricInfo | null => {
+    if (!columnId.startsWith('metric.')) return null
+    const code = columnId.slice('metric.'.length)
+    return codeMaps.metricByCode.get(code) ?? null
+  }
 
   for (const entry of body.changes) {
     const decoded = decodeKey(entry.key)
@@ -190,289 +284,41 @@ export async function POST(req: Request) {
       continue
     }
 
-    const { rowType, anchorIso, third, columnId } = decoded
+    const { anchorIso, third, columnId } = decoded
     const dateOnly = isoToDateOnly(anchorIso)
 
-    // ── SV row dispatch ────────────────────────────────────────────────────
-    if (rowType === 'SV') {
-      // Skip computed columns (read-only)
-      if (columnId === 'giving.total' || columnId === 'volunteer.total') continue
-
-      const templateCode = third
-      const templateUuid = codeMaps.templateUuidByCode.get(templateCode)
-      const locationId   = codeMaps.templateLocationId.get(templateCode)
-      if (!templateUuid || !locationId) {
-        errors.push(`Unknown service template "${templateCode}"`)
-        continue
-      }
-
-      const occId = await findOrCreateOccurrence(
-        supabase, body.church_id, templateUuid, locationId, dateOnly,
-      )
-      if (!occId) {
-        errors.push(`Failed to find/create occurrence for ${templateCode} ${dateOnly}`)
-        continue
-      }
-
-      // attendance.main / .kids / .youth
-      if (columnId.startsWith('attendance.')) {
-        const field = columnId.slice('attendance.'.length) as 'main' | 'kids' | 'youth'
-        const colName = `${field}_attendance`
-        const numVal = parseInteger(entry.value)
-        // Upsert with the specified column set; preserves other audience values
-        const { error } = await supabase
-          .from('attendance_entries')
-          .upsert(
-            {
-              service_occurrence_id: occId,
-              [colName]:             numVal,
-              last_updated_by:       user.id,
-            },
-            { onConflict: 'service_occurrence_id' },
-          )
-        if (error) errors.push(`attendance ${field}: ${error.message}`)
-        else counts.attendance++
-        continue
-      }
-
-      // giving.<source_code>
-      if (columnId.startsWith('giving.')) {
-        const code = columnId.slice('giving.'.length)
-        const sourceUuid = codeMaps.sourceUuidByCode.get(code)
-        if (!sourceUuid) { errors.push(`Unknown giving source "${code}"`); continue }
-        const amount = parseNumber(entry.value)
-        if (amount === null) {
-          // Empty value → delete the row
-          await supabase.from('giving_entries')
-            .delete()
-            .eq('service_occurrence_id', occId)
-            .eq('giving_source_id',      sourceUuid)
-        } else {
-          const { error } = await supabase.from('giving_entries')
-            .upsert(
-              {
-                service_occurrence_id: occId,
-                giving_source_id:      sourceUuid,
-                giving_amount:         amount,
-                submitted_by:          user.id,
-              },
-              { onConflict: 'service_occurrence_id,giving_source_id' },
-            )
-          if (error) errors.push(`giving ${code}: ${error.message}`)
-        }
-        counts.giving++
-        continue
-      }
-
-      // volunteer.<category_code>
-      if (columnId.startsWith('volunteer.')) {
-        const code = columnId.slice('volunteer.'.length)
-        const catUuid = codeMaps.volCatUuidByCode.get(code)
-        if (!catUuid) { errors.push(`Unknown volunteer category "${code}"`); continue }
-        const count = parseInteger(entry.value)
-        if (count === null) {
-          await supabase.from('volunteer_entries')
-            .delete()
-            .eq('service_occurrence_id', occId)
-            .eq('volunteer_category_id', catUuid)
-        } else {
-          const { error } = await supabase.from('volunteer_entries')
-            .upsert(
-              {
-                service_occurrence_id: occId,
-                volunteer_category_id: catUuid,
-                volunteer_count:       count,
-                is_not_applicable:     false,
-                created_by:            user.id,
-              },
-              { onConflict: 'service_occurrence_id,volunteer_category_id' },
-            )
-          if (error) errors.push(`volunteer ${code}: ${error.message}`)
-        }
-        counts.volunteer++
-        continue
-      }
-
-      // response.<category_code> or response.<category_code>.<MAIN|KIDS|YOUTH>
-      if (columnId.startsWith('response.')) {
-        const tail   = columnId.slice('response.'.length).split('.')
-        const code   = tail[0]
-        const audRaw = tail[1]
-        const audience = audRaw && ['MAIN', 'KIDS', 'YOUTH'].includes(audRaw) ? audRaw : null
-        const cat = codeMaps.categoryByCode.get(code)
-        if (!cat) { errors.push(`Unknown response category "${code}"`); continue }
-        const value = parseInteger(entry.value)
-        if (value === null) {
-          // Empty → delete (DELETE+INSERT pattern from IRIS map)
-          let q = supabase.from('response_entries')
-            .delete()
-            .eq('service_occurrence_id', occId)
-            .eq('response_category_id', cat.id)
-          q = audience === null ? q.is('audience_group_code', null) : q.eq('audience_group_code', audience)
-          await q
-        } else {
-          // Use DELETE+INSERT semantics for service-scope (audience NULL) per IRIS map
-          // Audience-scope can use UPSERT.
-          if (audience === null) {
-            await supabase.from('response_entries')
-              .delete()
-              .eq('service_occurrence_id', occId)
-              .eq('response_category_id', cat.id)
-              .is('audience_group_code', null)
-            const { error } = await supabase.from('response_entries')
-              .insert({
-                service_occurrence_id: occId,
-                response_category_id:  cat.id,
-                stat_value:            value,
-                audience_group_code:   null,
-                is_not_applicable:     false,
-                created_by:            user.id,
-              })
-            if (error) errors.push(`response ${code}: ${error.message}`)
-          } else {
-            const { error } = await supabase.from('response_entries')
-              .upsert(
-                {
-                  service_occurrence_id: occId,
-                  response_category_id:  cat.id,
-                  stat_value:            value,
-                  audience_group_code:   audience,
-                  is_not_applicable:     false,
-                  created_by:            user.id,
-                },
-                { onConflict: 'service_occurrence_id,response_category_id,audience_group_code' },
-              )
-            if (error) errors.push(`response ${code}.${audience}: ${error.message}`)
-          }
-        }
-        counts.response++
-        continue
-      }
-
-      errors.push(`Unhandled SV columnId "${columnId}"`)
+    // ── Tags (mass assignment) — no backing table in the unified schema ──────
+    // The per-instance tag junction was dropped (0022/0023) with no replacement.
+    // Skip silently-with-a-note rather than write to a non-existent table.
+    if (columnId === 'occurrence_tags') {
+      counts.tags++ // counted as "handled (skipped)" — no DB write
       continue
     }
 
-    // ── WK row dispatch ────────────────────────────────────────────────────
-    if (rowType === 'WK') {
-      const sundayDate = sundayOfWeek(dateOnly)
-      const metricId = third  // wk_giving_<source_code> | wk_<category_code>
+    // ── Metric cells (metric.<CODE>) ─────────────────────────────────────────
+    const metric = resolveMetric(columnId)
+    if (!metric) { errors.push(`Unknown metric column "${columnId}"`); continue }
+    const value = parseNumber(entry.value)
 
-      if (metricId.startsWith('wk_giving_')) {
-        const code = metricId.slice('wk_giving_'.length)
-        const sourceUuid = codeMaps.sourceUuidByCode.get(code)
-        if (!sourceUuid) { errors.push(`Unknown giving source "${code}"`); continue }
-        const amount = parseNumber(entry.value)
-        if (amount === null) {
-          await supabase.from('church_period_giving').delete()
-            .eq('church_id',         body.church_id)
-            .eq('giving_source_id',  sourceUuid)
-            .eq('entry_period_type', 'week')
-            .eq('period_date',       sundayDate)
-        } else {
-          const { error } = await supabase.from('church_period_giving')
-            .upsert(
-              {
-                church_id:         body.church_id,
-                giving_source_id:  sourceUuid,
-                entry_period_type: 'week',
-                period_date:       sundayDate,
-                giving_amount:     amount,
-                submitted_by:      user.id,
-              },
-              { onConflict: 'church_id,giving_source_id,entry_period_type,period_date' },
-            )
-          if (error) errors.push(`period_giving ${code}: ${error.message}`)
-        }
-        counts.period_giving++
-        continue
-      }
+    if (metric.scope === 'instance') {
+      // Instance-scope metrics live on SV rows. `third` is the service template code.
+      const templateUuid = codeMaps.templateUuidByCode.get(third)
+      const locationId   = codeMaps.templateLocationId.get(third)
+      if (!templateUuid || !locationId) { errors.push(`Unknown service template "${third}"`); continue }
+      const occId = await findOrCreateOccurrence(supabase, churchId, templateUuid, locationId, dateOnly)
+      if (!occId) { errors.push(`Failed to find/create occurrence for ${third} ${dateOnly}`); continue }
 
-      if (metricId.startsWith('wk_')) {
-        const code = metricId.slice('wk_'.length)
-        const cat  = codeMaps.categoryByCode.get(code)
-        if (!cat) { errors.push(`Unknown response category "${code}"`); continue }
-        const value = parseInteger(entry.value)
-        // service_tag_id IS NULL → can't UPSERT via PostgREST (NULL ≠ NULL on conflict);
-        // pattern: SELECT then UPDATE/INSERT (matches T_WEEKLY_STATS P16d).
-        const { data: ex } = await supabase.from('church_period_entries')
-          .select('id')
-          .eq('church_id',            body.church_id)
-          .eq('response_category_id', cat.id)
-          .eq('entry_period_type',    'week')
-          .eq('period_date',          sundayDate)
-          .is('service_tag_id', null)
-          .maybeSingle()
-        if (value === null) {
-          if (ex) await supabase.from('church_period_entries').delete().eq('id', ex.id)
-        } else if (ex) {
-          await supabase.from('church_period_entries')
-            .update({ stat_value: value, is_not_applicable: false })
-            .eq('id', ex.id)
-        } else {
-          const { error } = await supabase.from('church_period_entries')
-            .insert({
-              church_id:            body.church_id,
-              service_tag_id:       null,
-              response_category_id: cat.id,
-              entry_period_type:    'week',
-              period_date:          sundayDate,
-              stat_value:           value,
-              is_not_applicable:    false,
-            })
-          if (error) errors.push(`period_response ${code}: ${error.message}`)
-        }
-        counts.period_response++
-        continue
-      }
-
-      errors.push(`Unhandled WK metricId "${metricId}"`)
+      const err = await upsertInstanceEntry(supabase, churchId, metric.id, occId, value, user.id)
+      if (err) errors.push(`metric ${columnId} (instance): ${err}`)
+      else counts.instance++
       continue
     }
 
-    // ── MO row dispatch ────────────────────────────────────────────────────
-    if (rowType === 'MO') {
-      const monthStart = firstOfMonth(dateOnly)
-      const metricId = third  // mo_<category_code>
-      if (metricId.startsWith('mo_')) {
-        const code = metricId.slice('mo_'.length)
-        const cat  = codeMaps.categoryByCode.get(code)
-        if (!cat) { errors.push(`Unknown response category "${code}"`); continue }
-        const value = parseInteger(entry.value)
-        const { data: ex } = await supabase.from('church_period_entries')
-          .select('id')
-          .eq('church_id',            body.church_id)
-          .eq('response_category_id', cat.id)
-          .eq('entry_period_type',    'month')
-          .eq('period_date',          monthStart)
-          .is('service_tag_id', null)
-          .maybeSingle()
-        if (value === null) {
-          if (ex) await supabase.from('church_period_entries').delete().eq('id', ex.id)
-        } else if (ex) {
-          await supabase.from('church_period_entries')
-            .update({ stat_value: value, is_not_applicable: false })
-            .eq('id', ex.id)
-        } else {
-          const { error } = await supabase.from('church_period_entries')
-            .insert({
-              church_id:            body.church_id,
-              service_tag_id:       null,
-              response_category_id: cat.id,
-              entry_period_type:    'month',
-              period_date:          monthStart,
-              stat_value:           value,
-              is_not_applicable:    false,
-            })
-          if (error) errors.push(`period_response (month) ${code}: ${error.message}`)
-        }
-        counts.period_response++
-        continue
-      }
-
-      errors.push(`Unhandled MO metricId "${metricId}"`)
-      continue
-    }
+    // Period-scope metrics live on WK/MO rows — snap the anchor to its Sunday.
+    const anchor = sundayOfWeek(dateOnly)
+    const err = await upsertPeriodEntry(supabase, churchId, metric.id, anchor, value, user.id)
+    if (err) errors.push(`metric ${columnId} (period): ${err}`)
+    else counts.period++
   }
 
   return NextResponse.json({ counts, errors })

@@ -17,7 +17,7 @@ export default function SettingsStatsPage() {
   const [churchId, setChurchId] = useState('')
   const [cats, setCats] = useState<StatCategory[]>([])
   const [newName, setNewName] = useState('')
-  const [newScope, setNewScope] = useState<StatScope>('audience')
+  const [newScope, setNewScope] = useState<StatScope>('service')
   const [isPending, startTransition] = useTransition()
   const router = useRouter()
 
@@ -73,7 +73,7 @@ export default function SettingsStatsPage() {
             <div key={cat.id} className="px-4 py-3 flex items-center gap-3">
               <div className="flex-1">
                 <InlineEditField value={cat.category_name} onSave={v => saveName(cat.id, v)} aria-label={cat.category_name} disabled={!cat.is_custom} />
-                <p className="text-xs text-gray-400 mt-0.5">{{ audience: 'Per audience', service: 'Whole service', day: 'Per day', week: 'Per week', month: 'Per month' }[cat.stat_scope] ?? cat.stat_scope} {!cat.is_custom ? '· Default' : '· Custom'}</p>
+                <p className="text-xs text-gray-400 mt-0.5">{{ service: 'Whole service', day: 'Per day', week: 'Per week', month: 'Per month' }[cat.stat_scope] ?? cat.stat_scope} {!cat.is_custom ? '· Default' : '· Custom'}</p>
               </div>
               {cat.is_custom && (
                 <button onClick={() => deactivate(cat.id)} className="text-xs text-gray-400 hover:text-red-500 transition-colors">Remove</button>
@@ -84,7 +84,6 @@ export default function SettingsStatsPage() {
             <input type="text" value={newName} onChange={e => setNewName(e.target.value)} onKeyDown={e => e.key === 'Enter' && addStat()} placeholder="Add a custom stat..." className="w-full text-sm border-b border-gray-200 focus:border-gray-900 outline-none py-1 text-gray-900 placeholder-gray-400 bg-transparent" />
             <div className="flex items-center gap-3">
               <select value={newScope} onChange={e => setNewScope(e.target.value as StatScope)} className="text-xs border border-gray-200 rounded-lg px-2 py-1 text-gray-700 focus:outline-none">
-                <option value="audience">Per audience (Main/Kids/Youth)</option>
                 <option value="service">Whole service</option>
                 <option value="day">Per day</option>
                 <option value="week">Per week</option>

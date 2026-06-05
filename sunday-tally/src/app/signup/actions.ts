@@ -69,14 +69,9 @@ export async function signupAction(data: SignupData): Promise<{ error: string } 
     return { error: 'Something went wrong. Try again.' }
   }
 
-  // Step 4 — Seed defaults
-  const seeds = [
-    admin.rpc('seed_default_stat_categories', { p_church_id: churchId }),
-    admin.rpc('seed_default_giving_sources', { p_church_id: churchId }),
-    admin.rpc('seed_default_service_tags', { p_church_id: churchId }),
-  ]
-  const seedResults = await Promise.all(seeds)
-  const seedError = seedResults.find(r => r.error)?.error
+  // Step 4 — Seed system reporting tags (ATTENDANCE, VOLUNTEERS, GIVING, RESPONSE_STAT)
+  // Ministry tags are created later during service setup / import — not seeded here.
+  const { error: seedError } = await admin.rpc('seed_system_reporting_tags', { p_church_id: churchId })
 
   if (seedError) {
     console.error('SIGNUP ERROR (Seeds):', seedError)

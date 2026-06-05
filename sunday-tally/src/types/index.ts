@@ -12,6 +12,10 @@ export interface Church {
   tracks_volunteers: boolean
   tracks_responses: boolean
   tracks_giving: boolean
+  // churches.grid_config (nullable jsonb): persisted Entries/Dashboard/History
+  // customize state — grid layout (GridConfig) merged with include-in-total prefs.
+  // Read via narrowed casts at each call site; kept permissive here on purpose.
+  grid_config?: Record<string, unknown> | null
 }
 
 // ─── Church Membership ─────────────────────────────────────────────────────────
@@ -47,7 +51,7 @@ export interface ServiceTemplate {
 // ─── Service Occurrence ────────────────────────────────────────────────────────
 export type OccurrenceStatus = 'active' | 'cancelled'
 
-export interface ServiceOccurrence {
+export interface ServiceInstance {
   id: string
   church_id: string
   service_template_id: string
@@ -60,35 +64,32 @@ export interface ServiceOccurrence {
 // ─── Attendance ────────────────────────────────────────────────────────────────
 export interface AttendanceEntry {
   id: string
-  service_occurrence_id: string
+  service_instance_id: string
   main_attendance: number | null
   kids_attendance: number | null
   youth_attendance: number | null
 }
-
-// ─── Volunteer Categories ──────────────────────────────────────────────────────
-export type AudienceGroupCode = 'MAIN' | 'KIDS' | 'YOUTH'
 
 export interface VolunteerCategory {
   id: string
   church_id: string
   category_name: string
   category_code: string
-  audience_group_code: AudienceGroupCode
+  primary_tag_id: string | null
   is_active: boolean
   sort_order: number
 }
 
 export interface VolunteerEntry {
   id: string
-  service_occurrence_id: string
+  service_instance_id: string
   volunteer_category_id: string
   volunteer_count: number
   is_not_applicable: boolean
 }
 
 // ─── Response / Stats Categories ───────────────────────────────────────────────
-export type StatScope = 'audience' | 'service' | 'day' | 'week' | 'month'
+export type StatScope = 'service' | 'day' | 'week' | 'month'
 
 export interface ResponseCategory {
   id: string
@@ -96,6 +97,7 @@ export interface ResponseCategory {
   category_name: string
   category_code: string
   stat_scope: StatScope
+  primary_tag_id: string | null
   is_active: boolean
   is_custom: boolean
   display_order: number
@@ -103,9 +105,8 @@ export interface ResponseCategory {
 
 export interface ResponseEntry {
   id: string
-  service_occurrence_id: string
+  service_instance_id: string
   response_category_id: string
-  audience_group_code: AudienceGroupCode | null   // null for service-level stats
   stat_value: number
   is_not_applicable: boolean
 }
@@ -133,7 +134,7 @@ export interface GivingSource {
 
 export interface GivingEntry {
   id: string
-  service_occurrence_id: string
+  service_instance_id: string
   giving_source_id: string
   giving_amount: string   // NUMERIC(12,2) — use string to avoid float errors
 }

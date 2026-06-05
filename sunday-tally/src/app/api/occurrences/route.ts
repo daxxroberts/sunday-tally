@@ -1,5 +1,5 @@
 // POST /api/occurrences — D-052 server-side occurrence creation
-// N104: client never writes service_occurrences directly
+// N104: client never writes service_instances directly
 // Tags stamped at creation time (Rule 6)
 
 import { createClient } from '@/lib/supabase/server'
@@ -14,7 +14,7 @@ export async function POST(req: Request) {
 
   // 1. Check for existing occurrence (handle concurrent creation — F6)
   const { data: existing } = await supabase
-    .from('service_occurrences')
+    .from('service_instances')
     .select('id')
     .eq('service_template_id', service_template_id)
     .eq('service_date', service_date)
@@ -25,13 +25,49 @@ export async function POST(req: Request) {
     return NextResponse.json({ occurrence_id: existing.id })
   }
 
-  // 2. INSERT service_occurrences
+  // 1b. Create or get the parent Timeframe Occurrence (Weekly)
+  // We use the Sunday of the service_date as the occurrence_date for 'weekly' timeframes
+  const dateObj = new Date(service_date + 'T12:00:00')
+  const day = dateObj.getDay()
+  const sunday = new Date(dateObj)
+  sunday.setDate(dateObj.getDate() - day)
+  const sundayStr = sunday.toISOString().split('T')[0]
+
+  let timeframeId: string | null = null
+
+  const { data: tfExisting } = await supabase
+    .from('occurrences')
+    .select('id')
+    .eq('church_id', church_id)
+    .eq('location_id', location_id)
+    .eq('timeframe_type', 'weekly')
+    .eq('occurrence_date', sundayStr)
+    .single()
+
+  if (tfExisting) {
+    timeframeId = tfExisting.id
+  } else {
+    const { data: tfNew } = await supabase
+      .from('occurrences')
+      .insert({
+        church_id,
+        location_id,
+        timeframe_type: 'weekly',
+        occurrence_date: sundayStr
+      })
+      .select('id')
+      .single()
+    if (tfNew) timeframeId = tfNew.id
+  }
+
+  // 2. INSERT service_instances
   const { data: newOccurrence, error: occError } = await supabase
-    .from('service_occurrences')
+    .from('service_instances')
     .insert({
       church_id,
       service_template_id,
       location_id,
+      occurrence_id: timeframeId,
       service_date,
       status: 'active',
     })
@@ -41,7 +77,7 @@ export async function POST(req: Request) {
   if (occError || !newOccurrence) {
     // Race condition — try fetching existing again
     const { data: raceExisting } = await supabase
-      .from('service_occurrences')
+      .from('service_instances')
       .select('id')
       .eq('service_template_id', service_template_id)
       .eq('service_date', service_date)
@@ -70,10 +106,10 @@ export async function POST(req: Request) {
 
   if (tagIds.size > 0) {
     const occurrenceTags = Array.from(tagIds).map(tagId => ({
-      service_occurrence_id: newOccurrence.id,
+      service_instance_id: newOccurrence.id,
       service_tag_id: tagId,
     }))
-    await supabase.from('service_occurrence_tags').insert(occurrenceTags)
+    await supabase.from('instance_tags').insert(occurrenceTags)
   }
 
   return NextResponse.json({ occurrence_id: newOccurrence.id })

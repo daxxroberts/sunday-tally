@@ -1,3 +1,6 @@
+/* DS-4: load Fira Sans + Fira Code app-wide so tabular numerals (.font-num) work on
+   every screen, not just pages that inline their own @import. Must precede other rules. */
+@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap');
 @import "tailwindcss";
 
 :root {
@@ -23,4 +26,36 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* "Just answered" satisfaction animation for walkthrough recap checkmarks.
+   Pops the check badge in with a brief glow, then settles. Plays once on mount
+   so a freshly-answered question feels rewarding; scrolling back through prior
+   answers doesn't replay it. */
+@keyframes check-pop {
+  0%   { transform: scale(0);    opacity: 0; box-shadow: 0 0 0 rgba(16,185,129,0.0); }
+  55%  { transform: scale(1.25); opacity: 1; box-shadow: 0 0 14px rgba(16,185,129,0.7); }
+  100% { transform: scale(1);    opacity: 1; box-shadow: 0 0 0 rgba(16,185,129,0.0); }
+}
+.animate-check-pop {
+  animation: check-pop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* DS-4: tabular numerals for numeric data (entries, dashboard, settings, billing).
+   Referenced across many screens; defined here so it is real app-wide rather than only
+   where a page injects its own inline @import. */
+.font-num {
+  font-family: 'Fira Code', ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* Slow rotating ring on the most-recently-answered card so the user's eye
+   is drawn to their progress for a beat after answering. */
+@keyframes check-ring-fade {
+  0%   { box-shadow: 0 0 0 0   rgba(16,185,129,0.55); }
+  100% { box-shadow: 0 0 0 8px rgba(16,185,129,0.0);  }
+}
+.animate-check-ring {
+  animation: check-ring-fade 0.9s ease-out 0.1s 1 both;
 }

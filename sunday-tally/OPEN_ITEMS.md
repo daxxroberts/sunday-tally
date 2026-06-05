@@ -137,3 +137,49 @@ Items below are grouped by urgency. Anything under **Before first deploy** block
   `runToolLoop`; the AI never receives `churchId` as input. Do not relax this.
 - **D-063** — analytics chat uses only the 6 named metrics in `src/lib/ai/metrics.ts`.
   Do not add a free-form SQL tool.
+
+---
+
+## Onboarding-import review + History grid — 2026-05-24
+
+Carry-over from the conversation/grid-update loop. Each item below is a real bug observed end-to-end with the Sunday Sheet import; chat conversation, live grid update, and Confirm & Import work correctly.
+
+### Bugs (functional)
+
+- **Volunteer columns missing from History grid even when entries exist.** Root cause:
+  `src/lib/history/derive_grid_config.ts` selects `primary_tag_id` from `volunteer_categories`,
+  but the column doesn't exist on that table — it's `audience_group_code` (MAIN/KIDS/YOUTH).
+  Supabase silently returns an error and `volCats` ends up `[]`, so no volunteer subgroups are
+  rendered. Fix: select `audience_group_code` and bucket vols by code directly. Same file also
+  uses hardcoded `MAIN`/`KIDS`/`YOUTH` tag matching — works once we route by `audience_group_code`,
+  but the `isAncestor`-based service template routing should be sanity-checked alongside.
+- **Phantom Plate/Online giving columns on History.** Created 2026-05-21 02:45 in a prior session
+  for "Dummy Test Church". The current Sunday-Sheet import had `giving_sources: []`. The History
+  page reads existing `giving_sources` rows for the church, so legacy sources persist. Not a bug
+  per-se, but worth noting that orphaned `giving_sources` for a church live on indefinitely.
+- **Chat-driven mapping edits lost on review-page reload.** `update_mapping` tool only updates
+  client `currentMapping` state; nothing writes the new mapping back to
+  `import_jobs.proposed_mapping`, so a refresh reloads the original `[BLOCKING]` names.
+- **Date drift in PreviewGrid mock.** Mock `serviceDate = lastSunday` (local) but
+  `grid-builder.ts` uses `toISOString().split('T')[0]` (UTC) when bucketing — in timezones west
+  of UTC the row label flips to Saturday. Minor cosmetic.
+- **`@ai-sdk/anthropic` returns 404 Not Found.** Avoid this package in this project; the
+  direct `@anthropic-ai/sdk` client works fine with the same key. Currently in use in
+  `/api/onboarding/chat`.
+
+### Pipeline gap (Stage A prompt)
+
+- **AI doesn't emit `clarification_questions` for [BLOCKING] services.** RULE 4 of Stage A
+  requires a paired clarification question whenever `display_name` is `[BLOCKING]`, but the
+  array came back empty. Either the prompt needs tightening or Stage A is silently dropping
+  questions. Chat intro on the review page covers the gap on the front end.
+
+### Grid-structure follow-ups (design-level, not yet built)
+
+- **Weekly multi-source metrics render as one row per source.** Today: a row for "Plate" and a
+  row for "Online" each week. Proposal (Daxx): single weekly row labelled by the parent tag
+  ("Giving"), with `Plate` / `Online` as column children. Question: does this generalise to
+  any weekly multi-source metric, or just giving?
+- **Service-occurrence row labels don't surface the parent tag.** Today: row reads "9 AM
+  Service". Proposal: somehow expose the parent tag (`MORNING`, `LIFEKIDS`, etc.) on the
+  occurrence row — possibly as a left-side badge, possibly as a grouping header.

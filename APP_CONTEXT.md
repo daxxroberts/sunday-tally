@@ -1,12 +1,25 @@
 # Church Analytics — App Context
 ## For any agent starting fresh on this build
-## Version 1.2 | 2026-04-10
+## Version 2.0 | 2026-05-29 | Tag-first unified schema (Solution A)
+
+> **v2.0 is a schema redesign.** The category-per-kind model (attendance_entries,
+> volunteer_entries, response_entries, giving_entries + volunteer_categories,
+> response_categories, giving_sources) is replaced by a unified, tag-first model:
+> two tag axes (ministry + reporting), one `metrics` definition table, one
+> `metric_entries` value table. Migration 0022 performs a **full reset** — all
+> data is wiped, including churches. Re-provision via signup. See DECISION_REGISTER
+> D-059 … D-070.
 
 ---
 
 ## What This Is
 
-A multi-tenant SaaS for churches to track weekly ministry data and view standardised dashboards. Churches log attendance, volunteer counts, stats (decisions, baptisms, custom metrics), and giving every week. They see those numbers as comparisons over time in a dashboard grouped by service tag.
+A multi-tenant SaaS for churches to track weekly ministry data and view
+standardised dashboards. Churches log numbers every week — attendance,
+volunteers, stats (decisions, baptisms, custom), and giving — and see those
+numbers as comparisons over time. The dashboard ships out-of-the-box cross-cutting
+metrics (volunteer-to-attendance ratio, per-capita giving, weekly average
+attendance) without the church configuring anything.
 
 Stack: Supabase (Postgres + RLS + Auth) + Next.js + Vercel.
 
@@ -23,136 +36,164 @@ Four roles. Each sees a different product.
 | Editor | Enters data only — no reports | Sunday loop entry screens only |
 | Viewer | Views reports only — magic link login, no password | Dashboard only |
 
-**The typical Sunday flow:** An Admin opens the app on their phone at 9am. They tap this week's service. They enter attendance, volunteer counts, stats, and giving. They go home. On Monday the pastor opens the app and sees how the numbers compare to last week.
+**Primary use context:** An Admin opens the app on their phone at 9am Sunday. They
+tap this week's service, enter the numbers for each ministry, and leave. On Monday
+the pastor opens the app and sees how the numbers compare to last week, the
+4-week trend, and year-over-year.
 
 ---
 
-## The Sunday Loop — Core Product
+## The Core Loop
 
-Everything in the product exists to support this flow:
+Everything exists to support the weekly entry flow:
 
 ```
 T1 (Recent Services)
-  └─ tap a service ──→ T1b (Occurrence Dashboard)
-                           ├─ tap Attendance ──→ T2 ──→ back to T1b
-                           ├─ tap Volunteers ──→ T3 ──→ back to T1b
-                           ├─ tap Stats ──────→ T4 ──→ summary ──→ T1b
-                           └─ tap Giving ─────→ T5 ──→ back to T1b
+  └─ tap a service ──→ T1b (Service Hub)
+                          ├─ tap a Ministry ──→ enter that ministry's metrics ──→ back to T1b
+                          └─ each ministry shows its tracked reporting tags
+                             (Attendance, Volunteers, Giving, Stats) as fields
 ```
 
-**T1** shows the last 7 days of services, incomplete first. A church admin on Tuesday can enter data from Sunday without any special flow. Only services with a primary tag set appear in T1 — services without a primary tag are invisible to the Sunday loop.
+**The shift from v1:** entry is now organised **Service → Ministry → Metrics**, not
+Service → fixed-audience-columns. A service has one or more ministry tags hanging
+off it (Adult Service, LifeKids, Switch/Youth). Each ministry collects whatever
+reporting tags it tracks. "Kids attendance" is not a column — it is the ATTENDANCE
+metric for the KIDS_MINISTRY-roled ministry tag.
 
-**T1b** is the hub. It shows four sections (Attendance · Volunteers · Stats · Giving) with completion status per section. The user taps any section to enter or correct data. Back always returns to T1b, not T1.
+**T1** shows the last 7 days of services, incomplete first. Only services whose
+template has a `primary_tag_id` appear. **T1b** is the hub — it lists each ministry
+under the service with completion status. Back always returns to T1b.
 
-**The session anchor:** When a user taps a service in T1, the occurrence ID and service date are written to context. T2–T5 read this context — they never ask the user to re-select a service.
+**The session anchor:** tapping a service in T1 writes the `service_instance_id` and
+service date to context. Entry screens read this — they never re-ask for a service.
 
 ---
 
 ## The Data Model — Plain English
 
-**One occurrence per service per date.** Every Sunday at 9am generates one `service_occurrences` row. All entry tables hang off this row.
+The model has **two independent tag axes** and **one value pipe**.
 
-**Entry tables:** `attendance_entries` · `volunteer_entries` · `response_entries` · `giving_entries`. Each has a foreign key to `service_occurrences`.
+**Axis 1 — Ministry tags (`service_tags`).** The church's ministries, in a shallow
+parent/child tree via `parent_tag_id` (adjacency list — D-059). Example:
+`Sunday → Experience 1, Experience 2`; `LifeKids → Nursery, Elementary`; `Switch`.
+Each tag carries a `tag_role` (ADULT_SERVICE · KIDS_MINISTRY · YOUTH_MINISTRY ·
+OTHER) that drives audience grouping on the dashboard. Roll-ups use a recursive CTE
+over the parent chain — trees are small (<30 nodes) and shallow (2–3 deep).
 
-**Category tables (three parallel patterns):**
-- `volunteer_categories` — the roles a church tracks (Parking Team, Greeters, etc.)
-- `response_categories` — the stats a church tracks (First-Time Decisions, Rededications, Baptisms, custom). UI calls this "Stats."
-- `giving_sources` — where giving comes from (Plate, Online, custom)
+**Axis 2 — Reporting tags (`reporting_tags`).** The cross-cutting dimensions a
+number belongs to: ATTENDANCE · VOLUNTEERS · GIVING · RESPONSE_STAT. Four are
+system-seeded per church (`is_system = true`, immutable). Churches can add their
+own. Reporting tags are what make out-of-the-box ratios possible: volunteers ÷
+attendance, giving ÷ attendance, across any ministry.
 
-All three follow the same pattern: seeded defaults + church can add custom + soft delete via `is_active`.
+**Services.** `service_templates` (the recurring service definition, FK
+`primary_tag_id → service_tags`) and `service_instances` (one dated occurrence of a
+template; `service_date`, `status`). `service_instances` is the **god node** — every
+service-scoped metric value attaches here.
 
-**Tag tables:**
-- `service_tags` — the church's tag library (Morning, Evening, Midweek, custom). Optional date range for time-bounded tags (campaigns, series).
-- `service_template_tags` — subtag assignments (many-to-many, junction table)
-- `service_occurrence_tags` — tags stamped onto occurrence records at assignment time. This is the reporting table — queries JOIN here, no date arithmetic needed.
+**The value pipe — `metrics` + `metric_entries`.**
+- A `metric` is a *definition*: "this church tracks <reporting_tag> for
+  <ministry_tag>." It carries `scope` ('instance' = per service, 'period' = per
+  week/month), and `is_canonical` (the one metric per ministry+reporting pair that
+  wide-shape imports write into).
+- A `metric_entry` is a *value*: a `NUMERIC(14,2)` attached to **exactly one of**
+  `service_instance_id` (service-scoped) or `period_anchor` (a Sunday-anchored date,
+  for church-wide weekly numbers like total offering). `reporting_tag_code` is
+  denormalized onto the row by trigger for fast dashboard filtering.
 
-**`service_occurrences` is the god node.** Degree 36 in the knowledge graph. Every entry, every query, every completion check flows through it. Do not design anything that bypasses it.
+**Why this shape:** the church no longer fits into fixed MAIN/KIDS/YOUTH columns.
+Any ministry, any reporting dimension, one entry path, one query path. The
+dashboard's familiar audience rows are reconstructed by views, not stored as
+columns.
 
-**`service_templates` is degree 26.** Every service in the Sunday loop flows through it. The `primary_tag_id` FK on this table gates T1 — no primary tag = no entry in the Sunday loop.
-
----
-
-## Six Critical Rules
-
-**Rule 1 — Filter cancelled occurrences.**
-Always `WHERE status = 'active'`. Cancelled services never appear in entry flows or dashboard calculations.
-
-**Rule 2 — Dashboard groups by primary tag, not display_name.**
-`service_templates.primary_tag_id` → `service_tags.tag_code` is the grouping key for all dashboard rows (P3, P14a/b/c). `display_name` is presentational only — it appears on T1 service cards and T1b headers, never as a reporting key.
-
-**Rule 3 — Volunteer totals are calculated, never stored.**
-Always `SUM(volunteer_count)` from `volunteer_entries`. Never store a total.
-
-**Rule 4 — NULL ≠ zero attendance.**
-`NULL` means not entered. `0` means confirmed zero. Never `COALESCE(attendance, 0)` in averages — it corrupts the denominator. A church with no kids ministry has NULL kids attendance, not zero.
-
-**Rule 5 — Always SUM giving entries.**
-`giving_entries` has one row per `(occurrence, giving_source)`. Always sum across sources to get a service total.
-
-**Rule 6 — Tags are pre-stamped. Never derive at query time.**
-`service_occurrence_tags` holds the pre-stamped tag assignments. Dashboard queries JOIN this table. Never re-derive tag membership from `service_template_tags` + date logic at query time — that work is done upfront by `apply_tag_to_occurrences()`.
+**God node:** `service_instances`. Highest-degree table. Every service-scoped entry,
+completion check, and dashboard query flows through it. The period-scoped branch
+(`period_anchor`) is the only path that bypasses it, by design.
 
 ---
 
-## Five Tracking Flags on the Churches Table
+## Critical Rules
 
-These flags control what a church tracks. All default `true`. Changes made in Settings → What You Track → Tracking.
+**Rule 1 — Filter cancelled instances.**
+Always `WHERE service_instances.status = 'active'`. Cancelled services never appear
+in entry flows or dashboard calculations.
+
+**Rule 2 — `value` NULL ≠ zero.**
+`NULL` means not entered. `0` means a confirmed zero. Never `COALESCE(value, 0)` in
+averages — it corrupts the denominator. `is_not_applicable = true` marks a metric
+that does not apply (distinct from both NULL and 0).
+
+**Rule 3 — Group by tag codes, never display names.**
+All roll-ups group by `reporting_tag_code` and by ministry `service_tags.code` /
+`tag_role`. `name` / `display_name` are presentational only — never a reporting key.
+
+**Rule 4 — Totals are calculated, never stored.**
+Volunteer totals, giving totals, audience roll-ups are always `SUM(value)` over the
+relevant `metric_entries`. No stored total column anywhere.
+
+**Rule 5 — `reporting_tag_code` is trigger-denormalized. Never write or re-derive it.**
+The trigger copies it from `metrics → reporting_tags` on insert/update of
+`metric_entries`. Application code never sets it; queries never re-derive tag
+membership at read time.
+
+**Rule 6 — Entry attachment is XOR.**
+Every `metric_entry` has **exactly one** of `service_instance_id` or
+`period_anchor` set. Enforced by CHECK constraint. Service-scoped vs church-wide
+weekly is decided by the metric's `scope`.
+
+**Rule 7 — One canonical metric per (church, ministry_tag, reporting_tag).**
+`is_canonical = true` is unique within that triple (partial UNIQUE index).
+Wide-shape imports and the default entry screens target the canonical metric.
+Non-canonical metrics are additional named breakouts.
+
+**Rule 8 — `period_anchor` is the Sunday on or before the entry's date.**
+Sunday = start of the church week. Sun Apr 26 → 2026-04-26; Mon Apr 27 →
+2026-04-26. Used for all period-scoped (church-wide weekly) metrics.
+
+---
+
+## Configuration Flags
+
+Per-church flags on `churches`, all default `true`. Set in Settings → What You Track.
 
 | Flag | What it controls |
 |---|---|
-| `tracks_kids_attendance` | Kids field visible in T2 + required for attendance completion |
-| `tracks_youth_attendance` | Youth field visible in T2 + required for attendance completion |
-| `tracks_volunteers` | Volunteers section shown in T1b + T3 accessible + Volunteers row on dashboard |
-| `tracks_responses` | Stats section shown in T1b + T4 accessible + Stats row on dashboard |
-| `tracks_giving` | Giving section shown in T1b + T5 accessible + Giving row on dashboard |
+| `tracks_volunteers` | VOLUNTEERS reporting tag visible in entry + Volunteers row on dashboard |
+| `tracks_responses` | RESPONSE_STAT visible in entry + Stats row on dashboard |
+| `tracks_giving` | GIVING visible in entry + Giving row on dashboard |
 
-**Attendance is always tracked.** `tracks_main_attendance` does not exist.
+> **Note (deferred):** in the tag-first model "what a church tracks" is increasingly
+> expressed by which `reporting_tags` and active `metrics` exist. The boolean flags
+> are retained for v2.0 as dashboard-row gates to limit blast radius. Superseding
+> them with reporting-tag presence is a candidate follow-up (not in this redesign).
 
-**Dashboard rows are hidden when tracking is off.** `tracks_volunteers = false` → no Volunteers row on D1/D2. Historical data accessible via tag filter.
+ATTENDANCE has no flag — attendance is always tracked.
 
 ---
 
 ## Completion Logic
 
-**Attendance (T2):**
+Completion is evaluated per **ministry** within a service, then aggregated to the
+service.
+
+**A ministry is complete** when every active canonical metric for that ministry tag
+(filtered to the church's tracked reporting tags) has a `metric_entry` for the
+current `service_instance` with either a non-NULL `value` or `is_not_applicable = true`.
+
 ```javascript
-const complete = row !== null
-  && row.main_attendance !== null
-  && (!church.tracks_kids_attendance  || row.kids_attendance  !== null)
-  && (!church.tracks_youth_attendance || row.youth_attendance !== null)
+// per (service_instance, ministry_tag)
+const required = activeCanonicalMetrics(ministryTag)
+  .filter(m => churchTracks(m.reporting_tag_code));
+const complete = required.every(m =>
+  entryExists(m.id, instanceId) &&
+  (entry.value !== null || entry.is_not_applicable === true)
+);
 ```
-Three states: empty (no row) · in-progress (row exists, tracked field NULL) · complete (all tracked fields filled).
 
-**Volunteers / Stats / Giving:**
-EXISTS check — any entry = complete for that section. Binary: exists or doesn't.
-
----
-
-## UPSERT Everywhere — Except Giving History
-
-Every entry screen uses UPSERT (INSERT ON CONFLICT DO UPDATE). Giving uses one row per `(occurrence, giving_source)` with UPSERT — one editable row per source, not append-only.
-
----
-
-## Service Tags — How They Work
-
-Tags are the stable reporting identity for services. A service might change its name from "9am Service" to "Contemporary Service" — but if both have the Morning tag, the dashboard treats them as the same service across time.
-
-**Primary tag (one per service, required):**
-- Set in T6 service setup. Required before the service appears in T1.
-- Only undated tags (no `effective_start_date` or `effective_end_date`) can be primary.
-- Drives dashboard rows: Morning row, Evening row, Midweek row.
-
-**Subtags (many per service, optional):**
-- Set in T6 or T-tags. Campaigns, series, special groupings.
-- Can have date ranges — only stamps occurrences within that date window.
-- Used for dashboard drill-down filters after primary tag row is selected.
-
-**Stamping:** When a tag is assigned to a service, `apply_tag_to_occurrences()` runs immediately — stamps all matching historical occurrences into `service_occurrence_tags`. Future occurrences are stamped at creation time.
-
-**Removal:** UI prompts — "Remove from all records" (deletes stamps) or "Keep past records tagged" (preserves stamps, removes assignment only).
-
-**`active_tagged_services` view** gates T1 — P12 and P12b JOIN through it. Services without `primary_tag_id` never appear.
+Three states per ministry: **empty** (no entries) · **in-progress** (some entries,
+some required metrics still NULL) · **complete** (all required metrics satisfied).
+A service is complete when all its ministries are complete.
 
 ---
 
@@ -167,81 +208,92 @@ Bottom tab bar, role-aware:
 | Settings | ✅ | ✅ | ❌ | ❌ |
 
 **Three sequencing gates:**
-- Gate 1: No location OR no service without primary tag → setup required, Sunday loop blocked
-- Gate 2: Editor at T1, no schedule versions → empty state, "contact admin"
+- Gate 1: No location OR no service with a primary tag → setup required, Sunday loop blocked
+- Gate 2: Editor at T1 with no schedule versions → empty state, "contact admin"
 - Gate 3: Viewer hits any entry URL → silent redirect to D2
 
 ---
 
 ## The Dashboard
 
-D1 (Owner/Admin) and D2 (Viewer) use the same layout:
+D1 (Owner/Admin) and D2 (Viewer) share a layout: rows for ministries grouped by
+`tag_role` (Adults / Kids / Youth), plus tracked metric rows (Volunteers, Stats,
+Giving), across four simultaneous time columns (Current Wk · Last 4-Wk Avg ·
+Current YTD Avg · Prior YTD Avg). The four standard views read from the views below,
+not from raw `metric_entries`.
 
-```
-                  This Wk / Last Wk    4-Wk Avg / Prior    YTD / Prior YTD
-Morning           312 / 287  ▲9%       298 / 271  ▲10%     305 / 289  ▲6%
-Evening            98 / 91   ▲8%       ...                  ...
-[Volunteers]       24 / 21   ▲14%      ...                  ...  ← hidden if tracks_volunteers=false
-[Stats]             7 / 4    ▲75%      ...                  ...  ← hidden if tracks_responses=false
-[Giving]       $5,247/$4,800 ▲9%       ...                  ...  ← hidden if tracks_giving=false
-```
+**Out-of-the-box cross-cutting metrics** (the reason for reporting tags):
+- Volunteer-to-attendance ratio = `SUM(VOLUNTEERS) / SUM(ATTENDANCE)`
+- Per-capita giving = `SUM(GIVING) / SUM(ATTENDANCE)`
+- Weekly average attendance = `AVG(ATTENDANCE)` over weeks with ≥1 active instance
 
-**Rows** = active primary tags (Morning, Evening, Midweek) + tracked metrics below.
-**Columns** = three comparison periods shown simultaneously, no toggle.
-**Drill-down** = click primary tag row → audience breakdown (Main/Kids/Youth) → subtag filter.
+YTD denominator: weeks with ≥1 active instance — not calendar weeks (Rule 2 applies).
 
-D2 (Viewer) shows Attendance rows + Stats + Giving only. No Volunteers row.
+---
 
-YTD denominator: weeks with at least one active occurrence — not calendar weeks.
+## Permanent Views (affordance restoration)
+
+The unified model is queried through four views so screen code stays simple and the
+old per-kind shapes are reconstructable:
+
+| View | Reconstructs |
+|---|---|
+| `attendance_per_occurrence` | Per service_instance attendance pivoted by ministry tag_role (the old MAIN/KIDS/YOUTH shape) |
+| `volunteers_per_occurrence` | Per service_instance volunteer totals (SUM of VOLUNTEERS metrics) |
+| `giving_per_week` | Period-anchored giving totals (SUM of GIVING, by `period_anchor`) |
+| `metric_entries_readable` | Every entry joined to metric name, ministry tag name, reporting tag code, service date — the human-readable firehose |
+
+---
+
+## What Was Dropped in v2.0
+
+Migration 0022 (full reset) drops:
+- **Entry tables:** attendance_entries · volunteer_entries · response_entries · giving_entries · church_period_giving · church_period_entries
+- **Category tables:** volunteer_categories · response_categories · giving_sources
+- **Unused parallel subsystem:** occurrences · instance_tags · tag_relationships · service_template_tags (all were 0-row false starts)
+- **Functions:** apply_tag_to_instances · add_tag_relationship
+
+Kept: churches · church_locations · church_memberships · church_invites ·
+user_profiles · service_templates · service_instances · service_tags ·
+service_schedule_versions · ai_usage_* · import_jobs · billing_events ·
+notifications_sent. (Data in all kept tables is still wiped by the full reset; only
+structure persists. service_templates / service_instances / service_tags are
+re-modeled, not dropped.)
 
 ---
 
 ## Onboarding Sequence (New Church)
 
-New churches sign up via the SIGNUP screen (creates church + owner account + seeds defaults).
-Gate 1 fails until Steps 2, 3, 4 complete and at least one service has a primary tag.
+New churches sign up via SIGNUP (creates church + owner account + seeds the four
+system `reporting_tags`). Gate 1 fails until a location and at least one service with
+a primary tag exist.
 
-0. **SIGNUP** — new church creates account (name, owner name, email, password)
-1. Church info (name — pre-filled from SIGNUP)
-2. **T-loc** — add locations (at least one required)
-3. **T6** — add services + assign primary tag (required per service)
-4. **T-sched** — set schedule for each service (loops until all services scheduled)
+0. **SIGNUP** — name, owner name, email, password → creates church, owner, seeds reporting tags
+1. Church info (pre-filled)
+2. **T-loc** — add locations (≥1 required)
+3. **T6** — add services + assign primary ministry tag (required per service)
+4. **T-sched** — schedule each service
 5. **T9** — invite team (optional)
 → T1 unlocks
 
 ---
 
-## Settings Structure
+## Key Design Principles
 
-Three groups in T-settings:
-- **Your Church** — Locations (T-loc) · Services (T6)
-- **Your Team** — Members · Invite someone (T9)
-- **What You Track** — Tracking (T6b) · Volunteer Roles (T7) · Stats (T8) · Giving Sources (T-giving-sources) · Tags (T-tags)
-
----
-
-## Stats — The Renamed "Responses"
-
-What was "Responses" in the schema is called "Stats" in the UI. Schema names unchanged (`response_categories`, `response_entries`, `tracks_responses`).
-
-Stats have two scopes set at creation:
-- **Audience-scoped** — entered per MAIN/KIDS/YOUTH in T4 sections. Seeded defaults are audience-scoped.
-- **Service-level** — one number for the whole service. Custom stats can be either scope.
+1. **Sunday morning is the primary context.** Every entry screen is phone-first, one hand, mild time pressure.
+2. **Service → Ministry → Metrics.** Entry follows the church's mental model, not a fixed column grid.
+3. **Two axes, one pipe.** Ministry tags say *who*; reporting tags say *what dimension*; metrics/metric_entries carry the number. Nothing is special-cased by kind.
+4. **Tags are stable identity.** A ministry's tag is its reporting identity across name/time/campus changes. Reporting tags make cross-ministry math work out of the box.
+5. **Church language, not software language.** Services not occurrences. Ministries not categories. Stats not metrics (in UI copy).
+6. **Numbers are people.** Counts represent human beings; copy reflects this.
+7. **Instructions need reasons.** Every instructional string is "[what to do] — [why it matters to you]."
 
 ---
 
 ## Team Rules
 
 **TR-01 — Graph-First on Decision Impact.**
-When a decision is made that affects other decisions, screens, queries, or schema — read the graph first. Then read context. Then act. Applies to: NOVA · ATLAS · IRIS · ORION · AXIOM · VERA · SPAN.
-
----
-
-## Key Design Principles
-
-1. **Sunday morning is the primary context.** Every entry screen is designed for phone, one hand, mild time pressure.
-2. **Pastoral moments are not transactional.** The T4 post-submit summary is a full-screen green moment of acknowledgment.
-3. **Instructions need reasons.** Every instructional copy string includes a plain-English reason why. Format: "[what to do] — [why it matters to you]."
-4. **Church language, not software language.** Services not occurrences. Roles not categories. Stats not metrics. Decisions not conversions.
-5. **Numbers are people.** Attendance counts and decision counts represent human beings. Copy reflects this.
-6. **Tags are stable identity.** A service's primary tag is its reporting identity across time. Name changes, time changes, campus additions — the tag is what makes year-over-year comparison work.
+When a decision touches more than one file/screen/query/schema element — read the
+graph first, then context, then act. Applies to NOVA · ATLAS · IRIS · ORION · AXIOM
+· VERA · SPAN. The god node `service_instances` and the new `metric_entries` are the
+highest-blast-radius tables — touch with care.

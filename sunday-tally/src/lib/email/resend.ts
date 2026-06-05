@@ -11,23 +11,21 @@ function resend(): Resend {
 }
 
 function from(): string {
-  return process.env.RESEND_FROM_EMAIL ?? 'Sunday Tally <noreply@sundaytally.app>'
+  return process.env.RESEND_FROM_EMAIL ?? 'Sunday Tally <noreply@sundaytally.church>'
 }
 
 export type EmailTemplate =
   | 'trialEnding7d'
   | 'trialEnding1d'
-  | 'paymentFailed'
   | 'invite'
-  | 'aiSetupExhausted'
 
 export interface TemplateData {
-  churchName?:   string
-  daysLeft?:     number
-  billingUrl?:   string
-  inviteUrl?:    string
-  inviterName?:  string
-  role?:         string
+  churchName?:       string
+  billingUrl?:       string
+  inviteUrl?:        string
+  inviterName?:      string
+  role?:             string
+  inviteExpiryDays?: number  // single source = INVITE_TTL_DAYS in @/lib/invites
 }
 
 export async function sendEmail(
@@ -70,32 +68,14 @@ function render(template: EmailTemplate, d: TemplateData): { subject: string; ht
           <p><a href="${billing}" style="background:#2563eb;color:#fff;padding:10px 16px;border-radius:6px;text-decoration:none;">Subscribe</a></p>
         `),
       }
-    case 'paymentFailed':
-      return {
-        subject: 'Payment failed — Sunday Tally',
-        html: wrap(`
-          <p>Hi,</p>
-          <p>Your most recent payment for <strong>${church}</strong> didn't go through. Update your card to keep your subscription active.</p>
-          <p><a href="${billing}" style="background:#2563eb;color:#fff;padding:10px 16px;border-radius:6px;text-decoration:none;">Update billing</a></p>
-        `),
-      }
     case 'invite':
       return {
         subject: `You've been invited to ${church} on Sunday Tally`,
         html: wrap(`
           <p>Hi,</p>
           <p>${d.inviterName ?? 'A team member'} invited you to join <strong>${church}</strong> on Sunday Tally as <strong>${d.role ?? 'a team member'}</strong>.</p>
-          <p><a href="${d.inviteUrl}" style="background:#2563eb;color:#fff;padding:10px 16px;border-radius:6px;text-decoration:none;">Accept invitation</a></p>
-          <p style="color:#6b7280;font-size:12px;">This link expires in 7 days.</p>
-        `),
-      }
-    case 'aiSetupExhausted':
-      return {
-        subject: 'Trial AI quota reached — Sunday Tally',
-        html: wrap(`
-          <p>Hi,</p>
-          <p>You've used the AI setup helper as much as the trial allows. You can still set things up manually, or subscribe for a monthly AI budget that covers both setup and analytics chat.</p>
-          <p><a href="${billing}" style="background:#2563eb;color:#fff;padding:10px 16px;border-radius:6px;text-decoration:none;">See plans</a></p>
+          <p><a href="${d.inviteUrl}" style="background:#4F6EF7;color:#fff;padding:10px 16px;border-radius:6px;text-decoration:none;">Accept invitation</a></p>
+          <p style="color:#6b7280;font-size:12px;">This link expires in ${d.inviteExpiryDays ?? 14} days.</p>
         `),
       }
   }
@@ -111,5 +91,5 @@ ${content}
 }
 
 function appUrl(): string {
-  return process.env.NEXT_PUBLIC_APP_URL ?? 'https://sundaytally.app'
+  return process.env.NEXT_PUBLIC_APP_URL ?? 'https://sundaytally.church'
 }

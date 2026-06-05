@@ -1,298 +1,433 @@
 'use client'
 
-// T6_SETTINGS — /settings/services — Settings version of T6
-// Lists services with edit + navigate to schedule settings per service
+// ─────────────────────────────────────────────────────────────────────────
+// SERVICES & MINISTRIES — /(app)/settings/services — IRIS_SETTINGS (E-10..E-30).
+// REDESIGN of the legacy schedule-list screen into the ministries-composition
+// screen the IRIS map specifies. DS-25 mirror of the Entries Occurrence view:
+// each service_templates row is a card, its ministries are equal-peer
+// accent-bar child rows (no "primary" badge — D-076). Owner/admin add/remove/
+// reorder a ministry by writing service_template_tags (D-073, template-level —
+// D-075). Status circle goes amber-outline when a service has 0 ministries
+// (won't render in Entries). No red (DS-2). Reuses Entries primitives.
+// (Schedule management lives at /settings/services/[templateId] — untouched.)
+// ─────────────────────────────────────────────────────────────────────────
 
-import { useState, useEffect, useTransition } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import AppLayout from '@/components/layouts/AppLayout'
-import InlineEditField from '@/components/shared/InlineEditField'
 import { createClient } from '@/lib/supabase/client'
-import { saveTemplatesAction, getChurchData } from '@/app/onboarding/services/actions'
+import { Dot, Ico, accentForRole, roleLabel } from '@/app/(app)/entries/ui'
 import type { UserRole } from '@/types'
 
-interface ScheduleSummary { day_of_week: number; start_time: string | null; end_time: string | null; timezone: string | null; is_active: boolean }
-interface Template { id: string; display_name: string; is_active: boolean; location_name: string; primary_tag_name: string; subtag_names: string[]; schedules: ScheduleSummary[] }
-interface ServiceTag { id: string; tag_name: string; effective_start_date: string | null; effective_end_date: string | null }
-interface Location { id: string; name: string }
+const PAGE = 1000 // PostgREST cap (N-9)
 
-const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-function fmtTime(t: string | null) {
-  if (!t) return ''
-  const [h, m] = t.split(':').map(Number)
-  const ampm = h >= 12 ? 'PM' : 'AM'
-  return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${ampm}`
+interface Ministry {
+  link_id: string         // service_template_tags.id
+  tag_id: string          // service_tags.id
+  name: string
+  tag_role: string | null
+  sort_order: number
+  metricCount: number     // canonical active metrics for this tag
+}
+interface ServiceCard {
+  id: string              // service_templates.id
+  name: string
+  locationName: string | null
+  sort_order: number
+  ministries: Ministry[]
+}
+interface TagOption {
+  id: string
+  name: string
+  tag_role: string | null
 }
 
-const EMPTY_NEW = (locationId: string): NewForm => ({ display_name: '', location_id: locationId, primary_tag_id: '', subtag_ids: [] })
-interface NewForm { display_name: string; location_id: string; primary_tag_id: string; subtag_ids: string[] }
+function canWrite(role: UserRole) {
+  return role === 'owner' || role === 'admin'
+}
 
-export default function SettingsServicesPage() {
-  const [role, setRole] = useState<UserRole>('admin')
-  const [churchId, setChurchId] = useState<string | null>(null)
-  const [templates, setTemplates] = useState<Template[]>([])
-  const [locations, setLocations] = useState<Location[]>([])
-  const [allTags, setAllTags] = useState<ServiceTag[]>([])
-  const [showAdd, setShowAdd] = useState(false)
-  const [newForm, setNewForm] = useState<NewForm>({ display_name: '', location_id: '', primary_tag_id: '', subtag_ids: [] })
-  const [addError, setAddError] = useState<string | null>(null)
-  const [isPending, startTransition] = useTransition()
+export default function ServicesSettingsPage() {
+  const supabase = useMemo(() => createClient(), [])
   const router = useRouter()
 
-  async function loadTemplates(churchId: string, supabase: ReturnType<typeof createClient>) {
-    const { data } = await supabase
+  const [role, setRole] = useState<UserRole>('viewer')
+  const [churchId, setChurchId] = useState<string | null>(null)
+  const [churchName, setChurchName] = useState('')
+  const [cards, setCards] = useState<ServiceCard[]>([])
+  const [allTags, setAllTags] = useState<TagOption[]>([])
+  const [loading, setLoading] = useState(true)
+  const [busy, setBusy] = useState<string | null>(null) // link_id or card id being mutated
+
+  const write = canWrite(role)
+
+  /* ── load everything: templates → links+tags → metric counts ──────────── */
+  const load = useCallback(async (cid: string) => {
+    type EmbeddedLoc = { name: string } | { name: string }[] | null
+    type EmbeddedTag = { id: string; name: string; tag_role: string | null } | { id: string; name: string; tag_role: string | null }[] | null
+    const oneOf = <T,>(v: T | T[] | null): T | null => (Array.isArray(v) ? v[0] ?? null : v)
+
+    // E-20 active templates + location name
+    const { data: tmplRows } = await supabase
       .from('service_templates')
-      .select(`id, display_name, is_active,
-        church_locations(name),
-        service_tags!primary_tag_id(tag_name),
-        service_schedule_versions(day_of_week, start_time, end_time, timezone, is_active)
-      `)
-      .eq('church_id', churchId)
+      .select('id, display_name, sort_order, location_id, church_locations(name)')
+      .eq('church_id', cid)
       .eq('is_active', true)
-      .order('sort_order')
-    const ids = (data ?? []).map((t: any) => t.id)
-    const templateSubtags: Record<string, string[]> = {}
-    if (ids.length > 0) {
-      const { data: stTagsFull } = await supabase
-        .from('service_template_tags')
-        .select('service_template_id, service_tags(tag_name)')
-        .in('service_template_id', ids)
-      for (const row of (stTagsFull ?? [])) {
-        const tid = (row as any).service_template_id
-        const name = (row as any).service_tags?.tag_name
-        if (name) {
-          if (!templateSubtags[tid]) templateSubtags[tid] = []
-          templateSubtags[tid].push(name)
-        }
+      .order('sort_order', { ascending: true })
+      .range(0, PAGE - 1)
+
+    type TmplRow = { id: string; display_name: string | null; sort_order: number | null; church_locations: EmbeddedLoc }
+    const templates = ((tmplRows ?? []) as TmplRow[]).map((t) => ({
+      id: t.id,
+      name: t.display_name ?? 'Service',
+      sort_order: t.sort_order ?? 0,
+      locationName: oneOf(t.church_locations)?.name ?? null,
+    }))
+
+    // E-22 composition links + ministry tags (paginate)
+    type LinkRow = { id: string; service_template_id: string; ministry_tag_id: string; sort_order: number | null; service_tags: EmbeddedTag }
+    const links: LinkRow[] = []
+    if (templates.length > 0) {
+      const tmplIds = templates.map(t => t.id)
+      for (let from = 0; ; from += PAGE) {
+        const { data: batch } = await supabase
+          .from('service_template_tags')
+          .select('id, service_template_id, ministry_tag_id, sort_order, service_tags(id, name, tag_role)')
+          .eq('church_id', cid)
+          .in('service_template_id', tmplIds)
+          .order('sort_order', { ascending: true })
+          .range(from, from + PAGE - 1)
+        const rows = (batch ?? []) as LinkRow[]
+        links.push(...rows)
+        if (rows.length < PAGE) break
       }
     }
-    setTemplates((data ?? []).map((t: any) => ({
-      id: t.id, display_name: t.display_name, is_active: t.is_active,
-      location_name: Array.isArray(t.church_locations) ? t.church_locations[0]?.name ?? '' : t.church_locations?.name ?? '',
-      primary_tag_name: Array.isArray(t.service_tags) ? t.service_tags[0]?.tag_name ?? 'No tag' : t.service_tags?.tag_name ?? 'No tag',
-      subtag_names: templateSubtags[t.id] ?? [],
-      schedules: (Array.isArray(t.service_schedule_versions) ? t.service_schedule_versions : []).filter((s: any) => s.is_active),
-    })))
-  }
+
+    // E-23 canonical active metric counts per ministry tag (one bounded read)
+    const tagIds = Array.from(new Set(links.map(l => l.ministry_tag_id)))
+    const metricCountByTag = new Map<string, number>()
+    if (tagIds.length > 0) {
+      const { data: metricRows } = await supabase
+        .from('metrics')
+        .select('ministry_tag_id')
+        .eq('church_id', cid)
+        .eq('is_active', true)
+        .eq('is_canonical', true)
+        .in('ministry_tag_id', tagIds)
+        .range(0, PAGE - 1)
+      for (const m of ((metricRows ?? []) as { ministry_tag_id: string }[])) {
+        metricCountByTag.set(m.ministry_tag_id, (metricCountByTag.get(m.ministry_tag_id) ?? 0) + 1)
+      }
+    }
+
+    const byTemplate = new Map<string, Ministry[]>()
+    for (const l of links) {
+      const tag = oneOf(l.service_tags)
+      if (!tag) continue
+      const list = byTemplate.get(l.service_template_id) ?? []
+      list.push({
+        link_id: l.id,
+        tag_id: tag.id,
+        name: tag.name,
+        tag_role: tag.tag_role ?? null,
+        sort_order: l.sort_order ?? 0,
+        metricCount: metricCountByTag.get(tag.id) ?? 0,
+      })
+      byTemplate.set(l.service_template_id, list)
+    }
+    for (const list of byTemplate.values()) list.sort((a, b) => a.sort_order - b.sort_order)
+
+    setCards(templates.map(t => ({ ...t, ministries: byTemplate.get(t.id) ?? [] })))
+
+    // E-27 picker source: all active ministry tags for the church
+    const { data: tagRows } = await supabase
+      .from('service_tags')
+      .select('id, name, tag_role')
+      .eq('church_id', cid)
+      .eq('is_active', true)
+      .order('display_order', { ascending: true })
+      .range(0, PAGE - 1)
+    type TagRow = { id: string; name: string; tag_role: string | null }
+    setAllTags(((tagRows ?? []) as TagRow[]).map((t) => ({ id: t.id, name: t.name, tag_role: t.tag_role ?? null })))
+  }, [supabase])
 
   useEffect(() => {
-    const supabase = createClient()
-    supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (!user) return
-      const { data: membership } = await supabase.from('church_memberships').select('role, church_id').eq('user_id', user.id).eq('is_active', true).single()
-      if (!membership) return
+    let cancelled = false
+    ;(async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) { if (!cancelled) setLoading(false); return }
+      const { data: membership } = await supabase
+        .from('church_memberships')
+        .select('role, church_id, churches(name)')
+        .eq('user_id', user.id).eq('is_active', true).single()
+      if (!membership || cancelled) { if (!cancelled) setLoading(false); return }
       setRole(membership.role as UserRole)
       setChurchId(membership.church_id)
-      await loadTemplates(membership.church_id, supabase)
+      const ch = Array.isArray(membership.churches) ? membership.churches[0] : membership.churches
+      setChurchName((ch as { name?: string } | null)?.name ?? '')
+      await load(membership.church_id)
+      if (!cancelled) setLoading(false)
+    })()
+    return () => { cancelled = true }
+  }, [supabase, load])
 
-      // Load locations + tags for the add form
-      const churchData = await getChurchData()
-      if (churchData) {
-        setLocations(churchData.locations)
-        setAllTags(churchData.tags)
-        setNewForm(EMPTY_NEW(churchData.locations[0]?.id ?? ''))
-      }
-    })
-  }, [])
+  /* ── E-27 add ministry (INSERT, idempotent on UNIQUE(template,tag)) ────── */
+  const addMinistry = useCallback(async (card: ServiceCard, tag: TagOption) => {
+    if (!churchId || !write) return
+    setBusy(card.id)
+    const nextSort = card.ministries.reduce((m, x) => Math.max(m, x.sort_order), -1) + 1
+    const { data, error } = await supabase
+      .from('service_template_tags')
+      .insert({
+        church_id: churchId,
+        service_template_id: card.id,
+        ministry_tag_id: tag.id,
+        sort_order: nextSort,
+      })
+      .select('id')
+      .single()
+    if (error || !data) {
+      // idempotent: a UNIQUE violation means it's already linked — reload to reconcile
+      await load(churchId)
+      setBusy(null)
+      return
+    }
+    // fetch the metric count for the newly linked tag (cheap, bounded)
+    const { count } = await supabase
+      .from('metrics').select('id', { count: 'exact', head: true })
+      .eq('church_id', churchId).eq('is_active', true).eq('is_canonical', true).eq('ministry_tag_id', tag.id)
+    setCards(prev => prev.map(c => c.id === card.id
+      ? { ...c, ministries: [...c.ministries, { link_id: data.id, tag_id: tag.id, name: tag.name, tag_role: tag.tag_role, sort_order: nextSort, metricCount: count ?? 0 }] }
+      : c))
+    setBusy(null)
+  }, [supabase, churchId, write, load])
 
-  async function handleAdd() {
-    if (!newForm.display_name.trim() || !newForm.primary_tag_id || !newForm.location_id) return
-    setAddError(null)
-    startTransition(async () => {
-      const result = await saveTemplatesAction([{
-        id: null,
-        display_name: newForm.display_name,
-        location_id: newForm.location_id,
-        sort_order: templates.length + 1,
-        primary_tag_id: newForm.primary_tag_id,
-        subtag_ids: newForm.subtag_ids,
-      }])
-      if (result.error) { setAddError(result.error); return }
-      setShowAdd(false)
-      setNewForm(EMPTY_NEW(locations[0]?.id ?? ''))
-      if (churchId) await loadTemplates(churchId, createClient())
-    })
-  }
+  /* ── E-25 remove ministry (DELETE link row) ───────────────────────────── */
+  const removeMinistry = useCallback(async (card: ServiceCard, m: Ministry) => {
+    if (!churchId || !write) return
+    setBusy(m.link_id)
+    const prev = cards
+    setCards(p => p.map(c => c.id === card.id ? { ...c, ministries: c.ministries.filter(x => x.link_id !== m.link_id) } : c))
+    const { error } = await supabase.from('service_template_tags').delete().eq('id', m.link_id)
+    if (error) setCards(prev) // rollback
+    setBusy(null)
+  }, [supabase, churchId, write, cards])
 
-  async function saveName(id: string, name: string) {
-    const supabase = createClient()
-    await supabase.from('service_templates').update({ display_name: name }).eq('id', id)
-    setTemplates(prev => prev.map(t => t.id === id ? { ...t, display_name: name } : t))
-  }
-
-  function deactivate(id: string) {
-    if (!confirm('Deactivate this service? It won\'t appear on future Sundays. History is kept.')) return
-    startTransition(async () => {
-      const supabase = createClient()
-      await supabase.from('service_templates').update({ is_active: false }).eq('id', id)
-      setTemplates(prev => prev.filter(t => t.id !== id))
-    })
-  }
+  /* ── E-24 reorder within a template (rewrite sort_order) ───────────────── */
+  const move = useCallback(async (card: ServiceCard, index: number, dir: -1 | 1) => {
+    if (!churchId || !write) return
+    const target = index + dir
+    if (target < 0 || target >= card.ministries.length) return
+    const reordered = [...card.ministries]
+    const tmp = reordered[index]
+    reordered[index] = reordered[target]
+    reordered[target] = tmp
+    // assign contiguous sort_order
+    const withSort = reordered.map((m, i) => ({ ...m, sort_order: i }))
+    const prevCards = cards
+    setCards(p => p.map(c => c.id === card.id ? { ...c, ministries: withSort } : c))
+    setBusy(card.id)
+    // persist only the rows whose sort_order actually changed
+    const priorSort = new Map(card.ministries.map(m => [m.link_id, m.sort_order]))
+    const changed = withSort.filter(m => priorSort.get(m.link_id) !== m.sort_order)
+    const results = await Promise.all(
+      changed.map(m => supabase.from('service_template_tags').update({ sort_order: m.sort_order }).eq('id', m.link_id))
+    )
+    if (results.some(r => r.error)) setCards(prevCards)
+    setBusy(null)
+  }, [supabase, churchId, write, cards])
 
   return (
     <AppLayout role={role}>
-      <div className="sticky top-0 z-10 bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <button onClick={() => router.push('/settings')} className="text-gray-400 hover:text-gray-700">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
-          </button>
-          <p className="font-semibold text-gray-900 text-sm">Services</p>
-        </div>
-        <button onClick={() => { setShowAdd(true); setAddError(null) }} className="text-sm font-medium text-gray-900 hover:text-gray-600">+ Add</button>
-      </div>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap');
+        .font-num{font-family:'Fira Code',ui-monospace,monospace;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+        @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+      `}</style>
 
-      {/* Add service sheet */}
-      {showAdd && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-end">
-          <div className="w-full bg-white rounded-t-2xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
-            <p className="font-semibold text-gray-900">Add a service</p>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-              <input
-                type="text"
-                value={newForm.display_name}
-                onChange={e => setNewForm(f => ({ ...f, display_name: e.target.value }))}
-                placeholder="9am Service"
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-
-            {locations.length > 1 && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
-                <select
-                  value={newForm.location_id}
-                  onChange={e => setNewForm(f => ({ ...f, location_id: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Select a location</option>
-                  {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-                </select>
-              </div>
-            )}
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Tag — groups this service in the dashboard</label>
-              <select
-                value={newForm.primary_tag_id}
-                onChange={e => setNewForm(f => ({ ...f, primary_tag_id: e.target.value }))}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Select a tag</option>
-                {allTags.filter(t => !t.effective_start_date && !t.effective_end_date).map(t => (
-                  <option key={t.id} value={t.id}>{t.tag_name}</option>
-                ))}
-              </select>
-            </div>
-
-            {(() => {
-              const subtags = allTags.filter(t => t.effective_start_date || t.effective_end_date)
-              if (subtags.length === 0) return null
-              return (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Campaign &amp; Series Tags <span className="font-normal text-gray-400">(optional)</span></label>
-                  <div className="space-y-1">
-                    {subtags.map(t => {
-                      const checked = newForm.subtag_ids.includes(t.id)
-                      return (
-                        <button
-                          key={t.id}
-                          type="button"
-                          onClick={() => setNewForm(f => ({
-                            ...f,
-                            subtag_ids: checked
-                              ? f.subtag_ids.filter(id => id !== t.id)
-                              : [...f.subtag_ids, t.id],
-                          }))}
-                          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border text-left transition-colors cursor-pointer ${checked ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white'}`}
-                        >
-                          <span className={`w-4 h-4 rounded flex-shrink-0 border flex items-center justify-center ${checked ? 'bg-blue-600 border-blue-600' : 'border-gray-300'}`}>
-                            {checked && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
-                          </span>
-                          <span className="text-sm text-gray-900 flex-1">{t.tag_name}</span>
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-              )
-            })()}
-
-            {addError && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{addError}</p>}
-
-            <button
-              onClick={handleAdd}
-              disabled={!newForm.display_name.trim() || !newForm.primary_tag_id || !newForm.location_id || isPending}
-              className="w-full bg-blue-600 text-white rounded-xl py-3 text-sm font-semibold hover:bg-blue-700 transition-colors disabled:opacity-40"
-            >
-              {isPending ? 'Saving...' : 'Add service'}
+      <div className="bg-slate-50 min-h-full" style={{ fontFamily: "'Fira Sans', ui-sans-serif, system-ui, sans-serif" }}>
+        {/* ── Zone A — header (E-10..E-12) ─────────────────────────────── */}
+        <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 backdrop-blur-sm">
+          <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-3.5">
+            <button onClick={() => router.push('/settings')} aria-label="Back to Settings"
+              className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition-colors duration-200 hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/40">
+              <Ico.left className="h-5 w-5" />
             </button>
-            <button onClick={() => setShowAdd(false)} className="w-full text-gray-400 py-2 text-sm">Cancel</button>
-          </div>
-        </div>
-      )}
-
-      <div className="px-4 py-4 space-y-3">
-        {templates.map(tmpl => (
-          <div key={tmpl.id} className="bg-white border border-gray-100 rounded-2xl shadow-[0_2px_8px_-2px_rgba(0,0,0,0.05)] overflow-hidden">
-            {/* Card Header */}
-            <div className="px-4 pt-4 pb-3">
-              <InlineEditField value={tmpl.display_name} onSave={v => saveName(tmpl.id, v)} aria-label={tmpl.display_name} />
-              <div className="flex flex-wrap gap-1.5 mt-2">
-                <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 text-[10px] font-bold border border-blue-100 uppercase tracking-wide">
-                  {tmpl.primary_tag_name}
-                </span>
-                {tmpl.location_name && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-gray-50 text-gray-500 text-[10px] font-bold border border-gray-100">
-                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                    {tmpl.location_name}
-                  </span>
-                )}
-                {(tmpl.subtag_names ?? []).map(tag => (
-                  <span key={tag} className="inline-flex items-center px-2 py-0.5 rounded-md bg-purple-50 text-purple-600 text-[10px] font-bold border border-purple-100">{tag}</span>
-                ))}
-              </div>
-            </div>
-
-            {/* Schedule Section */}
-            <div className="border-t border-gray-50 px-4 py-3 bg-gray-50/60">
-              {(tmpl.schedules ?? []).length > 0 ? (
-                <div className="space-y-2">
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Schedule</p>
-                  {tmpl.schedules.map((sched, i) => (
-                    <div key={i} className="flex items-center gap-2">
-                      <span className="text-center text-[10px] font-black bg-gray-900 text-white rounded px-1.5 py-0.5">{DAYS[sched.day_of_week]?.substring(0, 3).toUpperCase()}</span>
-                      <span className="text-sm font-semibold text-gray-900">{fmtTime(sched.start_time)}</span>
-                      {sched.end_time && <span className="text-xs text-gray-400">&ndash; {fmtTime(sched.end_time)}</span>}
-                      {sched.timezone && <span className="text-[10px] text-gray-400 ml-auto">{sched.timezone.replace('America/', '')}</span>}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-xs text-gray-400 italic">No active schedule &mdash; <Link href={`/settings/services/${tmpl.id}/schedule`} className="text-blue-500 not-italic font-medium">add one</Link></p>
-              )}
-            </div>
-
-            {/* Actions Footer */}
-            <div className="border-t border-gray-100 px-4 py-2.5 flex items-center">
-              <Link href={`/settings/services/${tmpl.id}/schedule`} className="flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors">
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                Manage Schedule
-              </Link>
-              <button onClick={() => deactivate(tmpl.id)} className="ml-auto text-xs text-gray-400 hover:text-red-500 transition-colors">
-                Deactivate
-              </button>
+            <div>
+              {churchName && <div className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: '#3D5BD4' }}>{churchName}</div>}
+              <h1 className="text-lg font-extrabold leading-tight tracking-tight text-slate-900">Services &amp; Ministries</h1>
             </div>
           </div>
-        ))}
-        {templates.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-sm text-gray-500">No services yet. Tap <strong>+ Add</strong> to create your first.</p>
-          </div>
-        )}
+        </header>
+
+        <main className="mx-auto max-w-3xl px-4 py-6">
+          <p className="mb-5 px-1 text-[13px] leading-relaxed text-slate-500">
+            Each service shows the ministries you enter for it every week. {write ? 'Add, remove, or reorder ministries — the change applies to every future week.' : 'This is read-only for your role.'}
+          </p>
+
+          {loading ? (
+            <div className="space-y-4">{[1, 2].map(i => <div key={i} className="h-40 animate-pulse rounded-2xl bg-slate-100" />)}</div>
+          ) : cards.length === 0 ? (
+            /* E-30 empty state (no red) */
+            <div className="rounded-2xl border border-slate-200 bg-white px-6 py-12 text-center shadow-sm">
+              <p className="text-sm font-semibold text-slate-600">No services yet</p>
+              <p className="mt-1 text-[12px] text-slate-400">Services are created during onboarding or scheduling.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {cards.map(card => (
+                <ServiceCardView
+                  key={card.id}
+                  card={card}
+                  allTags={allTags}
+                  write={write}
+                  busy={busy}
+                  onAdd={(tag) => addMinistry(card, tag)}
+                  onRemove={(m) => removeMinistry(card, m)}
+                  onMove={(i, dir) => move(card, i, dir)}
+                />
+              ))}
+              <p className="px-1 text-[12px] leading-relaxed text-slate-400">
+                Ministries are equal peers — the order here is the order they appear when you enter.
+              </p>
+            </div>
+          )}
+        </main>
       </div>
     </AppLayout>
+  )
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * Service card — mirrors the Entries Occurrence card (DS-7/DS-25)
+ * ──────────────────────────────────────────────────────────────────────── */
+function ServiceCardView({ card, allTags, write, busy, onAdd, onRemove, onMove }: {
+  card: ServiceCard
+  allTags: TagOption[]
+  write: boolean
+  busy: string | null
+  onAdd: (tag: TagOption) => void
+  onRemove: (m: Ministry) => void
+  onMove: (index: number, dir: -1 | 1) => void
+}) {
+  const [picking, setPicking] = useState(false)
+  const [confirmRemove, setConfirmRemove] = useState<string | null>(null) // link_id
+
+  const linkedIds = new Set(card.ministries.map(m => m.tag_id))
+  const available = allTags.filter(t => !linkedIds.has(t.id))
+  // E-29 status: amber-outline when 0 ministries (won't render in Entries), else complete
+  const status = card.ministries.length === 0 ? 'needs' : 'complete'
+
+  return (
+    <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      {/* card header (DS-7): name · campus  …  status circle far right */}
+      <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-3">
+        <div className="min-w-0">
+          <h3 className="truncate text-[17px] font-bold tracking-tight text-slate-900">
+            {card.name}
+            {card.locationName && <span className="ml-2 text-[12px] font-medium text-slate-400">· {card.locationName}</span>}
+          </h3>
+        </div>
+        <Dot s={status} />
+      </div>
+
+      {/* ministry child rows (E-22) — equal-peer accent bars, no "primary" badge */}
+      {card.ministries.length === 0 ? (
+        <div className="flex flex-col items-center gap-1 px-4 py-6 text-center">
+          <span className="text-[13px] font-semibold text-slate-600">No ministries yet</span>
+          <span className="text-[12px] text-slate-400">Add a ministry so this service appears in Entries.</span>
+        </div>
+      ) : (
+        <ul className="divide-y divide-slate-50">
+          {card.ministries.map((m, i) => (
+            <li key={m.link_id} className="group flex items-center justify-between gap-3 px-4 py-3 transition-colors duration-200 hover:bg-slate-50">
+              <div className="flex min-w-0 items-center gap-3">
+                <span className={`h-7 w-1.5 shrink-0 rounded-full ${accentForRole(m.tag_role)}`} aria-hidden />
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="truncate text-[15px] font-semibold text-slate-800">{m.name}</span>
+                    <span className="text-[12px] font-medium text-slate-400">· {roleLabel(m.tag_role)}</span>
+                  </div>
+                  <span className="font-num text-[11px] text-slate-400">{m.metricCount} {m.metricCount === 1 ? 'metric' : 'metrics'}</span>
+                </div>
+              </div>
+
+              {write && (
+                <div className="flex items-center gap-1">
+                  {/* E-24 reorder ↑/↓ (O-3) */}
+                  <button onClick={() => onMove(i, -1)} disabled={i === 0 || busy === card.id} aria-label={`Move ${m.name} up`}
+                    className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-300 transition-colors duration-200 hover:bg-slate-100 hover:text-slate-600 disabled:cursor-not-allowed disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/40">
+                    <Ico.up className="h-4 w-4" />
+                  </button>
+                  <button onClick={() => onMove(i, 1)} disabled={i === card.ministries.length - 1 || busy === card.id} aria-label={`Move ${m.name} down`}
+                    className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-300 transition-colors duration-200 hover:bg-slate-100 hover:text-slate-600 disabled:cursor-not-allowed disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/40">
+                    <Ico.down className="h-4 w-4" />
+                  </button>
+                  {/* E-25 remove — slate "Remove", amber confirm, no red */}
+                  {confirmRemove === m.link_id ? (
+                    <span className="flex items-center gap-1">
+                      <button onClick={() => { onRemove(m); setConfirmRemove(null) }} disabled={busy === m.link_id}
+                        className="rounded-lg px-2 py-1 text-[12px] font-semibold text-[#B45309] transition-colors duration-200 hover:bg-[#F59E0B]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F59E0B]/40">
+                        Confirm
+                      </button>
+                      <button onClick={() => setConfirmRemove(null)}
+                        className="rounded-lg px-2 py-1 text-[12px] font-medium text-slate-400 transition-colors duration-200 hover:bg-slate-100 hover:text-slate-600">
+                        Cancel
+                      </button>
+                    </span>
+                  ) : (
+                    <button onClick={() => setConfirmRemove(m.link_id)} aria-label={`Remove ${m.name}`}
+                      className="ml-1 flex h-7 items-center gap-1 rounded-lg px-2 text-[12px] font-medium text-slate-400 opacity-0 transition-all duration-200 hover:bg-slate-100 hover:text-slate-700 focus-visible:opacity-100 group-hover:opacity-100">
+                      <Ico.trash className="h-3.5 w-3.5" />Remove
+                    </button>
+                  )}
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {/* E-26 add ministry (owner/admin only) */}
+      {write && (
+        <div className="border-t border-slate-100 bg-slate-50/60 px-4 py-3">
+          {!picking ? (
+            <button onClick={() => setPicking(true)}
+              className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-[13px] font-semibold text-[#3D5BD4] transition-colors duration-200 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/40">
+              <Ico.plus className="h-4 w-4" />Add ministry
+            </button>
+          ) : (
+            <div>
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-[12px] font-semibold uppercase tracking-wider text-slate-400">Add a ministry</span>
+                <button onClick={() => setPicking(false)} className="text-[12px] font-medium text-slate-400 hover:text-slate-600">Done</button>
+              </div>
+              {available.length === 0 ? (
+                <p className="text-[12px] text-slate-400">
+                  Every ministry is already on this service.{' '}
+                  <Link href="/settings/tags" className="font-semibold text-[#3D5BD4] hover:underline">Create a new ministry →</Link>
+                </p>
+              ) : (
+                <>
+                  <div className="flex flex-wrap gap-2">
+                    {available.map(t => (
+                      <button key={t.id} onClick={() => onAdd(t)} disabled={busy === card.id}
+                        className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[13px] font-medium text-slate-700 transition-colors duration-200 hover:border-[#4F6EF7]/40 hover:bg-[#4F6EF7]/5 disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/40">
+                        <span className={`h-3.5 w-1.5 rounded-full ${accentForRole(t.tag_role)}`} aria-hidden />
+                        {t.name}<span className="text-[11px] text-slate-400">· {roleLabel(t.tag_role)}</span>
+                      </button>
+                    ))}
+                  </div>
+                  {/* E-28 create-in-place → deep-link to canonical Tags screen (N-7 MVP) */}
+                  <Link href="/settings/tags" className="mt-2 inline-block text-[12px] font-semibold text-[#3D5BD4] hover:underline">
+                    Create a new ministry →
+                  </Link>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </section>
   )
 }

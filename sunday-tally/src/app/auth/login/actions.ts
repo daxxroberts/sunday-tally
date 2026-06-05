@@ -29,9 +29,11 @@ export async function signInWithPasswordAction(email: string, password: string):
     .eq('is_active', true)
     .single()
 
+  // Role-aware landing — /services is retired. Viewers → viewer dashboard;
+  // editors/admins/owners → /entries.
   const role = membership?.role
   if (role === 'viewer') redirect('/dashboard/viewer')
-  redirect('/services')
+  redirect('/entries')
 }
 
 export async function sendMagicLinkAction(email: string): Promise<{ error?: string; sent?: boolean }> {

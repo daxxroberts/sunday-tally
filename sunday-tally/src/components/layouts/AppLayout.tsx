@@ -48,8 +48,8 @@ const SettingsIcon = ({ filled }: { filled?: boolean }) => (
 
 const TABS: Tab[] = [
   {
-    label: 'Services',
-    href: '/services',
+    label: 'Entries',
+    href: '/entries',
     roles: ['owner', 'admin', 'editor'],
     icon: <CalendarIcon />,
     activeIcon: <CalendarIcon filled />,
@@ -69,9 +69,17 @@ const TABS: Tab[] = [
     activeIcon: <SparkleIcon filled />,
   },
   {
+    // N-6 / IRIS_ACCOUNT: the Settings hub is the only in-app path to the
+    // role-agnostic /settings/account screen (display name, default campus,
+    // and E-46 "Set a password" — the password path OTP/magic-link viewers
+    // most need). Expose the tab to ALL roles so the route is reachable from
+    // the bottom nav, not just a raw URL. The hub itself stays role-gated:
+    // config rows render "View only" for non-writers and the owner/admin-only
+    // Data section is hidden, so editors/viewers see Account + read-only
+    // church structure exactly as the hub already intends.
     label: 'Settings',
     href: '/settings',
-    roles: ['owner', 'admin'],
+    roles: ['owner', 'admin', 'editor', 'viewer'],
     icon: <SettingsIcon />,
     activeIcon: <SettingsIcon filled />,
   },
@@ -88,7 +96,7 @@ export default function AppLayout({ children, role, fillHeight }: AppLayoutProps
 
   function isActive(tab: Tab) {
     const href = tab.label === 'Dashboard' ? getDashboardHref(role) : tab.href
-    if (href === '/services') return pathname.startsWith('/services')
+    if (href === '/entries') return pathname.startsWith('/entries')
     if (href === '/dashboard/ai') return pathname.startsWith('/dashboard/ai')
     if (href === '/dashboard') return pathname.startsWith('/dashboard') && !pathname.startsWith('/dashboard/ai')
     if (href === '/settings') return pathname.startsWith('/settings')
@@ -111,7 +119,7 @@ export default function AppLayout({ children, role, fillHeight }: AppLayoutProps
       </main>
 
       {/* Bottom tab bar */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50">
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
         <div className="flex">
           {visibleTabs.map(tab => {
             const active = isActive(tab)
@@ -120,11 +128,11 @@ export default function AppLayout({ children, role, fillHeight }: AppLayoutProps
                 key={tab.label}
                 href={tabHref(tab)}
                 className={`flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-colors ${
-                  active ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'
+                  active ? 'text-[#4F6EF7]' : 'text-gray-400 hover:text-gray-600'
                 }`}
               >
                 {active ? tab.activeIcon : tab.icon}
-                <span className={`text-xs font-medium ${active ? 'text-blue-600' : ''}`}>{tab.label}</span>
+                <span className={`text-xs font-medium ${active ? 'text-[#4F6EF7]' : ''}`}>{tab.label}</span>
               </Link>
             )
           })}

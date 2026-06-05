@@ -1,63 +1,52 @@
 import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type Anthropic from '@anthropic-ai/sdk'
-import { runToolLoop } from '@/lib/ai/anthropic'
-import { WRITER_TOOLS, WRITER_HANDLERS } from './writers'
+import { WRITER_HANDLERS } from './writers'
 import { getAllRows, type SourceInput } from './sources'
 import { deriveGridConfigFromSchema } from '@/lib/history/derive_grid_config'
 
-const STAGE_B_SYSTEM = `You are the Sunday Tally setup-writer agent.
-
-You will be given a proposed/confirmed setup and a short summary of each uploaded source. Your only job is to CALL THE WRITER TOOLS to make sure every required setup entity exists in the database:
-
-- upsert_location
-- upsert_service_tag
-- upsert_service_template (references a location_code and a primary_tag_code)
-- upsert_service_schedule_version (REQUIRED after every upsert_service_template — sets day_of_week + start_time)
-- upsert_volunteer_category
-- upsert_response_category
-- upsert_giving_source
-
-Call tools in dependency order (locations + tags → templates → schedule_versions; categories + sources before row extraction). Use stable, UPPERCASE codes when one isn't provided (e.g. MAIN, MORNING, PLATE, HOSTS, FIRST_TIME_DECISION).
-
-CRITICAL — Schedule versions: After EVERY upsert_service_template, you MUST call upsert_service_schedule_version with that template's day_of_week and start_time. Source these values from:
-  1. proposed_setup.service_templates[].day_of_week / start_time when present
-  2. qa_answers when the user supplied a start_time clarification (e.g. id="q_time_<service_code>")
-  3. Inference from data dates: if every observed service_date for a template is a Sunday → day_of_week=0; all Wednesdays → day_of_week=3; etc.
-  4. Sensible defaults if absolutely nothing is known: day_of_week=0 (Sunday), start_time="10:00:00"
-Without a schedule_version the service won't appear as a scheduled card on T1 — never skip this step.
-
-CRITICAL — Service template codes: The service_code you use in upsert_service_template MUST exactly match (after slugifying to UPPERCASE) the values that appear in the source sheet's service_template_code column. For example:
-- If the sheet has Service Type values "1", "2", "3" → use service_code "1", "2", "3"
-- If the sheet has Service Type values "Morning", "Evening" → use service_code "MORNING", "EVENING"
-Check the confirmed mapping column_map entry for service_template_code and its notes to find the raw values. Use those values as codes (the display_name can still be descriptive like "Sunday 9am").
-
-CRITICAL — AT LEAST ONE SERVICE TEMPLATE MUST EXIST:
-Service occurrences cannot exist without a service template. Without occurrences, NO data rows
-(attendance, giving, volunteer, response) can ever be imported. If proposed_setup has no service_templates,
-or if none of the proposed templates were created yet, you MUST still call:
-  upsert_location(code: "MAIN", name: "Main Campus")
-  upsert_service_template(service_code: "MORNING", display_name: "Sunday Service", location_code: "MAIN", primary_tag: "MORNING")
-This ensures at least one template exists so the row extractor can attach occurrences.
-
-When all setup is in place, call the "done" tool with a short summary. Do NOT attempt to insert attendance, giving, volunteer, response, or service_occurrence rows — those are handled deterministically by the server after you finish.`
+/**
+ * Normalize one segment of a compound area_field_map key for tolerant matching.
+ * trim + lowercase + collapse internal whitespace + strip a single trailing "s".
+ * Makes "Attender"↔"Attenders", case, and stray whitespace match symmetrically.
+ * MUST stay byte-identical to the copy in routing.ts (the mirror contract).
+ */
+function normalizeKeySegment(seg: string): string {
+  const s = seg.trim().toLowerCase().replace(/\s+/g, ' ')
+  return s.endsWith('s') ? s.slice(0, -1) : s
+}
+function normalizeCompoundKey(key: string): string {
+  return key.split(' / ').map(normalizeKeySegment).join(' / ')
+}
+/** normalizedKey → destField; first-seen wins on collision (collisions ignored). */
+function buildNormalizedAreaIndex(
+  areaFieldMap: Record<string, string> | undefined,
+): Map<string, string> {
+  const idx = new Map<string, string>()
+  if (!areaFieldMap) return idx
+  for (const [k, dest] of Object.entries(areaFieldMap)) {
+    const nk = normalizeCompoundKey(k)
+    if (!idx.has(nk)) idx.set(nk, dest)
+  }
+  return idx
+}
 
 export interface ColumnMapEntry {
   source_column: string
   /**
-   * dest_field grammar:
-   *   "service_date"
-   *   "service_template_code"
-   *   "location_code"
-   *   "attendance.main" | "attendance.kids" | "attendance.youth"
-   *   "giving.<SOURCE_CODE>"           — service-tied giving (giving_entries)
-   *   "period_giving.<SOURCE_CODE>"    — church-wide weekly giving (church_period_giving, D-056)
-   *                                      Date is snapped to the Sunday on or before the row's date.
-   *                                      No service_occurrence required.
-   *   "volunteer.<CATEGORY_CODE>"
-   *   "response.<CATEGORY_CODE>"             (service-scope)
-   *   "response.<CATEGORY_CODE>.<AUDIENCE>"  (audience-scope — MAIN|KIDS|YOUTH)
-   *   "ignore"
+   * dest_field grammar (IR v2 — IMPORT_IR_V2.md). Four control fields + ONE data field:
+   *   "service_date"           — the column holding the row's date
+   *   "service_template_code"  — the column naming which service (optional; else default_service_template_code)
+   *   "location_code"          — optional
+   *   "ignore"                 — skip this column
+   *   "metric.<METRIC_CODE>"   — a data value for that metric (declared in proposed_setup.metrics)
+   *
+   * There are NO attendance./giving./volunteer./response. forms, no .AUDIENCE
+   * suffix, and no period_ prefix. Instance-vs-period is read from the metric's
+   * `scope`, NOT the column: the writer looks up the metric and, if scope='period',
+   * snaps the row date to its Sunday (service_date − DOW, Sunday=0) and writes
+   * period_anchor with service_instance_id=NULL; if scope='instance', it
+   * resolves/creates the service_instance and writes service_instance_id with
+   * period_anchor=NULL (XOR enforced by CHECK).
    */
   dest_field: string
 }
@@ -72,18 +61,35 @@ export interface TallFormatConfig {
   /** Maps raw audience column values to MAIN/KIDS/YOUTH */
   audience_map?: Record<string, 'MAIN' | 'KIDS' | 'YOUTH'>
   /**
-   * Optional column used to build compound lookup keys.
-   * When set, the area_field_map is keyed as "${groupType} / ${metricName}".
-   * Falls back to plain metricName if compound key is not found.
+   * Optional column used to build the first segment of compound lookup keys.
+   * When set, adds a leading "${groupType} / " prefix to the key.
+   * e.g. "Group Type" with value "Stats" → "Stats / MetricName"
    */
   group_type_column?: string
-  /** Maps each distinct metric name (or "GroupType / MetricName") to a dest_field */
+  /**
+   * Optional column that provides ministry/audience context for metric routing.
+   * When set together with group_type_column, builds 3-segment compound keys:
+   *   "${groupType} / ${groupContext} / ${metricName}"
+   * e.g. "Group" with value "LifeKids" → "Stats / LifeKids / Baptism"
+   * Falls back through shorter key variants if the full key is not in area_field_map.
+   */
+  group_context_column?: string
+  /** Maps each distinct metric name (or compound key) to a dest_field.
+   *  In IR v2 the value is always "metric.<METRIC_CODE>" (or "ignore") — the old
+   *  kind-prefixed dest_fields are gone. The compound key resolves a tall row to a
+   *  metric (ministry from group_context/audience, reporting from group_type/metric_name).
+   *  Key resolution order (longest match wins):
+   *    1. "${groupType} / ${groupContext} / ${metricName}"  (3-segment)
+   *    2. "${groupType} / ${metricName}"                    (2-segment)
+   *    3. "${metricName}"                                   (bare)
+   */
   area_field_map?: Record<string, string>
 }
 
 export interface ConfirmedSourceMapping {
   source_name:              string
-  dest_table:               string
+  /** IR v2: routing is metric-driven; this field is decorative/back-compat only. */
+  dest_table?:              string
   date_column?:             string
   /** Fallbacks if the source does not carry per-row values. */
   default_service_template_code?: string
@@ -125,12 +131,21 @@ export interface ConfirmedMapping {
 export interface StageBResult {
   totalCents:    number
   setupSummary:  string
+  /**
+   * IR v2: all data lands in `metric_entries`. `occurrences` counts upserted
+   * service_instances; `metric_entries` counts written metric values. The legacy
+   * per-kind fields (attendance/volunteer/response/giving/period_*) are retained
+   * for backward-compat with the confirm page's optional-chained reader/summer;
+   * `attendance` mirrors `metric_entries` so the page's dataTotal stays non-zero,
+   * the rest are 0.
+   */
   rowsInserted:  {
-    occurrences:   number
-    attendance:    number
-    volunteer:     number
-    response:      number
-    giving:        number
+    occurrences:    number
+    metric_entries: number
+    attendance:     number
+    volunteer:      number
+    response:       number
+    giving:         number
     period_giving:  number
     period_response: number
   }
@@ -143,71 +158,32 @@ export async function runStageB(args: {
   sources:            SourceInput[]
   confirmedMapping:   ConfirmedMapping
 }): Promise<StageBResult> {
-  // ---------- 1. Setup via Claude writer tools ----------
-  const qaSection = (args.confirmedMapping.qa_answers ?? []).length > 0
-    ? [
-        ``,
-        `User's answers to clarifying questions (apply these when creating entities):`,
-        JSON.stringify(args.confirmedMapping.qa_answers, null, 2),
-        `IMPORTANT: If proposed_setup has display_name values containing "[BLOCKING]", replace them`,
-        `with the real names from the user's answers above before calling upsert_service_template.`,
-      ].join('\n')
-    : ''
-
-  const today = new Date().toISOString().slice(0, 10)
-  const setupUserPrompt = [
-    `Today's date: ${today}. Data up to and including this date is historical, not future.`,
-    ``,
-    `Confirmed setup the user accepted:`,
-    JSON.stringify(args.confirmedMapping.proposed_setup ?? {}, null, 2),
-    qaSection,
-    ``,
-    `Confirmed source mappings (for context only — do not extract rows):`,
-    JSON.stringify(args.confirmedMapping.sources, null, 2),
-    ``,
-    `Call the writer tools to create every entity the mapping references, then call "done".`,
-  ].join('\n')
-
-  const setupResult = await runToolLoop({
-    supabase:    args.supabase,
-    churchId:    args.churchId,
-    kind:        'import_stage_b',
-    model:       'claude-haiku-4-5-20251001',
-    system:      [
-      { type: 'text', text: STAGE_B_SYSTEM, cache_control: { type: 'ephemeral' } },
-    ],
-    tools:       WRITER_TOOLS as Anthropic.Messages.Tool[],
-    handlers:    WRITER_HANDLERS,
-    terminateOn: ['done'],
-    maxTurns:    24,
-    initialUser: setupUserPrompt,
-  })
-
-  const setupSummary = String(
-    (setupResult.finalToolCall?.input as { summary?: string } | undefined)?.summary ?? '',
+  // ---------- 1. Setup — DETERMINISTIC executor (no AI) ----------
+  // Stage A (AI) already decided the full structure in `proposed_setup`. There is
+  // nothing left to "decide" here, so we no longer hand it to a Haiku tool-loop that
+  // just transcribed it into inserts. Instead we read `proposed_setup` and call the
+  // existing WRITER_HANDLERS directly, in dependency order. AI stays ONLY in Stage A.
+  const setupResult = await runSetupDeterministic(
+    { churchId: args.churchId, supabase: args.supabase },
+    args.confirmedMapping.proposed_setup,
   )
+  const setupSummary = setupResult.setupSummary
 
   // ---------- 2. Resolve lookup maps (code → id) ----------
   const [
     locationsRes,
     templatesRes,
-    volRes,
-    respRes,
-    giveRes,
-    tagsRes,
+    reportingRes,
+    metricsRes,
   ] = await Promise.all([
     args.supabase.from('church_locations')
       .select('id, code').eq('church_id', args.churchId),
     args.supabase.from('service_templates')
       .select('id, service_code, location_id').eq('church_id', args.churchId),
-    args.supabase.from('volunteer_categories')
-      .select('id, category_code, audience_group_code').eq('church_id', args.churchId),
-    args.supabase.from('response_categories')
-      .select('id, category_code, stat_scope').eq('church_id', args.churchId),
-    args.supabase.from('giving_sources')
-      .select('id, source_code').eq('church_id', args.churchId),
-    args.supabase.from('service_tags')
-      .select('id, tag_code').eq('church_id', args.churchId),
+    args.supabase.from('reporting_tags')
+      .select('id, unit_kind').eq('church_id', args.churchId),
+    args.supabase.from('metrics')
+      .select('id, code, scope, reporting_tag_id').eq('church_id', args.churchId),
   ])
 
   const locationByCode = new Map<string, string>()
@@ -218,105 +194,104 @@ export async function runStageB(args: {
     templateByCode.set(r.service_code, { id: r.id, locationId: r.location_id })
   }
 
-  const volunteerByCode = new Map<string, string>()
-  for (const r of volRes.data ?? []) volunteerByCode.set(r.category_code, r.id)
-
-  const responseByCode = new Map<string, { id: string; scope: 'audience' | 'service' | 'week' | 'month' | 'day' }>()
-  for (const r of respRes.data ?? []) {
-    responseByCode.set(r.category_code, { id: r.id, scope: r.stat_scope })
+  // reporting_tag_id → unit_kind, used to pick the value parser per metric.
+  const reportingUnitById = new Map<string, 'count' | 'currency'>()
+  for (const r of reportingRes.data ?? []) {
+    reportingUnitById.set(r.id, (r.unit_kind === 'currency' ? 'currency' : 'count'))
   }
 
-  const givingByCode = new Map<string, string>()
-  for (const r of giveRes.data ?? []) givingByCode.set(r.source_code, r.id)
-
-  const tagByCode = new Map<string, string>()
-  for (const r of tagsRes.data ?? []) tagByCode.set(r.tag_code, r.id)
+  // metric_code → metric. `metrics` now carries a `code` column (UNIQUE per church),
+  // so resolve metric_code DIRECTLY off the freshly-written rows — no natural-key
+  // re-derivation from proposed_setup. unitKind (from the reporting tag) selects the
+  // value parser: currency → money (decimals), count → integer.
+  type MetricInfo = { id: string; scope: 'instance' | 'period'; unitKind: 'count' | 'currency' }
+  const metricByCode = new Map<string, MetricInfo>()
+  for (const r of metricsRes.data ?? []) {
+    if (!r.code) continue
+    metricByCode.set(r.code, {
+      id: r.id,
+      scope: r.scope,
+      unitKind: reportingUnitById.get(r.reporting_tag_id) ?? 'count',
+    })
+  }
 
   // ---------- 3. Deterministic row extraction ----------
-  const errors: string[] = []
-  const counts = { occurrences: 0, attendance: 0, volunteer: 0, response: 0, giving: 0, period_giving: 0, period_response: 0 }
+  // Seed with any setup-phase handler errors so they surface in the final result
+  // (both the early-return path below and the normal return at the end read this array).
+  const errors: string[] = [...setupResult.errors]
+  const counts = { occurrences: 0, metric_entries: 0, attendance: 0, volunteer: 0, response: 0, giving: 0, period_giving: 0, period_response: 0 }
 
-  // Period-giving accumulator (D-056). Shared across all sources so duplicate
-  // (source, week) entries from different sheets sum correctly.
-  type PgRow = {
-    church_id:         string
-    giving_source_id:  string
-    entry_period_type: 'week'
-    period_date:       string
-    giving_amount:     number
+  // Unified metric_entries accumulator (IR v2). One row per
+  // (metric, service_instance) for instance scope, or (metric, period_anchor) for
+  // period scope. Shared across all sources so duplicates from different sheets sum
+  // correctly. Exactly one of service_instance_id / period_anchor is set (XOR CHECK).
+  // reporting_tag_code is DENORMALIZED BY TRIGGER — never set here.
+  type MetricEntryRow = {
+    church_id:           string
+    metric_id:           string
+    service_instance_id: string | null
+    period_anchor:       string | null
+    value:               number
+    is_not_applicable:   boolean
   }
-  const pgMap = new Map<string, PgRow>()
-  const addPeriodGiving = (sourceId: string, isoDate: string, amount: number) => {
-    const sunday = sundayOfWeek(isoDate)
-    const key    = `${sourceId}:${sunday}`
-    const existing = pgMap.get(key)
-    if (existing) {
-      existing.giving_amount += amount
-    } else {
-      pgMap.set(key, {
-        church_id:         args.churchId,
-        giving_source_id:  sourceId,
-        entry_period_type: 'week',
-        period_date:       sunday,
-        giving_amount:     amount,
-      })
-    }
-  }
-
-  // Period-stats accumulator. Shared across sources; mirrors pgMap for church_period_entries.
-  // service_tag_id may be null for church-wide (untagged) stats.
-  type PsRow = {
-    church_id:            string
-    response_category_id: string
-    service_tag_id:       string | null
-    entry_period_type:    'week' | 'month' | 'day'
-    period_date:          string
-    stat_value:           number
-    is_not_applicable:    boolean
-  }
-  const psMap = new Map<string, PsRow>()
-  // Track tag-suffix fallbacks so the same warning isn't repeated per row.
+  // Instance-scope entries keyed by `${metric_id}:${service_instance_id}`.
+  const instanceEntryMap = new Map<string, MetricEntryRow>()
+  // Period-scope entries keyed by `${metric_id}:${period_anchor}`.
+  const periodEntryMap = new Map<string, MetricEntryRow>()
+  // Track per-(metric) warnings so the same note isn't repeated per row.
   const warnedTagFallbacks = new Set<string>()
-  const addPeriodStat = (
-    categoryId:       string,
-    tagId:            string | null,
-    periodType:       'week' | 'month' | 'day',
-    isoDate:          string,
-    value:            number,
-  ) => {
-    const anchor = periodType === 'month'
-      ? isoDate.slice(0, 7) + '-01'   // snap to 1st of month
-      : sundayOfWeek(isoDate)          // snap to Sunday of week (day also anchors to Sunday)
-    const key = `${categoryId}:${tagId ?? ''}:${anchor}`
-    const existing = psMap.get(key)
+
+  const addInstanceEntry = (metricId: string, instanceId: string, value: number) => {
+    const key = `${metricId}:${instanceId}`
+    const existing = instanceEntryMap.get(key)
     if (existing) {
-      existing.stat_value += value
+      existing.value += value
     } else {
-      psMap.set(key, {
-        church_id:            args.churchId,
-        response_category_id: categoryId,
-        service_tag_id:       tagId,
-        entry_period_type:    periodType,
-        period_date:          anchor,
-        stat_value:           value,
-        is_not_applicable:    false,
+      instanceEntryMap.set(key, {
+        church_id:           args.churchId,
+        metric_id:           metricId,
+        service_instance_id: instanceId,
+        period_anchor:       null,
+        value,
+        is_not_applicable:   false,
       })
     }
   }
 
-  // Hard guard: if no service templates exist, nothing can be imported.
-  // Stage B's AI is supposed to create at least one template — if it didn't, surface a clear error.
+  const addPeriodEntry = (metricId: string, isoDate: string, value: number) => {
+    const anchor = sundayOfWeek(isoDate) // Sunday-on-or-before the row date (Sunday=0)
+    const key = `${metricId}:${anchor}`
+    const existing = periodEntryMap.get(key)
+    if (existing) {
+      existing.value += value
+    } else {
+      periodEntryMap.set(key, {
+        church_id:           args.churchId,
+        metric_id:           metricId,
+        service_instance_id: null,
+        period_anchor:       anchor,
+        value,
+        is_not_applicable:   false,
+      })
+    }
+  }
+
+  // Hard guard: if no service templates exist, instance-scope metrics can't be
+  // written. Stage B's AI is supposed to create at least one template — if it
+  // didn't, surface a clear error. (Period-only imports still need this guard off,
+  // but the AI always creates a template per the prompt.)
   if (templateByCode.size === 0) {
     errors.push(
-      'Setup error: no service templates were created. Every data row needs a service occurrence, ' +
-      'which requires a service template. Re-run the import and ensure the mapping includes at least one service type.',
+      'Setup error: no service templates were created. Instance-scope metrics need a ' +
+      'service instance, which requires a service template. Re-run the import and ensure ' +
+      'the mapping includes at least one service type.',
     )
     return { totalCents: setupResult.totalCents, setupSummary, rowsInserted: counts, errors }
   }
 
   // Pre-load all existing occurrences for this church to avoid per-row SELECT round-trips
   const { data: existingOccs } = await args.supabase
-    .from('service_occurrences')
+    .from('service_instances')
     .select('id, service_template_id, location_id, service_date')
     .eq('church_id', args.churchId)
   const occurrenceCache = new Map<string, string>()
@@ -326,19 +301,37 @@ export async function runStageB(args: {
 
   const sourcesByName = new Map(args.sources.map(s => [s.name, s]))
 
+  // ---------- 3a. Batch occurrence pre-pass ----------
+  // Walk every source row exactly as the extraction loops below do and collect the
+  // DISTINCT set of occurrence keys (church, location, template, date). This lets us
+  // bulk-upsert all missing service_instances in a handful of round-trips BEFORE the
+  // row loops run, so the loops never issue a per-row SELECT+INSERT — they hit the
+  // already-populated `occurrenceCache` only. The slow cachedUpsertOccurrence fallback
+  // remains as a safety net but should effectively never fire after this pass.
+  //
+  // resolveOccurrenceKey is the SINGLE source of truth for row → occurrence-key
+  // resolution, shared by this pre-pass and (implicitly, via the cache) the loops:
+  // both reuse the same templateByCode / locationByCode / parseDateIso / slug logic.
+  type OccKey = { churchId: string; locationId: string; templateId: string; serviceDate: string }
+  const cacheKeyFor = (k: OccKey) => `${k.templateId}:${k.locationId}:${k.serviceDate}`
+
+  // Pre-cache rows already loaded from getAllRows so the loops don't re-fetch. Sources
+  // are parsed once here; the extraction loops below re-call getAllRows, which is cheap
+  // (already-buffered) — but to be safe we cache per-source rows for reuse.
+  const rowsBySource = new Map<string, Record<string, string>[]>()
+
+  // Distinct occurrence keys discovered across all sources, deduped by cache key.
+  const wantedOccKeys = new Map<string, OccKey>()
+
   for (const mapping of args.confirmedMapping.sources) {
     const src = sourcesByName.get(mapping.source_name)
-    if (!src) {
-      errors.push(`Source "${mapping.source_name}" not found in upload payload`)
-      continue
-    }
-    if (src.kind === 'text') continue
-    if (mapping.dest_table === 'ignore') continue
+    if (!src || src.kind === 'text') continue
 
-    const rows = await getAllRows(src).catch(err => {
-      errors.push(`getAllRows "${mapping.source_name}": ${err instanceof Error ? err.message : 'parse failed'}`)
-      return [] as Record<string, string>[]
-    })
+    // Parse once. On failure, leave it UNCACHED so the extraction loop below re-runs
+    // getAllRows and surfaces the parse error via its own catch (preserves error output).
+    const rows = await getAllRows(src).catch(() => null)
+    if (rows === null) continue
+    rowsBySource.set(mapping.source_name, rows)
 
     const fieldsByColumn = new Map(mapping.column_map.map(c => [c.source_column, c.dest_field]))
     const dateColumn = mapping.date_column
@@ -346,10 +339,138 @@ export async function runStageB(args: {
     const templateCol = [...fieldsByColumn.entries()].find(([, d]) => d === 'service_template_code' || d === 'service_code')?.[0]
     const locationCol  = [...fieldsByColumn.entries()].find(([, d]) => d === 'location_code')?.[0]
 
+    // Mirror the loops' template-payload gate: a row only needs an occurrence when the
+    // source carries at least one instance-scope metric column.
+    const hasInstancePayload = mapping.column_map.some(c => {
+      if (!c.dest_field.startsWith('metric.')) return false
+      const code = slug(c.dest_field.slice('metric.'.length))
+      return metricByCode.get(code)?.scope === 'instance'
+    })
+    // Tall sheets always extract per-group; instance-scope metrics there are resolved
+    // lazily, but the occurrence key is identical, so collect for every resolvable
+    // (date × template) group. We collect for tall regardless of hasInstancePayload
+    // (the lazy getOccurrence in the loop only fires for instance metrics anyway, and
+    // pre-seeding extra cache keys is harmless — those occurrences just won't be used).
+    if (!mapping.tall_format && !hasInstancePayload) continue
+
+    for (const row of rows) {
+      const serviceDate = parseDateIso(dateColumn ? row[dateColumn] : undefined)
+      if (!serviceDate) continue
+      const templateCode = slug(
+        (templateCol && row[templateCol]) || mapping.default_service_template_code || '',
+      )
+      if (!templateCode) continue
+      const template = templateByCode.get(templateCode)
+      if (!template) continue
+      const locationId = locationCol && row[locationCol]
+        ? (locationByCode.get(slug(row[locationCol])) ?? template.locationId)
+        : template.locationId
+      const occKey: OccKey = {
+        churchId: args.churchId, locationId, templateId: template.id, serviceDate,
+      }
+      const ck = cacheKeyFor(occKey)
+      if (!wantedOccKeys.has(ck)) wantedOccKeys.set(ck, occKey)
+    }
+  }
+
+  // Diff against the preloaded cache → the keys that need creating.
+  const missingKeys: OccKey[] = []
+  for (const [ck, occKey] of wantedOccKeys) {
+    if (!occurrenceCache.has(ck)) missingKeys.push(occKey)
+  }
+
+  if (missingKeys.length > 0) {
+    const OCC_CHUNK = 500
+    const OCC_CONFLICT = 'church_id,location_id,service_template_id,service_date'
+    for (let i = 0; i < missingKeys.length; i += OCC_CHUNK) {
+      const slice = missingKeys.slice(i, i + OCC_CHUNK)
+      const insertRows = slice.map(k => ({
+        church_id:           k.churchId,
+        location_id:         k.locationId,
+        service_template_id: k.templateId,
+        service_date:        k.serviceDate,
+        status:              'active',
+      }))
+      const { data, error } = await args.supabase
+        .from('service_instances')
+        .upsert(insertRows, { onConflict: OCC_CONFLICT })
+        .select('id, service_template_id, location_id, service_date')
+      if (error) {
+        // Non-fatal: the per-row cachedUpsertOccurrence fallback will recover any
+        // occurrence this batch failed to create.
+        errors.push(`occurrence batch upsert: ${error.message}`)
+        continue
+      }
+      for (const o of data ?? []) {
+        occurrenceCache.set(`${o.service_template_id}:${o.location_id}:${o.service_date}`, o.id)
+      }
+    }
+
+    // If upsert .select() didn't return rows for pre-existing conflicts (some
+    // PostgREST/Postgres versions omit untouched conflict rows), fill any gaps with a
+    // single SELECT of the still-missing keys.
+    const stillMissing = missingKeys.filter(k => !occurrenceCache.has(cacheKeyFor(k)))
+    if (stillMissing.length > 0) {
+      // Re-read the full occurrence set once; cheaper than N targeted lookups and the
+      // wanted set is bounded by the sheet's distinct (date × template) count.
+      const { data: refetched } = await args.supabase
+        .from('service_instances')
+        .select('id, service_template_id, location_id, service_date')
+        .eq('church_id', args.churchId)
+      for (const o of refetched ?? []) {
+        occurrenceCache.set(`${o.service_template_id}:${o.location_id}:${o.service_date}`, o.id)
+      }
+    }
+  }
+
+  for (const mapping of args.confirmedMapping.sources) {
+    const src = sourcesByName.get(mapping.source_name)
+    if (!src) {
+      errors.push(`Source "${mapping.source_name}" not found in upload payload`)
+      continue
+    }
+    if (src.kind === 'text') continue
+
+    // Reuse rows parsed during the batch pre-pass (3a) to avoid re-fetching the sheet.
+    // Fall back to a fresh fetch only if the pre-pass somehow didn't cache them.
+    const rows = rowsBySource.get(mapping.source_name)
+      ?? await getAllRows(src).catch(err => {
+        errors.push(`getAllRows "${mapping.source_name}": ${err instanceof Error ? err.message : 'parse failed'}`)
+        return [] as Record<string, string>[]
+      })
+
+    const fieldsByColumn = new Map(mapping.column_map.map(c => [c.source_column, c.dest_field]))
+    const dateColumn = mapping.date_column
+      ?? [...fieldsByColumn.entries()].find(([, d]) => d === 'service_date')?.[0]
+    const templateCol = [...fieldsByColumn.entries()].find(([, d]) => d === 'service_template_code' || d === 'service_code')?.[0]
+    const locationCol  = [...fieldsByColumn.entries()].find(([, d]) => d === 'location_code')?.[0]
+
+    // Resolve a metric.<CODE> dest_field → { id, scope, unitKind }. Returns null
+    // (with a one-time error) if the metric was never created in Phase 1.
+    const resolveMetric = (destField: string, ctxLabel: string): MetricInfo | null => {
+      const code = slug(destField.slice('metric.'.length))
+      const info = metricByCode.get(code)
+      if (!info) {
+        const warnKey = `metric:${code}`
+        if (!warnedTagFallbacks.has(warnKey)) {
+          errors.push(`Unknown metric "${code}" (${ctxLabel}) — not declared in proposed_setup.metrics or not created in setup.`)
+          warnedTagFallbacks.add(warnKey)
+        }
+        return null
+      }
+      return info
+    }
+
+    // Parse a raw cell into a non-negative number using the metric's unit kind.
+    // Blank → null (skip, NOT zero — Rule 2). Negatives rejected.
+    const parseMetricValue = (raw: string | undefined, unitKind: 'count' | 'currency'): number | null =>
+      unitKind === 'currency' ? parseMoney(raw) : parseCount(raw)
+
     // ── TALL/UNPIVOTED FORMAT ─────────────────────────────────────────────────
     if (mapping.tall_format) {
       const tf = mapping.tall_format
-      // Group rows by occurrence key (date × template)
+      // Group rows by occurrence key (date × template). Only instance-scope metrics
+      // need an occurrence; period-scope metrics are accumulated directly per row.
       type OccGroup = { date: string; templateCode: string; rows: Record<string, string>[] }
       const occGroups = new Map<string, OccGroup>()
 
@@ -358,328 +479,117 @@ export async function runStageB(args: {
         if (!serviceDate) continue
         const rawTmpl = (templateCol && row[templateCol]) || mapping.default_service_template_code || ''
         const templateCode = slug(rawTmpl)
-        if (!templateCode) continue
+        // Even rows with no template can carry period-scope metrics — group them under
+        // a synthetic key so we still iterate them, but skip occurrence upsert below.
         const key = `${serviceDate}:${templateCode}`
         if (!occGroups.has(key)) occGroups.set(key, { date: serviceDate, templateCode, rows: [] })
         occGroups.get(key)!.rows.push(row)
       }
 
-      // Use maps to deduplicate rows that share the same conflict key
-      type RespRow = {
-        service_occurrence_id: string
-        response_category_id: string
-        audience_group_code: string | null
-        stat_value: number
-        is_not_applicable: boolean
-      }
-      type AttRow = {
-        service_occurrence_id: string
-        main_attendance: number | null
-        kids_attendance: number | null
-        youth_attendance: number | null
-      }
-      type GivRow = {
-        service_occurrence_id: string
-        giving_source_id: string
-        giving_amount: number
-        giving_type: string
-      }
-      type VolRow = {
-        service_occurrence_id: string
-        volunteer_category_id: string
-        volunteer_count: number
-        is_not_applicable: boolean
-      }
-      // Map key = conflict columns concatenated; SUM when duplicate
-      const respMap  = new Map<string, RespRow>()
-      const attMap   = new Map<string, AttRow>()
-      const givMap   = new Map<string, GivRow>()
-      const volMap   = new Map<string, VolRow>()
-
       for (const grp of occGroups.values()) {
-        const template = templateByCode.get(grp.templateCode)
-        if (!template) {
-          errors.push(`"${mapping.source_name}": unknown template "${grp.templateCode}" on ${grp.date}`)
-          continue
+        const template = grp.templateCode ? templateByCode.get(grp.templateCode) : undefined
+        // Resolve the occurrence lazily — only when an instance-scope metric needs it,
+        // so period-only rows (no/unknown template) don't error.
+        let occurrenceId: string | null | undefined
+        const getOccurrence = async (): Promise<string | null> => {
+          if (occurrenceId !== undefined) return occurrenceId
+          if (!template) {
+            errors.push(`"${mapping.source_name}": unknown template "${grp.templateCode}" on ${grp.date}`)
+            occurrenceId = null
+            return null
+          }
+          const locationId = locationCol && grp.rows[0]?.[locationCol]
+            ? (locationByCode.get(slug(grp.rows[0][locationCol])) ?? template.locationId)
+            : template.locationId
+          const id = await cachedUpsertOccurrence(args.supabase, occurrenceCache, {
+            churchId: args.churchId, locationId, templateId: template.id, serviceDate: grp.date,
+          })
+          if (!id) {
+            errors.push(`"${mapping.source_name}" ${grp.date}/${grp.templateCode}: failed to upsert occurrence`)
+            occurrenceId = null
+            return null
+          }
+          counts.occurrences++
+          occurrenceId = id
+          return id
         }
-        const locationId = locationCol && grp.rows[0]?.[locationCol]
-          ? (locationByCode.get(slug(grp.rows[0][locationCol])) ?? template.locationId)
-          : template.locationId
-
-        const occurrenceId = await cachedUpsertOccurrence(args.supabase, occurrenceCache, {
-          churchId: args.churchId, locationId, templateId: template.id, serviceDate: grp.date,
-        })
-        if (!occurrenceId) {
-          errors.push(`"${mapping.source_name}" ${grp.date}/${grp.templateCode}: failed to upsert occurrence`)
-          continue
-        }
-        counts.occurrences++
 
         for (const row of grp.rows) {
           const metricName = tf.metric_name_column ? row[tf.metric_name_column] : null
           const rawValue   = tf.value_column ? row[tf.value_column] : null
           if (!metricName || rawValue == null || rawValue === '') continue
 
-          const groupTypeVal = tf.group_type_column ? row[tf.group_type_column] : undefined
-          const compoundKey  = groupTypeVal ? `${groupTypeVal} / ${metricName}` : null
-          const destField    = (compoundKey && tf.area_field_map?.[compoundKey])
-            ?? tf.area_field_map?.[metricName]
+          const groupTypeVal    = tf.group_type_column    ? row[tf.group_type_column]    : undefined
+          const groupContextVal = tf.group_context_column ? row[tf.group_context_column] : undefined
+          // MUST mirror routeTallRow() in routing.ts (the validator's source of truth).
+          // For audience-discriminated rows (e.g. attendance) the segment that selects
+          // the metric lives in the audience column ("Adult"/"Student"/"Kid"), not the
+          // metric_name column. area_field_map is keyed by that audience word exactly as
+          // it is by the Area value for Volunteers/Stats. So we try the literal Area keys
+          // FIRST (longest-first), then the audience-derived keys — the audience variants
+          // only fire when Area alone didn't match, so Volunteers/Stats don't regress.
+          const audienceRaw = tf.audience_column ? row[tf.audience_column] : undefined
+          const segments: string[] = [metricName]
+          if (audienceRaw) {
+            segments.push(audienceRaw)
+            const mapped = tf.audience_map?.[audienceRaw]
+            if (mapped) segments.push(mapped)
+          }
+          // Build candidate compound keys (longest-first), mirroring routeTallRow().
+          const candidateKeys: string[] = []
+          for (const seg of segments) {
+            if (groupTypeVal && groupContextVal) candidateKeys.push(`${groupTypeVal} / ${groupContextVal} / ${seg}`)
+            if (groupTypeVal)                    candidateKeys.push(`${groupTypeVal} / ${seg}`)
+            candidateKeys.push(seg)
+          }
+          let destField: string | undefined
+          // Fast path: literal exact match. Volunteers/Stats resolve here, byte-identical
+          // to before — the normalized fallback never runs for them.
+          for (const k of candidateKeys) {
+            const hit = tf.area_field_map?.[k]
+            if (hit) { destField = hit; break }
+          }
+          // Fallback: symmetric normalized match ("Attender"↔"Attenders", case, whitespace).
+          if (!destField) {
+            const normIndex = buildNormalizedAreaIndex(tf.area_field_map)
+            for (const k of candidateKeys) {
+              const hit = normIndex.get(normalizeCompoundKey(k))
+              if (hit) { destField = hit; break }
+            }
+          }
           if (!destField || destField === 'ignore') continue
+          if (!destField.startsWith('metric.')) continue
 
-          const rawAud = tf.audience_column ? row[tf.audience_column] : undefined
-          const mappedAud = (rawAud && tf.audience_map?.[rawAud]) ? tf.audience_map[rawAud] : undefined
+          const metric = resolveMetric(destField, `metric "${metricName}"`)
+          if (!metric) continue
+          const value = parseMetricValue(rawValue, metric.unitKind)
+          if (value == null) continue
 
-          if (destField === 'attendance' || destField.startsWith('attendance.')) {
-            const count = parseCount(rawValue)
-            if (count == null) continue
-            const bucket: 'main' | 'kids' | 'youth' =
-              mappedAud === 'MAIN'  ? 'main'  :
-              mappedAud === 'KIDS'  ? 'kids'  :
-              mappedAud === 'YOUTH' ? 'youth' :
-              destField === 'attendance.kids'  ? 'kids'  :
-              destField === 'attendance.youth' ? 'youth' : 'main'
-            const attKey = occurrenceId
-            const existing = attMap.get(attKey) ?? {
-              service_occurrence_id: occurrenceId,
-              main_attendance: null, kids_attendance: null, youth_attendance: null,
-            }
-            existing[`${bucket}_attendance` as 'main_attendance' | 'kids_attendance' | 'youth_attendance'] =
-              (existing[`${bucket}_attendance` as 'main_attendance' | 'kids_attendance' | 'youth_attendance'] ?? 0) + count
-            attMap.set(attKey, existing)
-            continue
-          }
-
-          if (destField.startsWith('giving.')) {
-            const code = slug(destField.slice('giving.'.length))
-            const sourceId = givingByCode.get(code)
-            if (!sourceId) { errors.push(`Unknown giving source "${code}" (metric "${metricName}")`); continue }
-            const amount = parseMoney(rawValue)
-            if (amount == null) continue
-            const givKey = `${occurrenceId}:${sourceId}`
-            const existing = givMap.get(givKey)
-            if (existing) {
-              existing.giving_amount += amount  // sum contributions
-            } else {
-              givMap.set(givKey, {
-                service_occurrence_id: occurrenceId,
-                giving_source_id:      sourceId,
-                giving_amount:         amount,
-                giving_type:           'total',
-              })
-            }
-            continue
-          }
-
-          if (destField.startsWith('period_giving.')) {
-            // Church-wide weekly giving (D-056) — no occurrence dependency.
-            // Sum across the week, anchor to Sunday-on-or-before the row's date.
-            const code = slug(destField.slice('period_giving.'.length))
-            const sourceId = givingByCode.get(code)
-            if (!sourceId) { errors.push(`Unknown giving source "${code}" (metric "${metricName}")`); continue }
-            const amount = parseMoney(rawValue)
-            if (amount == null) continue
-            addPeriodGiving(sourceId, grp.date, amount)
-            continue
-          }
-
-          if (destField.startsWith('period_response.')) {
-            // Periodic stat — church_period_entries, no occurrence dependency.
-            const tail    = destField.slice('period_response.'.length).split('.')
-            const catCode = slug(tail[0])
-            const tagCode = tail[1] ? tail[1].toUpperCase() : null
-            const category = responseByCode.get(catCode)
-            if (!category) { errors.push(`Unknown response category "${catCode}" (metric "${metricName}")`); continue }
-            const periodType: 'week' | 'month' | 'day' =
-              category.scope === 'month' ? 'month' :
-              category.scope === 'day'   ? 'day'   : 'week'
-            let tagId = tagCode ? (tagByCode.get(tagCode) ?? null) : null
-            if (tagCode && !tagId) {
-              // Fallback: Stage A may have used an audience-style suffix (.KIDS/.MAIN/.YOUTH)
-              // when no service_tag with that code exists. Write untagged (NULL service_tag_id)
-              // and log a one-time note so the user knows the row landed but unscoped.
-              const warnKey = `${catCode}.${tagCode}`
-              if (!warnedTagFallbacks.has(warnKey)) {
-                errors.push(`Note: period_response.${catCode}.${tagCode} → no "${tagCode}" service tag exists; row(s) stored church-wide (no tag).`)
-                warnedTagFallbacks.add(warnKey)
-              }
-              tagId = null
-            }
-            const value = parseCount(rawValue)
-            if (value == null) continue
-            addPeriodStat(category.id, tagId, periodType, grp.date, value)
-            continue
-          }
-
-          if (destField.startsWith('response.')) {
-            const code = slug(destField.slice('response.'.length))
-            const category = responseByCode.get(code)
-            if (!category) { errors.push(`Unknown response category "${code}" (metric "${metricName}")`); continue }
-            const statValue = parseCount(rawValue)
-            if (statValue == null) continue
-
-            // V1-Δ2: bidirectional stat_scope ↔ dest_field coercion.
-            // If Stage A produced response.<CODE> but the category is period-scoped
-            // (week/month/day), the data belongs in church_period_entries, not
-            // response_entries. Coerce silently and log one note per (cat, scope) pair.
-            if (category.scope === 'week' || category.scope === 'month' || category.scope === 'day') {
-              const coerceKey = `coerce:${code}:${category.scope}`
-              if (!warnedTagFallbacks.has(coerceKey)) {
-                errors.push(`Note: response.${code} (stat_scope=${category.scope}) coerced to period_response.${code}; row(s) stored as church-wide periodic.`)
-                warnedTagFallbacks.add(coerceKey)
-              }
-              addPeriodStat(category.id, null, category.scope, grp.date, statValue)
-              continue
-            }
-
-            const audience = mappedAud && ['MAIN', 'KIDS', 'YOUTH'].includes(mappedAud)
-              ? mappedAud : null
-            const respKey = `${occurrenceId}:${category.id}:${audience ?? ''}`
-            const existing = respMap.get(respKey)
-            if (existing) {
-              existing.stat_value += statValue  // sum duplicates from multiple Groups
-            } else {
-              respMap.set(respKey, {
-                service_occurrence_id: occurrenceId,
-                response_category_id:  category.id,
-                audience_group_code:   audience,
-                stat_value:            statValue,
-                is_not_applicable:     false,
-              })
-            }
-            continue
-          }
-
-          if (destField.startsWith('volunteer.')) {
-            const code = slug(destField.slice('volunteer.'.length))
-            const categoryId = volunteerByCode.get(code)
-            if (!categoryId) { errors.push(`Unknown volunteer category "${code}" (metric "${metricName}")`); continue }
-            const count = parseCount(rawValue)
-            if (count == null) continue
-            const volKey = `${occurrenceId}:${categoryId}`
-            const existing = volMap.get(volKey)
-            if (existing) {
-              existing.volunteer_count += count
-            } else {
-              volMap.set(volKey, {
-                service_occurrence_id: occurrenceId,
-                volunteer_category_id: categoryId,
-                volunteer_count:       count,
-                is_not_applicable:     false,
-              })
-            }
-            continue
+          if (metric.scope === 'period') {
+            addPeriodEntry(metric.id, grp.date, value)
+          } else {
+            const occId = await getOccurrence()
+            if (!occId) continue
+            addInstanceEntry(metric.id, occId, value)
           }
         }
-      }
-
-      const respBatch = Array.from(respMap.values())
-      const attBatch  = Array.from(attMap.values())
-      const givBatch  = Array.from(givMap.values())
-      const volBatch  = Array.from(volMap.values())
-
-      // Flush response_entries in chunks of 500
-      const CHUNK = 500
-      for (let i = 0; i < respBatch.length; i += CHUNK) {
-        const chunk = respBatch.slice(i, i + CHUNK)
-        const withAudience    = chunk.filter(r => r.audience_group_code !== null)
-        const withoutAudience = chunk.filter(r => r.audience_group_code === null)
-        if (withAudience.length > 0) {
-          const { error } = await args.supabase.from('response_entries')
-            .upsert(withAudience, { onConflict: 'service_occurrence_id,response_category_id,audience_group_code' })
-          if (error) errors.push(`response batch upsert (audience): ${error.message}`)
-          else counts.response += withAudience.length
-        }
-        if (withoutAudience.length > 0) {
-          const { error } = await args.supabase.from('response_entries')
-            .upsert(withoutAudience, { onConflict: 'service_occurrence_id,response_category_id' })
-          if (error) errors.push(`response batch upsert (service): ${error.message}`)
-          else counts.response += withoutAudience.length
-        }
-      }
-
-      // Flush attendance_entries in chunks of 500
-      for (let i = 0; i < attBatch.length; i += CHUNK) {
-        const chunk = attBatch.slice(i, i + CHUNK)
-        const { error } = await args.supabase.from('attendance_entries')
-          .upsert(chunk, { onConflict: 'service_occurrence_id' })
-        if (error) errors.push(`attendance batch upsert: ${error.message}`)
-        else counts.attendance += chunk.length
-      }
-
-      // Flush giving_entries in chunks of 500
-      for (let i = 0; i < givBatch.length; i += CHUNK) {
-        const chunk = givBatch.slice(i, i + CHUNK)
-        const { error } = await args.supabase.from('giving_entries')
-          .upsert(chunk, { onConflict: 'service_occurrence_id,giving_source_id' })
-        if (error) errors.push(`giving batch upsert: ${error.message}`)
-        else counts.giving += chunk.length
-      }
-
-      // Flush volunteer_entries in chunks of 500
-      for (let i = 0; i < volBatch.length; i += CHUNK) {
-        const chunk = volBatch.slice(i, i + CHUNK)
-        const { error } = await args.supabase.from('volunteer_entries')
-          .upsert(chunk, { onConflict: 'service_occurrence_id,volunteer_category_id' })
-        if (error) errors.push(`volunteer batch upsert: ${error.message}`)
-        else counts.volunteer += chunk.length
       }
 
       continue  // done with tall format — skip wide extraction below
     }
 
     // ── WIDE FORMAT (one row per occurrence) ──────────────────────────────────
-
-    // Detect rows that only carry period_giving destinations — these don't need
-    // an occurrence (D-056). We process them up front and skip the occurrence path
-    // for rows where every non-meta column is period_giving or ignore.
     const META_DESTS = new Set([
-      'service_date', 'service_template_code', 'location_code', 'ignore',
+      'service_date', 'service_template_code', 'service_code', 'location_code', 'ignore',
     ])
-    const isPeriodOnly = (dest: string) =>
-      dest.startsWith('period_giving.') || dest.startsWith('period_response.')
-    const hasNonPeriodGivingPayload = mapping.column_map.some(c =>
-      !META_DESTS.has(c.dest_field) && !isPeriodOnly(c.dest_field)
-    )
-    const hasPeriodGivingPayload = mapping.column_map.some(c =>
-      c.dest_field.startsWith('period_giving.')
-    )
-    const hasPeriodStatPayload = mapping.column_map.some(c =>
-      c.dest_field.startsWith('period_response.')
-    )
 
-    // Codex Finding 3 fix: wide format previously did direct upserts row-by-row.
-    // If two rows hit the same conflict key, the later upsert OVERWROTE the first
-    // (data loss). Now we accumulate by conflict key in maps, then flush in a single
-    // pass per table — matches the tall-format aggregation pattern.
-    type WideAttRow = {
-      service_occurrence_id: string
-      main_attendance:  number | null
-      kids_attendance:  number | null
-      youth_attendance: number | null
-    }
-    type WideGivRow = {
-      service_occurrence_id: string
-      giving_source_id:      string
-      giving_amount:         number
-      giving_type:           string
-    }
-    type WideVolRow = {
-      service_occurrence_id: string
-      volunteer_category_id: string
-      volunteer_count:       number
-      is_not_applicable:     boolean
-    }
-    type WideRespRow = {
-      service_occurrence_id: string
-      response_category_id:  string
-      audience_group_code:   string | null
-      stat_value:            number
-      is_not_applicable:     boolean
-    }
-    const wideAttMap  = new Map<string, WideAttRow>()
-    const wideGivMap  = new Map<string, WideGivRow>()
-    const wideVolMap  = new Map<string, WideVolRow>()
-    const wideRespMap = new Map<string, WideRespRow>()
+    // Does this source carry any instance-scope metric column? If not, rows that
+    // only feed period-scope metrics don't require an occurrence.
+    const hasInstancePayload = mapping.column_map.some(c => {
+      if (!c.dest_field.startsWith('metric.')) return false
+      const code = slug(c.dest_field.slice('metric.'.length))
+      return metricByCode.get(code)?.scope === 'instance'
+    })
 
     for (const [rowIdx, row] of rows.entries()) {
       if (!dateColumn) {
@@ -693,49 +603,18 @@ export async function runStageB(args: {
         continue
       }
 
-      // Period-giving extraction (runs regardless of occurrence requirements).
-      if (hasPeriodGivingPayload) {
-        for (const entry of mapping.column_map) {
-          if (!entry.dest_field.startsWith('period_giving.')) continue
-          const code = slug(entry.dest_field.slice('period_giving.'.length))
-          const sourceId = givingByCode.get(code)
-          if (!sourceId) { errors.push(`Unknown giving source "${code}" (row ${rowIdx + 2})`); continue }
-          const amount = parseMoney(row[entry.source_column])
-          if (amount == null) continue
-          addPeriodGiving(sourceId, serviceDate, amount)
-        }
+      // Period-scope metrics first — they need no occurrence.
+      for (const entry of mapping.column_map) {
+        if (!entry.dest_field.startsWith('metric.')) continue
+        const metric = resolveMetric(entry.dest_field, `row ${rowIdx + 2}`)
+        if (!metric || metric.scope !== 'period') continue
+        const value = parseMetricValue(row[entry.source_column], metric.unitKind)
+        if (value == null) continue
+        addPeriodEntry(metric.id, serviceDate, value)
       }
 
-      // Period-stat extraction (church_period_entries — runs regardless of occurrence requirements).
-      if (hasPeriodStatPayload) {
-        for (const entry of mapping.column_map) {
-          if (!entry.dest_field.startsWith('period_response.')) continue
-          // dest_field: "period_response.<CODE>" or "period_response.<CODE>.<TAG_CODE>"
-          const tail     = entry.dest_field.slice('period_response.'.length).split('.')
-          const catCode  = slug(tail[0])
-          const tagCode  = tail[1] ? tail[1].toUpperCase() : null
-          const category = responseByCode.get(catCode)
-          if (!category) { errors.push(`Unknown response category "${catCode}" (row ${rowIdx + 2})`); continue }
-          const periodType: 'week' | 'month' | 'day' =
-            category.scope === 'month' ? 'month' :
-            category.scope === 'day'   ? 'day'   : 'week'
-          let tagId = tagCode ? (tagByCode.get(tagCode) ?? null) : null
-          if (tagCode && !tagId) {
-            const warnKey = `${catCode}.${tagCode}`
-            if (!warnedTagFallbacks.has(warnKey)) {
-              errors.push(`Note: period_response.${catCode}.${tagCode} → no "${tagCode}" service tag exists; row(s) stored church-wide (no tag).`)
-              warnedTagFallbacks.add(warnKey)
-            }
-            tagId = null
-          }
-          const value = parseCount(row[entry.source_column])
-          if (value == null) continue
-          addPeriodStat(category.id, tagId, periodType, serviceDate, value)
-        }
-      }
-
-      // If the row carries no service-tied payload, skip occurrence creation.
-      if (!hasNonPeriodGivingPayload) continue
+      // If the row carries no instance-scope payload, skip occurrence creation.
+      if (!hasInstancePayload) continue
 
       const templateCode = slug(
         (templateCol && row[templateCol])
@@ -756,7 +635,7 @@ export async function runStageB(args: {
         : template.locationId
 
       // Upsert occurrence (UNIQUE church_id, location_id, template_id, service_date)
-      const occurrenceId = await upsertOccurrence(args.supabase, {
+      const occurrenceId = await cachedUpsertOccurrence(args.supabase, occurrenceCache, {
         churchId:   args.churchId,
         locationId,
         templateId: template.id,
@@ -768,223 +647,54 @@ export async function runStageB(args: {
       }
       counts.occurrences++
 
-      // Build attendance from row
-      const attendance: { main: number | null; kids: number | null; youth: number | null } = {
-        main: null, kids: null, youth: null,
-      }
-      let hasAttendance = false
-
+      // Instance-scope metrics for this row.
       for (const entry of mapping.column_map) {
-        const raw = row[entry.source_column]
         const dest = entry.dest_field
-
-        if (dest === 'ignore' || dest === 'service_date'
-            || dest === 'service_template_code' || dest === 'location_code') continue
-
-        // period_giving and period_response were already handled before the occurrence path; skip here
-        if (dest.startsWith('period_giving.') || dest.startsWith('period_response.')) continue
-
-        if (dest.startsWith('attendance.')) {
-          const bucket = dest.slice('attendance.'.length) as 'main' | 'kids' | 'youth'
-          const n = parseCount(raw)
-          if (n != null) { attendance[bucket] = n; hasAttendance = true }
-          continue
-        }
-
-        if (dest.startsWith('giving.')) {
-          const code = slug(dest.slice('giving.'.length))
-          const sourceId = givingByCode.get(code)
-          if (!sourceId) { errors.push(`Unknown giving source "${code}"`); continue }
-          const amount = parseMoney(raw)
-          if (amount == null) continue
-          const givKey = `${occurrenceId}:${sourceId}`
-          const existing = wideGivMap.get(givKey)
-          if (existing) {
-            existing.giving_amount += amount  // sum duplicates per (occurrence, source)
-          } else {
-            wideGivMap.set(givKey, {
-              service_occurrence_id: occurrenceId,
-              giving_source_id:      sourceId,
-              giving_amount:         amount,
-              giving_type:           'total',
-            })
-          }
-          continue
-        }
-
-        if (dest.startsWith('volunteer.')) {
-          const code = slug(dest.slice('volunteer.'.length))
-          const categoryId = volunteerByCode.get(code)
-          if (!categoryId) { errors.push(`Unknown volunteer category "${code}"`); continue }
-          const count = parseCount(raw)
-          if (count == null) continue
-          const volKey = `${occurrenceId}:${categoryId}`
-          const existing = wideVolMap.get(volKey)
-          if (existing) {
-            existing.volunteer_count += count  // sum duplicates per (occurrence, category)
-          } else {
-            wideVolMap.set(volKey, {
-              service_occurrence_id: occurrenceId,
-              volunteer_category_id: categoryId,
-              volunteer_count:       count,
-              is_not_applicable:     false,
-            })
-          }
-          continue
-        }
-
-        if (dest.startsWith('response.')) {
-          const tail   = dest.slice('response.'.length).split('.')
-          const code   = slug(tail[0])
-          const audRaw = tail[1]
-          const category = responseByCode.get(code)
-          if (!category) { errors.push(`Unknown response category "${code}"`); continue }
-          const statValue = parseCount(raw)
-          if (statValue == null) continue
-
-          // V1-Δ2: stat_scope coercion (wide-format path).
-          // If category is period-scoped, route to church_period_entries instead.
-          if (category.scope === 'week' || category.scope === 'month' || category.scope === 'day') {
-            const coerceKey = `coerce:${code}:${category.scope}`
-            if (!warnedTagFallbacks.has(coerceKey)) {
-              errors.push(`Note: response.${code} (stat_scope=${category.scope}) coerced to period_response.${code}; row(s) stored as church-wide periodic.`)
-              warnedTagFallbacks.add(coerceKey)
-            }
-            addPeriodStat(category.id, null, category.scope, serviceDate, statValue)
-            continue
-          }
-
-          const audience: string | null =
-            category.scope === 'audience'
-              ? (audRaw && ['MAIN', 'KIDS', 'YOUTH'].includes(audRaw.toUpperCase())
-                  ? audRaw.toUpperCase()
-                  : 'MAIN')
-              : null
-
-          const respKey = `${occurrenceId}:${category.id}:${audience ?? ''}`
-          const existing = wideRespMap.get(respKey)
-          if (existing) {
-            existing.stat_value += statValue  // sum duplicates per (occurrence, category, audience)
-          } else {
-            wideRespMap.set(respKey, {
-              service_occurrence_id: occurrenceId,
-              response_category_id:  category.id,
-              audience_group_code:   audience,
-              stat_value:            statValue,
-              is_not_applicable:     false,
-            })
-          }
-          continue
-        }
-      }
-
-      if (hasAttendance) {
-        const attKey = occurrenceId
-        const existingAtt = wideAttMap.get(attKey)
-        if (existingAtt) {
-          // Sum partial attendance rows (rare: multiple wide rows for same occurrence)
-          existingAtt.main_attendance  = sumNullable(existingAtt.main_attendance,  attendance.main)
-          existingAtt.kids_attendance  = sumNullable(existingAtt.kids_attendance,  attendance.kids)
-          existingAtt.youth_attendance = sumNullable(existingAtt.youth_attendance, attendance.youth)
-        } else {
-          wideAttMap.set(attKey, {
-            service_occurrence_id: occurrenceId,
-            main_attendance:       attendance.main,
-            kids_attendance:       attendance.kids,
-            youth_attendance:      attendance.youth,
-          })
-        }
+        if (META_DESTS.has(dest)) continue
+        if (!dest.startsWith('metric.')) continue
+        const metric = resolveMetric(dest, `row ${rowIdx + 2}`)
+        if (!metric || metric.scope !== 'instance') continue
+        const value = parseMetricValue(row[entry.source_column], metric.unitKind)
+        if (value == null) continue
+        addInstanceEntry(metric.id, occurrenceId, value)
       }
     }
-
-    // Flush wide-format accumulators in chunks (Codex Finding 3 fix).
-    const CHUNK = 500
-    for (let i = 0; i < wideAttMap.size; i += CHUNK) {
-      const chunk = Array.from(wideAttMap.values()).slice(i, i + CHUNK)
-      if (chunk.length === 0) break
-      const { error } = await args.supabase
-        .from('attendance_entries')
-        .upsert(chunk, { onConflict: 'service_occurrence_id' })
-      if (error) errors.push(`wide attendance flush: ${error.message}`)
-      else counts.attendance += chunk.length
-    }
-    for (let i = 0; i < wideGivMap.size; i += CHUNK) {
-      const chunk = Array.from(wideGivMap.values()).slice(i, i + CHUNK)
-      if (chunk.length === 0) break
-      const { error } = await args.supabase
-        .from('giving_entries')
-        .upsert(chunk, { onConflict: 'service_occurrence_id,giving_source_id' })
-      if (error) errors.push(`wide giving flush: ${error.message}`)
-      else counts.giving += chunk.length
-    }
-    for (let i = 0; i < wideVolMap.size; i += CHUNK) {
-      const chunk = Array.from(wideVolMap.values()).slice(i, i + CHUNK)
-      if (chunk.length === 0) break
-      const { error } = await args.supabase
-        .from('volunteer_entries')
-        .upsert(chunk, { onConflict: 'service_occurrence_id,volunteer_category_id' })
-      if (error) errors.push(`wide volunteer flush: ${error.message}`)
-      else counts.volunteer += chunk.length
-    }
-    // Response: split by audience-tagged vs untagged for the conflict target
-    const wideRespRows = Array.from(wideRespMap.values())
-    const wideRespAudienced = wideRespRows.filter(r => r.audience_group_code !== null)
-    const wideRespPlain = wideRespRows.filter(r => r.audience_group_code === null)
-    for (let i = 0; i < wideRespAudienced.length; i += CHUNK) {
-      const chunk = wideRespAudienced.slice(i, i + CHUNK)
-      const { error } = await args.supabase
-        .from('response_entries')
-        .upsert(chunk, { onConflict: 'service_occurrence_id,response_category_id,audience_group_code' })
-      if (error) errors.push(`wide response (audienced) flush: ${error.message}`)
-      else counts.response += chunk.length
-    }
-    for (let i = 0; i < wideRespPlain.length; i += CHUNK) {
-      const chunk = wideRespPlain.slice(i, i + CHUNK)
-      const { error } = await args.supabase
-        .from('response_entries')
-        .upsert(chunk, { onConflict: 'service_occurrence_id,response_category_id' })
-      if (error) errors.push(`wide response (plain) flush: ${error.message}`)
-      else counts.response += chunk.length
-    }
   }
 
-  // ---------- 4. Flush church_period_giving (D-056) ----------
-  if (pgMap.size > 0) {
-    const pgBatch = Array.from(pgMap.values())
-    const CHUNK = 500
-    for (let i = 0; i < pgBatch.length; i += CHUNK) {
-      const chunk = pgBatch.slice(i, i + CHUNK)
-      const { error } = await args.supabase.from('church_period_giving')
-        .upsert(chunk, { onConflict: 'church_id,giving_source_id,entry_period_type,period_date' })
-      if (error) errors.push(`period giving batch upsert: ${error.message}`)
-      else counts.period_giving += chunk.length
-    }
+  // ---------- 4. Flush metric_entries ----------
+  // One write path for everything. Both instance- and period-scope rows
+  // conflict on the single constraint uq_metric_entry
+  // (metric_id, service_instance_id, period_anchor) NULLS NOT DISTINCT
+  // (migration 0027). PostgREST onConflict can't target a partial index,
+  // so this 3-col constraint is the upsert key for both scopes. The XOR
+  // CHECK guarantees exactly one of instance/period is set per row.
+  // reporting_tag_code is set by the BEFORE-INSERT trigger, never here.
+  const CHUNK = 500
+  const METRIC_ENTRY_CONFLICT = 'metric_id,service_instance_id,period_anchor'
+
+  const instanceBatch = Array.from(instanceEntryMap.values())
+  for (let i = 0; i < instanceBatch.length; i += CHUNK) {
+    const chunk = instanceBatch.slice(i, i + CHUNK)
+    const { error } = await args.supabase
+      .from('metric_entries')
+      .upsert(chunk, { onConflict: METRIC_ENTRY_CONFLICT })
+    if (error) errors.push(`metric_entries (instance) upsert: ${error.message}`)
+    else counts.metric_entries += chunk.length
   }
 
-  // ---------- 5. Flush church_period_entries ----------
-  // Codex Finding 5: count successful period_response inserts so the import summary
-  // accurately reflects what landed (was previously silent).
-  if (psMap.size > 0) {
-    const CHUNK = 500
-    const psBatch  = Array.from(psMap.values())
-    // Partial indexes require tagged and untagged rows to use different conflict columns
-    const tagged   = psBatch.filter(r => r.service_tag_id !== null)
-    const untagged = psBatch.filter(r => r.service_tag_id === null)
-    for (let i = 0; i < tagged.length; i += CHUNK) {
-      const chunk = tagged.slice(i, i + CHUNK)
-      const { error } = await args.supabase.from('church_period_entries')
-        .upsert(chunk, { onConflict: 'church_id,service_tag_id,response_category_id,entry_period_type,period_date' })
-      if (error) errors.push(`period stat (tagged) batch upsert: ${error.message}`)
-      else counts.period_response += chunk.length
-    }
-    for (let i = 0; i < untagged.length; i += CHUNK) {
-      const chunk = untagged.slice(i, i + CHUNK)
-      const { error } = await args.supabase.from('church_period_entries')
-        .upsert(chunk, { onConflict: 'church_id,response_category_id,entry_period_type,period_date' })
-      if (error) errors.push(`period stat (untagged) batch upsert: ${error.message}`)
-      else counts.period_response += chunk.length
-    }
+  const periodBatch = Array.from(periodEntryMap.values())
+  for (let i = 0; i < periodBatch.length; i += CHUNK) {
+    const chunk = periodBatch.slice(i, i + CHUNK)
+    const { error } = await args.supabase
+      .from('metric_entries')
+      .upsert(chunk, { onConflict: METRIC_ENTRY_CONFLICT })
+    if (error) errors.push(`metric_entries (period) upsert: ${error.message}`)
+    else counts.metric_entries += chunk.length
   }
+
+  // Mirror the unified count into the legacy `attendance` field so the confirm
+  // page's optional-chained dataTotal sum stays non-zero (see StageBResult doc).
+  counts.attendance = counts.metric_entries
 
   // V1.5: derive and persist GridConfig from the just-written church state.
   // Non-blocking — if this fails, the History page derives on next read instead.
@@ -1003,13 +713,326 @@ export async function runStageB(args: {
   return { totalCents: setupResult.totalCents, setupSummary, rowsInserted: counts, errors }
 }
 
-// ---------- helpers ----------
+// ---------- deterministic setup executor (replaces the old Haiku tool-loop) ----------
 
-/** Sum two nullable numbers; null + null = null; null + n = n. */
-function sumNullable(a: number | null, b: number | null): number | null {
-  if (a == null && b == null) return null
-  return (a ?? 0) + (b ?? 0)
+/** ctx passed to WRITER_HANDLERS — mirrors ToolHandlerContext (churchId + supabase). */
+interface SetupCtx { churchId: string; supabase: SupabaseClient }
+
+/** Result shape consumed by runStageB: same `setupSummary` + `totalCents` contract
+ *  the old runToolLoop result exposed, plus the collected handler errors. */
+interface SetupResult { setupSummary: string; totalCents: number; errors: string[] }
+
+// ---- proposed_setup item shapes (IR v2 — IMPORT_IR_V2.md / stageA.ts schema) ----
+interface PsLocation     { name?: unknown; code?: unknown }
+interface PsMinistryTag  { code?: unknown; name?: unknown; tag_role?: unknown; parent_code?: unknown }
+interface PsReportingTag { code?: unknown; name?: unknown; unit_kind?: unknown; agg_default?: unknown }
+interface PsTemplate {
+  display_name?: unknown; service_code?: unknown
+  location_name?: unknown; location_code?: unknown
+  primary_tag?: unknown; primary_tag_code?: unknown
+  day_of_week?: unknown; start_time?: unknown
 }
+interface PsMetric {
+  metric_code?: unknown; name?: unknown
+  ministry_tag?: unknown; ministry_tag_code?: unknown
+  reporting_tag?: unknown; reporting_tag_code?: unknown
+  scope?: unknown; is_canonical?: unknown
+}
+
+function asArray<T>(v: unknown): T[] {
+  return Array.isArray(v) ? (v as T[]) : []
+}
+function str(v: unknown): string {
+  return v == null ? '' : String(v)
+}
+
+/**
+ * Deterministically materialize `proposed_setup` into DB entities by calling the
+ * existing WRITER_HANDLERS directly — no AI. Replicates every rule the old
+ * STAGE_B_SYSTEM prompt enforced:
+ *   - dependency order: locations → ministry_tags (parents before children) →
+ *     reporting_tags (custom) → service_templates → schedule_versions → metrics
+ *   - one active schedule_version per template that has a day_of_week
+ *   - ≤1 canonical metric per (ministry, reporting) pair (keep the first, demote rest)
+ *   - "[BLOCKING]" display_name fallback → service_code
+ *   - at-least-one-template safety net (location MAIN + ministry MORNING + template MORNING)
+ * No metric_entries / service_instance writes happen here — Phase 2 owns those.
+ */
+async function runSetupDeterministic(
+  ctx: SetupCtx,
+  proposedSetupRaw: Record<string, unknown> | undefined,
+): Promise<SetupResult> {
+  const errors: string[] = []
+  const ps = (proposedSetupRaw ?? {}) as Record<string, unknown>
+  const H = WRITER_HANDLERS
+
+  // ── 1. Locations ─────────────────────────────────────────────────────────
+  // Track every code that successfully exists so templates can resolve their
+  // location by NAME (stageA emits location_name) or by code.
+  const locationCodeByName = new Map<string, string>() // slug(name) → code
+  const knownLocationCodes  = new Set<string>()
+  const locations = asArray<PsLocation>(ps.locations)
+  let locCount = 0
+  for (const loc of locations) {
+    const name = str(loc.name)
+    const code = str(loc.code) || name
+    if (!name && !code) continue
+    try {
+      const res = (await H.upsert_location({ name: name || code, code }, ctx)) as { code: string }
+      knownLocationCodes.add(res.code)
+      if (name) locationCodeByName.set(setupSlug(name), res.code)
+      locCount++
+    } catch (err) {
+      errors.push(`setup upsert_location "${name || code}": ${errMsg(err)}`)
+    }
+  }
+
+  // ── 2. Ministry tags — parents before children (topological) ─────────────
+  const ministryTags = asArray<PsMinistryTag>(ps.ministry_tags)
+  const sortedTags = topoSortTags(ministryTags, errors)
+  const knownTagCodes = new Set<string>()
+  let tagCount = 0
+  for (const tag of sortedTags) {
+    const code = str(tag.code)
+    const name = str(tag.name)
+    if (!code) { errors.push(`setup ministry_tag with no code skipped (name="${name}")`); continue }
+    const parentCode = tag.parent_code == null ? undefined : str(tag.parent_code)
+    try {
+      const res = (await H.upsert_ministry_tag(
+        { code, name: name || code, tag_role: tag.tag_role, ...(parentCode ? { parent_code: parentCode } : {}) },
+        ctx,
+      )) as { code: string }
+      knownTagCodes.add(res.code)
+      tagCount++
+    } catch (err) {
+      errors.push(`setup upsert_ministry_tag "${code}": ${errMsg(err)}`)
+    }
+  }
+
+  // ── 3. Reporting tags — CUSTOM only (the 4 system tags are pre-seeded) ────
+  for (const rt of asArray<PsReportingTag>(ps.reporting_tags)) {
+    const code = str(rt.code)
+    if (!code) continue
+    try {
+      await H.upsert_reporting_tag(
+        { code, name: str(rt.name) || code, unit_kind: rt.unit_kind, agg_default: rt.agg_default },
+        ctx,
+      )
+    } catch (err) {
+      errors.push(`setup upsert_reporting_tag "${code}": ${errMsg(err)}`)
+    }
+  }
+
+  // ── 4. Service templates (+ remember schedule inputs for step 5) ──────────
+  const templates = asArray<PsTemplate>(ps.service_templates)
+  type SchedSeed = { service_code: string; location_code: string; day_of_week: number; start_time: string }
+  const schedSeeds: SchedSeed[] = []
+  let tmplCount = 0
+  for (const t of templates) {
+    const serviceCode = str(t.service_code)
+    if (!serviceCode) { errors.push(`setup service_template with no service_code skipped`); continue }
+
+    // display_name: reconcile already resolved "[BLOCKING]" names; if one still
+    // literally contains "[BLOCKING]", fall back to the service_code and note it.
+    let displayName = str(t.display_name) || serviceCode
+    if (displayName.includes('[BLOCKING]')) {
+      errors.push(`setup service_template "${serviceCode}": unresolved [BLOCKING] display_name, using service_code as name`)
+      displayName = serviceCode
+    }
+
+    // location: stageA emits location_name; tolerate location_code too. Resolve to a
+    // known location code; fall back to the sole/first location, else "MAIN".
+    const locName = str(t.location_name)
+    const locCodeRaw = str(t.location_code)
+    let locationCode =
+      (locCodeRaw && knownLocationCodes.has(setupSlug(locCodeRaw)) ? setupSlug(locCodeRaw) : '') ||
+      (locName ? (locationCodeByName.get(setupSlug(locName)) ?? '') : '') ||
+      (locCodeRaw ? setupSlug(locCodeRaw) : '') ||
+      [...knownLocationCodes][0] ||
+      'MAIN'
+    // Safety net: ensure the resolved location exists (e.g. setup had no locations[]).
+    if (!knownLocationCodes.has(locationCode)) {
+      try {
+        const res = (await H.upsert_location(
+          { name: locName || 'Main Campus', code: locationCode },
+          ctx,
+        )) as { code: string }
+        locationCode = res.code
+        knownLocationCodes.add(res.code)
+      } catch (err) {
+        errors.push(`setup upsert_location (for template "${serviceCode}"): ${errMsg(err)}`)
+      }
+    }
+
+    const primaryTag = str(t.primary_tag) || str(t.primary_tag_code)
+    const dow = t.day_of_week
+    const startTime = t.start_time == null ? undefined : str(t.start_time)
+    try {
+      await H.upsert_service_template(
+        {
+          service_code:     serviceCode,
+          display_name:     displayName,
+          location_code:    locationCode,
+          primary_tag_code: primaryTag,
+          ...(dow != null ? { day_of_week: dow } : {}),
+          ...(startTime ? { start_time: startTime } : {}),
+        },
+        ctx,
+      )
+      tmplCount++
+      // Collect schedule seed: replicate STAGE_B_SYSTEM — one active schedule version
+      // per template, sourced from day_of_week/start_time, defaulting to Sunday 10:00.
+      const dowNum = Number.isInteger(Number(dow)) ? Number(dow) : 0
+      schedSeeds.push({
+        service_code:  serviceCode,
+        location_code: locationCode,
+        day_of_week:   dowNum >= 0 && dowNum <= 6 ? dowNum : 0,
+        start_time:    startTime && startTime.length > 0 ? startTime : '10:00:00',
+      })
+    } catch (err) {
+      errors.push(`setup upsert_service_template "${serviceCode}": ${errMsg(err)}`)
+    }
+  }
+
+  // ── 4b. At-least-one-template safety net ─────────────────────────────────
+  // Instance-scope metrics need a service_instance → a template. If proposed_setup
+  // produced none, create the same fallback trio the old prompt mandated.
+  if (tmplCount === 0) {
+    errors.push('setup: no service templates in proposed_setup — creating fallback MORNING template')
+    try {
+      await H.upsert_location({ name: 'Main Campus', code: 'MAIN' }, ctx)
+      knownLocationCodes.add('MAIN')
+      await H.upsert_ministry_tag({ code: 'MORNING', name: 'Sunday Service', tag_role: 'ADULT_SERVICE' }, ctx)
+      knownTagCodes.add('MORNING')
+      await H.upsert_service_template(
+        { service_code: 'MORNING', display_name: 'Sunday Service', location_code: 'MAIN', primary_tag_code: 'MORNING' },
+        ctx,
+      )
+      tmplCount++
+      schedSeeds.push({ service_code: 'MORNING', location_code: 'MAIN', day_of_week: 0, start_time: '10:00:00' })
+    } catch (err) {
+      errors.push(`setup fallback template: ${errMsg(err)}`)
+    }
+  }
+
+  // ── 5. Schedule versions — one per template (REQUIRED for T1 card) ────────
+  for (const s of schedSeeds) {
+    try {
+      await H.upsert_service_schedule_version(
+        { service_code: s.service_code, location_code: s.location_code, day_of_week: s.day_of_week, start_time: s.start_time },
+        ctx,
+      )
+    } catch (err) {
+      errors.push(`setup upsert_service_schedule_version "${s.service_code}": ${errMsg(err)}`)
+    }
+  }
+
+  // ── 6. Metrics — guard ≤1 canonical per (ministry, reporting) pair ────────
+  const metrics = asArray<PsMetric>(ps.metrics)
+  const canonicalSeen = new Set<string>() // `${ministry}|${reporting}` that already has a canonical
+  let metricCount = 0
+  for (const m of metrics) {
+    const metricCode = str(m.metric_code)
+    if (!metricCode) { errors.push(`setup metric with no metric_code skipped`); continue }
+    const ministry  = str(m.ministry_tag) || str(m.ministry_tag_code)
+    const reporting = str(m.reporting_tag) || str(m.reporting_tag_code)
+    let isCanonical = Boolean(m.is_canonical)
+    if (isCanonical) {
+      const pairKey = `${setupSlug(ministry)}|${setupSlug(reporting)}`
+      if (canonicalSeen.has(pairKey)) {
+        // Preserve the data: keep the first canonical, demote this one + note it.
+        errors.push(`setup metric "${metricCode}": second canonical for (${ministry}, ${reporting}) demoted to non-canonical`)
+        isCanonical = false
+      } else {
+        canonicalSeen.add(pairKey)
+      }
+    }
+    try {
+      await H.upsert_metric(
+        {
+          metric_code:        metricCode,
+          name:               str(m.name) || metricCode,
+          ministry_tag_code:  ministry,
+          reporting_tag_code: reporting,
+          scope:              m.scope,
+          is_canonical:       isCanonical,
+        },
+        ctx,
+      )
+      metricCount++
+    } catch (err) {
+      errors.push(`setup upsert_metric "${metricCode}": ${errMsg(err)}`)
+    }
+  }
+
+  const setupSummary =
+    `Setup (deterministic): ${locCount} location(s), ${tagCount} ministry tag(s), ` +
+    `${tmplCount} service template(s), ${metricCount} metric(s) created/updated.`
+
+  // No AI was used, so there is no token cost for the setup phase.
+  return { setupSummary, totalCents: 0, errors }
+}
+
+/**
+ * Topologically order ministry tags so parents are created before children.
+ * Tags with no parent_code (or whose parent isn't in this batch) come first; then
+ * tags whose parent has already been emitted. Cycles / unresolvable parents are
+ * appended last (and noted) so they still get attempted rather than silently dropped.
+ */
+function topoSortTags(tags: PsMinistryTag[], errors: string[]): PsMinistryTag[] {
+  const byCode = new Map<string, PsMinistryTag>()
+  for (const t of tags) {
+    const code = str(t.code)
+    if (code) byCode.set(setupSlug(code), t)
+  }
+  const emitted = new Set<string>()
+  const ordered: PsMinistryTag[] = []
+
+  const visit = (t: PsMinistryTag, stack: Set<string>) => {
+    const code = setupSlug(str(t.code))
+    if (!code || emitted.has(code)) return
+    if (stack.has(code)) {
+      errors.push(`setup ministry_tag cycle detected at "${str(t.code)}" — emitting anyway`)
+      return
+    }
+    const parentCode = t.parent_code == null ? '' : setupSlug(str(t.parent_code))
+    if (parentCode && byCode.has(parentCode) && !emitted.has(parentCode)) {
+      stack.add(code)
+      visit(byCode.get(parentCode)!, stack)
+      stack.delete(code)
+    }
+    if (!emitted.has(code)) {
+      emitted.add(code)
+      ordered.push(t)
+    }
+  }
+
+  for (const t of tags) visit(t, new Set())
+  // Append any tag the visit missed (e.g. blank code) so nothing is dropped.
+  for (const t of tags) {
+    const code = setupSlug(str(t.code))
+    if (!code || emitted.has(code)) {
+      if (!ordered.includes(t)) ordered.push(t)
+    }
+  }
+  return ordered
+}
+
+function errMsg(err: unknown): string {
+  return err instanceof Error ? err.message : 'handler error'
+}
+
+/** UPPERCASE slug — byte-identical to the writers.ts slug (sans fallback) so code
+ *  comparisons here line up with the codes the handlers persist. */
+function setupSlug(s: string): string {
+  return s
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 40)
+}
+
+// ---------- helpers ----------
 
 /** Returns the ISO date string of the Sunday on or before the given date. */
 function sundayOfWeek(isoDate: string): string {
@@ -1093,7 +1116,7 @@ async function upsertOccurrence(
   args: { churchId: string; locationId: string; templateId: string; serviceDate: string },
 ): Promise<string | null> {
   const existing = await supabase
-    .from('service_occurrences')
+    .from('service_instances')
     .select('id')
     .eq('church_id',           args.churchId)
     .eq('location_id',         args.locationId)
@@ -1103,7 +1126,7 @@ async function upsertOccurrence(
   if (existing.data) return existing.data.id
 
   const { data, error } = await supabase
-    .from('service_occurrences')
+    .from('service_instances')
     .insert({
       church_id:           args.churchId,
       location_id:         args.locationId,

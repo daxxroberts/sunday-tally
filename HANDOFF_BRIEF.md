@@ -122,11 +122,12 @@ Explicitly out of scope for V1. Nothing is forgotten — everything unbuilt has 
 - Never bypass with service role key in client code
 - `get_user_church_ids()` helper defined in migration 0001 — use in all policies
 
-**Tags — critical:**
-- `service_occurrence_tags` is the reporting table — all dashboard queries JOIN here
-- Never re-derive tag membership from `service_template_tags` at query time (Rule 6)
-- `apply_tag_to_occurrences()` runs at assignment time only
-- `active_tagged_services` view gates T1 — P12 and P12b JOIN through it, not `service_templates` directly
+**Tags & Occurrences — critical:**
+- **Timeframes rule:** The base table is `occurrences` (Daily, Weekly, Monthly). `service_instances` are children of occurrences.
+- **The Closure Table:** `tag_relationships` handles infinite tag nesting. Never hardcode parent-child levels.
+- `instance_tags` is the reporting table — all dashboard queries JOIN here.
+- Never re-derive tag membership at query time (Rule 6) — use `apply_tag_to_instances()`.
+- The dashboard automatically rolls up metrics to the Weekly occurrence level, guaranteeing universal metrics (Total Attendance, Volunteers, Giving) out of the box.
 
 **Attendance — critical:**
 - NULL means not entered. 0 means confirmed zero.

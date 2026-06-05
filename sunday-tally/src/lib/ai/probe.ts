@@ -28,7 +28,7 @@ export async function probeData(
 ): Promise<ProbeResult> {
   const [earliest, latest] = await Promise.all([
     supabase
-      .from('service_occurrences')
+      .from('service_instances')
       .select('service_date')
       .eq('church_id', churchId)
       .eq('status', 'active')
@@ -36,7 +36,7 @@ export async function probeData(
       .limit(1)
       .maybeSingle(),
     supabase
-      .from('service_occurrences')
+      .from('service_instances')
       .select('service_date')
       .eq('church_id', churchId)
       .eq('status', 'active')
@@ -87,11 +87,11 @@ export async function probeData(
   }
 
   const [base, att, giv, vol, resp] = await Promise.all([
-    addFilters(supabase.from('service_occurrences').select('id',                                  { count: 'exact', head: true })),
-    addFilters(supabase.from('service_occurrences').select('id, attendance_entries!inner(id)',  { count: 'exact', head: true })),
-    addFilters(supabase.from('service_occurrences').select('id, giving_entries!inner(id)',      { count: 'exact', head: true })),
-    addFilters(supabase.from('service_occurrences').select('id, volunteer_entries!inner(id)',   { count: 'exact', head: true })),
-    addFilters(supabase.from('service_occurrences').select('id, response_entries!inner(id)',    { count: 'exact', head: true })),
+    addFilters(supabase.from('service_instances').select('id',                                  { count: 'exact', head: true })),
+    addFilters(supabase.from('service_instances').select('id, attendance_entries!inner(id)',  { count: 'exact', head: true })),
+    addFilters(supabase.from('service_instances').select('id, giving_entries!inner(id)',      { count: 'exact', head: true })),
+    addFilters(supabase.from('service_instances').select('id, volunteer_entries!inner(id)',   { count: 'exact', head: true })),
+    addFilters(supabase.from('service_instances').select('id, response_entries!inner(id)',    { count: 'exact', head: true })),
   ])
 
   result.in_range = {

@@ -18,7 +18,7 @@
 // ══════════════════════════════════════════════════════════════════════════════
 
 export type Scope = 'MO' | 'WK' | 'SV' | 'SD';
-export type DataType = 'number' | 'currency' | 'text' | 'percent';
+export type DataType = 'number' | 'currency' | 'text' | 'percent' | 'tags';
 
 /**
  * A single data column (leaf node in the column tree)
@@ -89,6 +89,23 @@ export interface MetricDefinition {
   scope: 'MO' | 'WK' | 'SD';     // monthly, weekly, or single-day
   columnId: string;              // which data column ID this metric populates
   dayOfWeek?: number;            // (SD only) which day this metric tracks (4=Thursday)
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// NORMALIZATION
+// ══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Deduplicate a metric array by id — first occurrence wins.
+ * Eliminates duplicate React keys in HistoryGrid row rendering.
+ */
+export function normalizeMetrics(metrics: MetricDefinition[]): MetricDefinition[] {
+  const seen = new Set<string>()
+  return metrics.filter(m => {
+    if (seen.has(m.id)) return false
+    seen.add(m.id)
+    return true
+  })
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -192,32 +209,34 @@ export function validateConfig(config: GridConfig): ValidationError[] {
   }
   
   // ────────────────────────────────────────────────────────────────────────────
-  // RULE 4: columnId references must exist in columns
+  // RULE 4: columnId references must exist as a DataColumn or ColumnGroup id
   // ────────────────────────────────────────────────────────────────────────────
-  
+
   const allColumnIds = getAllColumnIds(config.columns);
-  
+  const allGroupIds  = getAllGroupIds(config.columns);
+  const allValidIds  = new Set([...allColumnIds, ...allGroupIds]);
+
   for (const metric of config.weeklyMetrics) {
-    if (!allColumnIds.has(metric.columnId)) {
+    if (!allValidIds.has(metric.columnId)) {
       errors.push({
         severity: 'error',
         message: `Weekly metric "${metric.label}" references non-existent columnId: "${metric.columnId}"`
       });
     }
   }
-  
+
   for (const metric of config.monthlyMetrics) {
-    if (!allColumnIds.has(metric.columnId)) {
+    if (!allValidIds.has(metric.columnId)) {
       errors.push({
         severity: 'error',
         message: `Monthly metric "${metric.label}" references non-existent columnId: "${metric.columnId}"`
       });
     }
   }
-  
+
   if (config.singleDayMetrics) {
     for (const metric of config.singleDayMetrics) {
-      if (!allColumnIds.has(metric.columnId)) {
+      if (!allValidIds.has(metric.columnId)) {
         errors.push({
           severity: 'error',
           message: `Single-day metric "${metric.label}" references non-existent columnId: "${metric.columnId}"`
@@ -229,9 +248,7 @@ export function validateConfig(config: GridConfig): ValidationError[] {
   // ────────────────────────────────────────────────────────────────────────────
   // RULE 5: Service template populatesColumnGroups must reference valid groups
   // ────────────────────────────────────────────────────────────────────────────
-  
-  const allGroupIds = getAllGroupIds(config.columns);
-  
+
   for (const template of config.serviceTemplates) {
     for (const groupId of template.populatesColumnGroups) {
       if (!allGroupIds.has(groupId)) {
@@ -242,7 +259,29 @@ export function validateConfig(config: GridConfig): ValidationError[] {
       }
     }
   }
-  
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // RULE 6/7/8: Duplicate metric IDs produce duplicate React keys per row
+  // ────────────────────────────────────────────────────────────────────────────
+
+  for (const [metrics, label] of [
+    [config.weeklyMetrics,              'WK'],
+    [config.monthlyMetrics,             'MO'],
+    [config.singleDayMetrics ?? [],     'SD'],
+  ] as [MetricDefinition[], string][]) {
+    const seen = new Set<string>()
+    for (const m of metrics) {
+      if (seen.has(m.id)) {
+        errors.push({
+          severity: 'error',
+          message: `Duplicate ${label} metric id "${m.id}" ("${m.label}") — use normalizeMetrics() before setConfig`,
+        })
+      } else {
+        seen.add(m.id)
+      }
+    }
+  }
+
   return errors;
 }
 

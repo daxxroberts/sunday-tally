@@ -1,7 +1,14 @@
 import { createClient } from '@/lib/supabase/server'
 import { getBillingStatus } from '@/lib/billing/status'
 import { redirect } from 'next/navigation'
-import BillingActions from './BillingActions'
+import { Suspense } from 'react'
+import type { UserRole } from '@/types'
+import BillingClient from './BillingClient'
+
+// BILLING screen (D-096 account portal) — IRIS_BILLING_ELEMENT_MAP.
+// Stripe logic (status.ts, stripe/server.ts, api/stripe/*) is verified-correct
+// and untouched. This page is a DESIGN_SYSTEM redesign + the one functional
+// repair: surface the past_due render state (E-12) from subscriptionStatus.
 
 export default async function BillingPage() {
   const supabase = await createClient()
@@ -10,71 +17,31 @@ export default async function BillingPage() {
 
   const { data: membership } = await supabase
     .from('church_memberships')
-    .select('church_id, role')
+    .select('church_id, role, churches(name)')
     .eq('user_id', user.id)
     .eq('is_active', true)
     .single()
 
   if (!membership) redirect('/auth/login')
 
-  const isOwnerOrAdmin = membership.role === 'owner' || membership.role === 'admin'
+  const role = membership.role as UserRole
+  const churchRel = membership.churches as { name?: string | null } | { name?: string | null }[] | null
+  const churchName =
+    (Array.isArray(churchRel) ? churchRel[0]?.name : churchRel?.name) ?? 'Your church'
+
   const billing = await getBillingStatus(supabase, membership.church_id)
-  const hasSubscription = billing.subscriptionStatus !== 'trialing' || billing.phase === 'active'
 
   return (
-    <div className="mx-auto max-w-2xl p-6 space-y-6">
-      <header>
-        <h1 className="text-2xl font-semibold">Billing</h1>
-        <p className="text-sm text-gray-600">Sunday Tally — $22/month</p>
-      </header>
-
-      <section className="rounded-lg border border-gray-200 p-5 space-y-2">
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-medium text-gray-700">Status</span>
-          <PhaseBadge phase={billing.phase} />
-        </div>
-        {billing.phase === 'trial' && (
-          <p className="text-sm text-gray-600">
-            {billing.daysLeft} day{billing.daysLeft === 1 ? '' : 's'} left in your free trial.
-          </p>
-        )}
-        {billing.phase === 'active' && billing.currentPeriodEnd && (
-          <p className="text-sm text-gray-600">
-            Renews {new Date(billing.currentPeriodEnd).toLocaleDateString()}.
-          </p>
-        )}
-        {billing.phase === 'expired' && (
-          <p className="text-sm text-gray-600">
-            Your trial has ended. Subscribe to continue editing and managing services.
-          </p>
-        )}
-      </section>
-
-      {isOwnerOrAdmin ? (
-        <BillingActions hasSubscription={hasSubscription} phase={billing.phase} />
-      ) : (
-        <p className="text-sm text-gray-500">
-          Only owners and admins can manage billing.
-        </p>
-      )}
-    </div>
-  )
-}
-
-function PhaseBadge({ phase }: { phase: 'trial' | 'active' | 'expired' }) {
-  const styles: Record<typeof phase, string> = {
-    trial:   'bg-blue-100 text-blue-800',
-    active:  'bg-green-100 text-green-800',
-    expired: 'bg-red-100 text-red-800',
-  }
-  const label: Record<typeof phase, string> = {
-    trial: 'Trial',
-    active: 'Active',
-    expired: 'Expired',
-  }
-  return (
-    <span className={`inline-block rounded px-2 py-0.5 text-xs font-medium ${styles[phase]}`}>
-      {label[phase]}
-    </span>
+    <Suspense fallback={null}>
+      <BillingClient
+        role={role}
+        churchName={churchName}
+        phase={billing.phase}
+        subscriptionStatus={billing.subscriptionStatus}
+        daysLeft={billing.daysLeft}
+        trialEndsAt={billing.trialEndsAt}
+        currentPeriodEnd={billing.currentPeriodEnd}
+      />
+    </Suspense>
   )
 }

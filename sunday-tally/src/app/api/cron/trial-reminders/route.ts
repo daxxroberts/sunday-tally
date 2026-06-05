@@ -36,7 +36,10 @@ export async function GET(req: Request) {
       .select('id, name, trial_ends_at, subscription_status')
       .gte('trial_ends_at', start.toISOString())
       .lt('trial_ends_at',  end.toISOString())
-      .eq('subscription_status', 'trialing')
+      // Signup does not write subscription_status, so app-managed trials carry a
+      // NULL status; getBillingStatus treats NULL as 'trialing'. Match both so
+      // NULL-status churches still get 7d/1d reminders. (STRIPE_AND_EMAIL_PLAN §6.4)
+      .or('subscription_status.eq.trialing,subscription_status.is.null')
     if (error) {
       results[kind] = { error: error.message }
       continue
