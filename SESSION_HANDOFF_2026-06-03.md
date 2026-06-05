@@ -24,7 +24,7 @@ Ran a 4-track sub-agent batch under SUBAGENT_STANDARD.md (FELIX-validated each, 
 ### A. Needs Builder (external — agents cannot do; no account/credential creation by AI)
 1. **Stripe**: create account + `STRIPE_SECRET_KEY` + $22/mo recurring `STRIPE_PRICE_ID` + webhook endpoint `${APP_URL}/api/stripe/webhook` + `STRIPE_WEBHOOK_SECRET` (events: checkout.session.completed, customer.subscription.{created,updated,deleted}, invoice.payment_failed/paid). Until then checkout/portal 500 and status stays 'trialing'.
 2. **Resend**: `RESEND_API_KEY` + verified sending domain for `RESEND_FROM_EMAIL`.
-3. **`NEXT_PUBLIC_APP_URL`** — set in prod (inconsistent defaults localhost vs sundaytally.app across files; invite/email/redirect links depend on it).
+3. **`NEXT_PUBLIC_APP_URL`** — set in prod (inconsistent defaults localhost vs sundaytally.church across files; invite/email/redirect links depend on it).
 4. **Supabase Auth** — whitelist redirect URLs (`/auth/callback`, `/auth/reset`, `/auth/invite/*`); enable reset-password email template; confirm password min-length = 8.
 5. ~~Apply migration `0029_settings_role_rls.sql`~~ — **DONE 2026-06-03 (D-098).** Applied to production via BOT gate (FELIX PASS-WITH-NOTES → empirical viewer-impersonation test proving self-promotion BLOCKED[42501] while default-campus write succeeds, 0 leftover rows → SAGE RATIFIED). Teammate names now resolve; member/invite/role/location writes DB-enforced. Residual non-blocking follow-ups in D-098 (FK-scope `default_location_id`, header idempotency wording, confirm no other self-editable sensitive membership columns).
 

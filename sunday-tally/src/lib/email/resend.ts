@@ -11,7 +11,7 @@ function resend(): Resend {
 }
 
 function from(): string {
-  return process.env.RESEND_FROM_EMAIL ?? 'Sunday Tally <noreply@sundaytally.app>'
+  return process.env.RESEND_FROM_EMAIL ?? 'Sunday Tally <noreply@sundaytally.church>'
 }
 
 export type EmailTemplate =
@@ -91,5 +91,5 @@ ${content}
 }
 
 function appUrl(): string {
-  return process.env.NEXT_PUBLIC_APP_URL ?? 'https://sundaytally.app'
+  return process.env.NEXT_PUBLIC_APP_URL ?? 'https://sundaytally.church'
 }

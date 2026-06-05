@@ -39,7 +39,7 @@ export function inviteExpiry(): string {
 
 /** Build the canonical /auth/invite/[token] acceptance URL. */
 export function inviteUrlFor(token: string): string {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://sundaytally.app'
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://sundaytally.church'
   return `${appUrl}/auth/invite/${token}`
 }
 
