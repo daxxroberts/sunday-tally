@@ -19,13 +19,11 @@
 // token/expires_at + 'pending'. List = status IN ('pending','expired').
 // ─────────────────────────────────────────────────────────────────────────
 
-import crypto from 'crypto'
 import { createClient, createServiceRoleClient } from '@/lib/supabase/server'
-import { sendEmail } from '@/lib/email/resend'
+import { newInviteToken, inviteExpiry, sendInviteEmail } from '@/lib/invites'
 import { revalidatePath } from 'next/cache'
 
 const PAGE = 1000 // PostgREST row cap (N-2)
-const INVITE_TTL_DAYS = 14 // O-3 (proposed)
 
 export type TeamRole = 'owner' | 'admin' | 'editor' | 'viewer'
 
@@ -391,8 +389,8 @@ export async function sendInviteAction(
     }
   } catch { /* listUsers unavailable — proceed; duplicate insert still guarded by status */ }
 
-  const token = crypto.randomBytes(32).toString('hex') // D-009
-  const expiresAt = new Date(Date.now() + INVITE_TTL_DAYS * 86400_000).toISOString()
+  const token = newInviteToken() // D-009
+  const expiresAt = inviteExpiry()
 
   const { error: insertError } = await admin
     .from('church_invites')
@@ -407,7 +405,7 @@ export async function sendInviteAction(
     })
   if (insertError) return { error: 'Could not create the invite.' }
 
-  const emailSent = await deliverInvite(email, role, token, caller.churchId, caller.userId)
+  const emailSent = await sendInviteEmail({ email, role, token, churchId: caller.churchId, inviterUserId: caller.userId })
   revalidatePath('/settings/team')
   return { sent: true, emailSent }
 }
@@ -431,8 +429,8 @@ export async function resendInviteAction(
   if (!['pending', 'expired'].includes(invite.status)) return { error: 'That invite is no longer open.' }
   if (caller.role === 'admin' && invite.role === 'owner') return { error: 'Only an owner can manage owner invites.' }
 
-  const token = crypto.randomBytes(32).toString('hex')
-  const expiresAt = new Date(Date.now() + INVITE_TTL_DAYS * 86400_000).toISOString()
+  const token = newInviteToken()
+  const expiresAt = inviteExpiry()
   const admin = createServiceRoleClient()
   const { error } = await admin
     .from('church_invites')
@@ -441,7 +439,7 @@ export async function resendInviteAction(
     .eq('church_id', caller.churchId)
   if (error) return { error: 'Could not resend the invite.' }
 
-  const emailSent = await deliverInvite(invite.email, invite.role as TeamRole, token, caller.churchId, caller.userId)
+  const emailSent = await sendInviteEmail({ email: invite.email, role: invite.role as TeamRole, token, churchId: caller.churchId, inviterUserId: caller.userId })
   revalidatePath('/settings/team')
   return { emailSent }
 }
@@ -475,34 +473,6 @@ export async function revokeInviteAction(
   return {}
 }
 
-// ── invite delivery (N-3): branded Resend invite carrying the token link ────
-// Returns true if an email was actually sent. Resend not configured → false
-// (caller surfaces "email not configured"); we do NOT fail the invite row.
-async function deliverInvite(
-  email: string,
-  role: TeamRole,
-  token: string,
-  churchId: string,
-  inviterUserId: string,
-): Promise<boolean> {
-  if (!process.env.RESEND_API_KEY) return false
-
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://sundaytally.app'
-  const inviteUrl = `${appUrl}/auth/invite/${token}`
-
-  const supabase = await createClient()
-  const { data: ch } = await supabase.from('churches').select('name').eq('id', churchId).single()
-  const churchName = (ch as { name?: string } | null)?.name ?? 'your church'
-
-  // inviter display name (best-effort)
-  let inviterName = 'A team member'
-  const { data: prof } = await supabase.from('user_profiles').select('full_name').eq('id', inviterUserId).single()
-  if ((prof as { full_name?: string } | null)?.full_name) inviterName = (prof as { full_name: string }).full_name
-
-  try {
-    const res = await sendEmail(email, 'invite', { inviteUrl, inviterName, role, churchName })
-    return !res.error
-  } catch {
-    return false
-  }
-}
+// Invite delivery (N-3) is now the canonical shared helper sendInviteEmail()
+// in @/lib/invites — both this Members screen and /onboarding/invite send
+// through it so invitees get one identical branded Resend invite experience.

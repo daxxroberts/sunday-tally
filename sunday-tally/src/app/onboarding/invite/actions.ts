@@ -1,12 +1,18 @@
 'use server'
 
 // T9 invite actions
-// N60: token = crypto.randomBytes(32) | N61: viewer signInWithOtp, others inviteUserByEmail
+// N60: token = crypto.randomBytes(32) (CANONICAL — see @/lib/invites)
+// N61(reconciled): a single send path for ALL roles. The viewer-vs-editor
+//   distinction is resolved at ACCEPTANCE (auth/invite/[token]/actions.ts), not
+//   at send time, so we no longer branch on role here. The old Supabase
+//   admin.auth.admin.inviteUserByEmail / generateLink path is removed — it
+//   contradicted the locked D-009 custom-token decision and gave invitees two
+//   different experiences (EMAIL_POLICY §2 #3 vs #11/#12 reconciliation).
 // N64: remove = delete memberships + revoke sessions | N65: last owner protection
 
-import crypto from 'crypto'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceRoleClient } from '@/lib/supabase/server'
+import { createAndSendInvite, type InviteRole } from '@/lib/invites'
 import { revalidatePath } from 'next/cache'
 
 export async function getTeamData() {
@@ -49,37 +55,21 @@ export async function sendInviteAction(
   churchId: string
 ): Promise<{ error?: string; sent?: boolean }> {
   const supabase = await createClient()
-  const admin = createServiceRoleClient()
+  const { data: { user } } = await supabase.auth.getUser()
 
-  const token = crypto.randomBytes(32).toString('hex') // N60 / D-009
-  const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/auth/invite/${token}`
-
-  // INSERT church_invites — status='pending' + expires_at so the canonical
-  // Members screen (/settings/team) lists onboarding-created invites correctly.
-  const expiresAt = new Date(Date.now() + 14 * 86400_000).toISOString()
-  const { error: insertError } = await supabase
-    .from('church_invites')
-    .insert({ church_id: churchId, email, role, token, status: 'pending', expires_at: expiresAt })
-
-  if (insertError) return { error: 'Failed to create invite.' }
-
-  if (role === 'viewer') {
-    // N61: Viewer — magic link via signInWithOtp
-    const { error } = await admin.auth.admin.generateLink({
-      type: 'magiclink',
-      email,
-      options: { redirectTo: inviteUrl },
-    })
-    if (error) return { error: 'Failed to send invite email.' }
-  } else {
-    // N61: Editor/Admin — inviteUserByEmail (password setup)
-    const { error } = await admin.auth.admin.inviteUserByEmail(email, {
-      redirectTo: inviteUrl,
-    })
-    if (error && !error.message.includes('already registered')) {
-      return { error: 'Failed to send invite email.' }
-    }
-  }
+  // CANONICAL invite (D-009): 32-byte token → church_invites row (status
+  // 'pending' + expires_at) → branded Resend invite carrying the
+  // /auth/invite/[token] link. ONE path for all roles — the viewer-vs-editor
+  // distinction is handled at acceptance, not at send. The inserted row is
+  // identical in shape to the Members screen's, so /settings/team lists
+  // onboarding-created invites correctly.
+  const result = await createAndSendInvite({
+    churchId,
+    email,
+    role: role as InviteRole,
+    invitedBy: user?.id ?? null,
+  })
+  if (result.error) return { error: result.error }
 
   revalidatePath('/onboarding/invite')
   return { sent: true }

@@ -1,6 +1,14 @@
 # SundayTally — Session Handoff (2026-06-03) — read with SCHEMA_CUTOVER_STATUS.md (D-072…D-097)
 
-Compaction anchor. Full decision detail in `SCHEMA_CUTOVER_STATUS.md`; design rules in `DESIGN_SYSTEM.md`; build specs in `IRIS_*_ELEMENT_MAP.md`; Stripe/email plan in `STRIPE_AND_EMAIL_PLAN.md` (being generated).
+Compaction anchor. Full decision detail in `SCHEMA_CUTOVER_STATUS.md`; design rules in `DESIGN_SYSTEM.md`; build specs in `IRIS_*_ELEMENT_MAP.md`; Stripe/email plan in `STRIPE_AND_EMAIL_PLAN.md`; sub-agent rules in `SUBAGENT_STANDARD.md`.
+
+## ✅ BATCH LANDED 2026-06-04 — commit `118163c` (one commit, NOT pushed; branch design/entries-spec-and-mockup)
+Ran a 4-track sub-agent batch under SUBAGENT_STANDARD.md (FELIX-validated each, SAGE-ratified, authoritative `tsc` + `next build` both green). Then committed the FULL uncommitted backlog (140 files, +21,351/−8,136) as ONE commit per Builder choice. **Not pushed — Builder pushes when ready.**
+- **0029 role RLS** applied earlier (D-098) — already in this commit.
+- **Email/billing deltas DONE:** invoice.paid webhook handler (past_due→active, idempotent); removed duplicate Resend paymentFailed send (kept past_due update); trial-reminders cron now includes NULL subscription_status.
+- **Route retirement DONE:** legacy /services T1–T5 deleted; History relocated to `/history`; role-aware `/services*` middleware redirect; Entries link repointed. (NAV_MANIFEST.json absent → used handoff item 8 as authority.)
+- **Polish DONE:** nav + auth DS pass (#4F6EF7, no red, Fira numerals, aria-live on auth errors); invite email CTA recolored; `grid_config` typed on Church; duplicate-invite guard paginates listUsers.
+- **STILL OPEN (flagged, need Builder decision):** `aiSetupExhausted` wiring (ambiguous trigger — which AI bucket/trial-phase) and **Welcome email** (no template + signup doesn't write status where expected) — both need a Builder call, not invented. Other 4 email-template CTAs still #2563eb (only invite was in scope) — DS-align if desired. Test-artifact files (playwright-report, test-screenshots/*.png) got committed — consider gitignoring next pass.
 
 ## ✅ COMPLETED THIS SESSION (all UNCOMMITTED on disk; branch `design/entries-spec-and-mockup`)
 - **Schema cutover live** (migrations 0022–0028 applied to main `iwbrzdiubrvogiamoqvx`). **0028** added `service_template_tags`, `metric_entries.location_id`, `church_memberships.default_location_id`, `metrics.cadence` — FELIX/SAGE ratified (D-090).
