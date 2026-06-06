@@ -87,7 +87,7 @@ function subtractFourWin(a: FourWin, b: FourWin): FourWin {
 // ── Zone D — Summary card (E-30..E-33) + include-in-total edit (E-22 / I) ─────
 function SummaryCard({
   summary, grandTotalOverride, tagSections, roleByTag, excluded, flags, onChangeFlags, onSavePrefs,
-  tracks, hideComparisons, readOnly,
+  tracks, hideComparisons, readOnly, windows,
 }: {
   summary: DashboardData['summary']
   grandTotalOverride: FourWin
@@ -100,6 +100,7 @@ function SummaryCard({
   tracks: Tracks
   hideComparisons: boolean
   readOnly: boolean
+  windows: DashboardData['windows']
 }) {
   const [customize, setCustomize] = useState(false)
   const [editTotals, setEditTotals] = useState(false)
@@ -108,6 +109,22 @@ function SummaryCard({
 
   // ministries eligible for the include-in-total panel: real (non-unassigned) sections
   const ministrySections = tagSections.filter(s => s.tag_id !== 'UNASSIGNED')
+
+  // E-50 — when a church has exactly ONE ministry per audience role, show its real
+  // name ("Experience Total" / "LifeKids Total" / "Switch Total") instead of the
+  // generic role label; fall back to the generic label for 0 or 2+ tags (multi-tenant
+  // safe). These three audience rows are attendance, so they get a gray "attendance" tag.
+  const ATTENDANCE_AUDIENCE = new Set<SummaryMetricKey>(['adults', 'kids', 'youth'])
+  const ROLE_OF: Record<'adults' | 'kids' | 'youth', AudienceRole> = {
+    adults: 'ADULT_SERVICE', kids: 'KIDS_MINISTRY', youth: 'YOUTH_MINISTRY',
+  }
+  function attendanceLabel(key: SummaryMetricKey): string {
+    if (key === 'adults' || key === 'kids' || key === 'youth') {
+      const named = tagSections.filter(s => s.tag_id !== 'UNASSIGNED' && roleByTag.get(s.tag_id) === ROLE_OF[key])
+      if (named.length === 1) return `${named[0].tag_name} Total`
+    }
+    return SUMMARY_METRIC_LABELS[key]
+  }
 
   const effectivelyHidden = (k: SummaryMetricKey): boolean => {
     if (k === 'volunteers' && !tracks.tracks_volunteers) return true
@@ -143,12 +160,14 @@ function SummaryCard({
               >
                 <Ico.pencilFill className="h-3 w-3" />
               </button>
-              {/* E-32 — per-user customize */}
+              {/* E-32 — per-user customize (cog only, no label) */}
               <button
                 onClick={() => { setCustomize(c => !c); setEditTotals(false) }}
-                className="flex cursor-pointer items-center gap-1 rounded-lg px-2 py-1 text-[12px] font-medium text-slate-500 transition-colors duration-200 hover:bg-slate-100 hover:text-slate-800 focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/40"
+                title={customize ? 'Done customizing' : 'Customize which metrics show'}
+                aria-label="Customize which metrics show"
+                className={`flex h-7 w-7 cursor-pointer items-center justify-center rounded-full transition-colors duration-200 hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/40 ${customize ? 'bg-slate-100 text-[#4F6EF7]' : 'text-slate-400 hover:text-slate-700'}`}
               >
-                <Ico.gear className="h-3.5 w-3.5" />{customize ? 'Done' : 'Customize'}
+                <Ico.gear className="h-3.5 w-3.5" />
               </button>
             </div>
           )
@@ -218,11 +237,13 @@ function SummaryCard({
         </div>
       )}
 
+      <ColumnHeaders windows={windows} />
       <div>
         {SUMMARY_METRIC_ORDER.filter(k => !effectivelyHidden(k)).map(key => (
           <FourColRow
             key={key}
-            label={SUMMARY_METRIC_LABELS[key]}
+            label={attendanceLabel(key)}
+            sub={ATTENDANCE_AUDIENCE.has(key) ? 'attendance' : undefined}
             values={metricValues[key].values}
             prefix={metricValues[key].prefix}
             hideComparisons={hideComparisons}
@@ -239,13 +260,14 @@ function SummaryCard({
 
 // ── Zone F — per-ministry breakdown card (E-50..E-54) ─────────────────────────
 function TagBlock({
-  section, role, excluded, tracks, hideComparisons,
+  section, role, excluded, tracks, hideComparisons, windows,
 }: {
   section: TagSection
   role: string | null
   excluded: boolean
   tracks: { tracks_volunteers: boolean; tracks_responses: boolean }
   hideComparisons: boolean
+  windows: DashboardData['windows']
 }) {
   const isUnassigned = section.tag_id === 'UNASSIGNED'
   return (
@@ -256,6 +278,7 @@ function TagBlock({
         accentClass={isUnassigned ? 'bg-slate-300' : accentForRole(role)}
         suffix={excluded ? <NotInTotalTag /> : undefined}
       />
+      <ColumnHeaders windows={windows} />
       <div>
         {!isUnassigned && <FourColRow label="Attendance" values={section.attendance} hideComparisons={hideComparisons} />}
         {tracks.tracks_volunteers && <FourColRow label="Volunteers" values={section.volunteers} hideComparisons={hideComparisons} />}
@@ -268,13 +291,15 @@ function TagBlock({
 }
 
 // ── Zone G — Volunteer breakout (E-60..E-62), editor+ only ────────────────────
-function VolunteerBreakoutBlock({ breakout, hideComparisons }: {
+function VolunteerBreakoutBlock({ breakout, hideComparisons, windows }: {
   breakout: DashboardData['volunteerBreakout']
   hideComparisons: boolean
+  windows: DashboardData['windows']
 }) {
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
       <CardHeader label="Volunteer Breakout" accentStyle={{ background: '#8B5CF6' }} />
+      <ColumnHeaders windows={windows} />
       <div>
         <FourColRow label="Total" sub="calculated" values={breakout.total} hideComparisons={hideComparisons} />
         {breakout.rows.map(r => (
@@ -292,20 +317,26 @@ function VolunteerBreakoutBlock({ breakout, hideComparisons }: {
 }
 
 // ── Zone H — Other stats (church-wide remainder, E-70) ────────────────────────
-function OtherStatsBlock({ rows, hideComparisons }: {
+function OtherStatsBlock({ rows, hideComparisons, windows }: {
   rows: DashboardData['otherStats']
   hideComparisons: boolean
+  windows: DashboardData['windows']
 }) {
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
       <CardHeader label="Other Stats" accentClass="bg-slate-300" />
-      <div>
-        {rows.length === 0 ? (
-          <p className="px-4 py-4 text-[12px] text-slate-400">No other stats tracked.</p>
-        ) : rows.map(r => (
-          <FourColRow key={r.key} label={r.category_name} values={r.values} hideComparisons={hideComparisons} />
-        ))}
-      </div>
+      {rows.length === 0 ? (
+        <p className="px-4 py-4 text-[12px] text-slate-400">No other stats tracked.</p>
+      ) : (
+        <>
+          <ColumnHeaders windows={windows} />
+          <div>
+            {rows.map(r => (
+              <FourColRow key={r.key} label={r.category_name} values={r.values} hideComparisons={hideComparisons} />
+            ))}
+          </div>
+        </>
+      )}
     </div>
   )
 }
@@ -394,10 +425,28 @@ export default function DashboardPage() {
     await supabase.from('churches').update({ grid_config: { ...existing, ...next } }).eq('id', churchId)
   }
 
-  const todayLabel = useMemo(
-    () => new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
-    [],
-  )
+  // E-4 — "as of" anchor. Defaults to today (current week); picking a past date
+  // re-fetches every 4-window relative to it. asOfStr === '' means today.
+  const todayStr = useMemo(() => {
+    const d = new Date()
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  }, [])
+  const [asOfStr, setAsOfStr] = useState('')
+  const [refreshing, setRefreshing] = useState(false)
+
+  async function handleAnchorChange(next: string) {
+    if (!church) return
+    setAsOfStr(next === todayStr ? '' : next)
+    setRefreshing(true)
+    const anchor = next && next !== todayStr ? new Date(next + 'T12:00:00') : undefined
+    const d = await fetchDashboardData(church.id, {
+      tracks_volunteers: church.tracks_volunteers,
+      tracks_responses:  church.tracks_responses,
+      tracks_giving:     church.tracks_giving,
+    }, anchor)
+    setData(d)
+    setRefreshing(false)
+  }
 
   const highlightDelta = (h: { current: number; prior: number }) =>
     h.prior === 0 ? null : Math.round(((h.current - h.prior) / h.prior) * 100)
@@ -459,7 +508,27 @@ export default function DashboardPage() {
               eyebrow="Dashboard"
               churchName={church.name}
               campusName={campus?.name ?? null}
-              todayLabel={todayLabel}
+              todayLabel={
+                // E-4 — subtle "as of" date chip. Defaults to today; pick a past
+                // date to re-anchor every window; "today" resets to current week.
+                <span className="inline-flex items-center gap-1.5">
+                  <input
+                    type="date"
+                    value={asOfStr || todayStr}
+                    max={todayStr}
+                    onChange={e => handleAnchorChange(e.target.value)}
+                    title="Showing this date's week — pick another date to look back, or reset to today"
+                    className="cursor-pointer bg-transparent font-num text-[11px] font-medium text-slate-600 outline-none"
+                  />
+                  {asOfStr && (
+                    <button
+                      onClick={() => handleAnchorChange(todayStr)}
+                      title="Back to the current week"
+                      className="rounded px-1 text-[10px] font-semibold text-[#4F6EF7] hover:underline"
+                    >today</button>
+                  )}
+                </span>
+              }
               scope={
                 // E-3 — scope toggle. MVP: data layer is church-wide (O-1/N-3),
                 // so this reflects "All campuses" and is locked with an honest hint.
@@ -484,7 +553,7 @@ export default function DashboardPage() {
               ) : !data || !data.hasAnyData ? (
                 <EmptyState message="Data appears here after your first Sunday entry." />
               ) : (
-                <div className="space-y-5">
+                <div className={`space-y-5 transition-opacity duration-200 ${refreshing ? 'pointer-events-none opacity-50' : ''}`}>
                   {/* ── Zone B — highlight KPI cards (E-10..E-13) ───────────── */}
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                     <KpiCard
@@ -511,25 +580,7 @@ export default function DashboardPage() {
                     )}
                   </div>
 
-                  {/* ── Zone C — comparison column headers (E-20) ───────────── */}
-                  <ColumnHeaders />
-
-                  {/* ── Zone D — Summary card (E-30..E-33) + E-22 edit ──────── */}
-                  <SummaryCard
-                    summary={data.summary}
-                    grandTotalOverride={grandTotalOverride}
-                    tagSections={data.tagSections}
-                    roleByTag={roleByTag}
-                    excluded={excluded}
-                    flags={flags}
-                    onChangeFlags={handleFlagsChange}
-                    onSavePrefs={handleSavePrefs}
-                    tracks={tracks}
-                    hideComparisons={hideComparisons}
-                    readOnly={readOnly}
-                  />
-
-                  {/* ── Zone E — Key Metrics strip (E-40..E-43) ─────────────── */}
+                  {/* ── Zone E — Key Metrics strip (E-40..E-43) — moved up to sit with the top KPI cards ─ */}
                   <div>
                     <LaneLabel label="Key Metrics" accentStyle={{ background: '#06B6D4' }} />
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -543,6 +594,23 @@ export default function DashboardPage() {
                     </div>
                   </div>
 
+                  {/* ── Zone D — Summary card (E-30..E-33) + E-22 edit. Column headers (E-20)
+                       now render INSIDE each 4-col card so they stay visible while scrolling. ─ */}
+                  <SummaryCard
+                    summary={data.summary}
+                    grandTotalOverride={grandTotalOverride}
+                    tagSections={data.tagSections}
+                    roleByTag={roleByTag}
+                    excluded={excluded}
+                    flags={flags}
+                    onChangeFlags={handleFlagsChange}
+                    onSavePrefs={handleSavePrefs}
+                    tracks={tracks}
+                    hideComparisons={hideComparisons}
+                    readOnly={readOnly}
+                    windows={data.windows}
+                  />
+
                   {/* ── Zone F — per-ministry breakdown (E-50..E-55) ────────── */}
                   {data.tagSections.map(section => (
                     <TagBlock
@@ -552,17 +620,18 @@ export default function DashboardPage() {
                       excluded={excluded.has(section.tag_id)}
                       tracks={{ tracks_volunteers: tracks.tracks_volunteers, tracks_responses: tracks.tracks_responses }}
                       hideComparisons={hideComparisons}
+                      windows={data.windows}
                     />
                   ))}
 
                   {/* ── Zone G — Volunteer breakout (E-60..E-62) ────────────── */}
                   {tracks.tracks_volunteers && (
-                    <VolunteerBreakoutBlock breakout={data.volunteerBreakout} hideComparisons={hideComparisons} />
+                    <VolunteerBreakoutBlock breakout={data.volunteerBreakout} hideComparisons={hideComparisons} windows={data.windows} />
                   )}
 
                   {/* ── Zone H — Other stats (E-70) ─────────────────────────── */}
                   {tracks.tracks_responses && (
-                    <OtherStatsBlock rows={data.otherStats} hideComparisons={hideComparisons} />
+                    <OtherStatsBlock rows={data.otherStats} hideComparisons={hideComparisons} windows={data.windows} />
                   )}
 
                   {/* ── E-82 — comparisons-pending note ─────────────────────── */}

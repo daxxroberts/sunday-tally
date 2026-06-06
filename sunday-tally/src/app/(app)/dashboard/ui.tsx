@@ -9,6 +9,8 @@
 // SVG icons only (DS-14) · NO RED — up=sage / down=amber (DS-2/E-83) · .font-num (DS-4).
 // ─────────────────────────────────────────────────────────────────────────
 
+import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Ico, fmt, accentForRole, roleLabel } from '../entries/ui'
 import type { FourWin } from '@/lib/dashboard'
 
@@ -43,13 +45,58 @@ export function DeltaBadge({ delta }: { delta: number | null }) {
 // ── E-20 — 4-column header row (Curr Wk · Last 4-Wk · Curr YTD · Prior YTD) ──
 const GRID = 'grid grid-cols-[minmax(0,1.6fr)_repeat(4,minmax(0,1fr))] gap-2'
 
-export function ColumnHeaders() {
+// Rendered INSIDE each 4-column card (under its CardHeader, above the rows) so the
+// period labels stay in view while scrolling. Hover any header → tooltip with the
+// full plain-English name + the exact date range that window covers (E-20).
+type Win = { start: string; end: string }
+function fmtRange(start: string, end: string): string {
+  const f = (s: string) => new Date(s + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  return `${f(start)} – ${f(end)}`
+}
+export function ColumnHeaders({ windows }: {
+  windows?: { week: Win; last4: Win; ytd: Win; priorYtd: Win }
+}) {
+  const cols: { short: string; full: string; note: string; range?: Win }[] = [
+    { short: 'Curr Wk',   full: 'Current Week',         note: '',               range: windows?.week },
+    { short: 'Last 4-Wk', full: 'Last 4 Weeks',         note: 'weekly average', range: windows?.last4 },
+    { short: 'Curr YTD',  full: 'Current Year-to-Date', note: 'weekly average', range: windows?.ytd },
+    { short: 'Prior YTD', full: 'Prior Year-to-Date',   note: 'weekly average', range: windows?.priorYtd },
+  ]
+  // Tooltip is portaled to <body> with fixed positioning so it is never clipped by
+  // the card's overflow-hidden (E-20). Anchored to the hovered cell's top-right corner.
+  const [tip, setTip] = useState<{ i: number; x: number; y: number } | null>(null)
+  const open = (e: React.MouseEvent | React.FocusEvent, i: number) => {
+    const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
+    setTip({ i, x: r.right, y: r.top })
+  }
+  const tc = tip ? cols[tip.i] : null
   return (
-    <div className={`${GRID} border-b border-slate-200 px-4 pb-2`}>
+    <div className={`${GRID} border-b border-slate-100 bg-slate-50/50 px-4 pt-2 pb-1.5`}>
       <div />
-      {['Curr Wk', 'Last 4-Wk', 'Curr YTD', 'Prior YTD'].map(h => (
-        <div key={h} className="text-right text-[10px] font-bold uppercase tracking-wider text-slate-400">{h}</div>
+      {cols.map((col, i) => (
+        <div key={col.short} className="flex justify-end">
+          <span
+            tabIndex={0}
+            onMouseEnter={e => open(e, i)}
+            onMouseLeave={() => setTip(null)}
+            onFocus={e => open(e, i)}
+            onBlur={() => setTip(null)}
+            className="cursor-help text-right text-[10px] font-bold uppercase tracking-wider text-slate-400 decoration-dotted decoration-slate-300 underline-offset-2 outline-none hover:underline focus:underline"
+          >{col.short}</span>
+        </div>
       ))}
+      {tc && typeof document !== 'undefined' && createPortal(
+        <div
+          role="tooltip"
+          style={{ position: 'fixed', left: tip!.x, top: tip!.y - 8, transform: 'translate(-100%, -100%)' }}
+          className="pointer-events-none z-[100] w-44 rounded-lg bg-slate-900 px-3 py-2 text-left shadow-xl"
+        >
+          <p className="text-[11px] font-bold text-white">{tc.full}</p>
+          {tc.note && <p className="mt-0.5 text-[9px] font-semibold uppercase tracking-wider" style={{ color: '#67E8F9' }}>{tc.note}</p>}
+          {tc.range && <p className="mt-1 font-num text-[10px] text-slate-300">{fmtRange(tc.range.start, tc.range.end)}</p>}
+        </div>,
+        document.body,
+      )}
     </div>
   )
 }
@@ -159,9 +206,9 @@ export function KeyMetricCard({
         <DeltaBadge delta={values.delta_w_m4} />
       </div>
       <div className="mt-2 flex items-center justify-between font-num text-[11px] text-slate-400">
-        <span>4-wk {fmtVal(values.m4, prefix, suffix)}</span>
-        <span>YTD {fmtVal(values.ytd, prefix, suffix)}</span>
-        <span>Prior {fmtVal(values.priorYtd, prefix, suffix)}</span>
+        <span>4-wk <span className="font-semibold text-slate-900">{fmtVal(values.m4, prefix, suffix)}</span></span>
+        <span>YTD <span className="font-semibold text-slate-900">{fmtVal(values.ytd, prefix, suffix)}</span></span>
+        <span>Prior <span className="font-semibold text-slate-900">{fmtVal(values.priorYtd, prefix, suffix)}</span></span>
       </div>
     </div>
   )
@@ -184,7 +231,7 @@ export function DashHeader({
   eyebrow: string
   churchName: string
   campusName: string | null
-  todayLabel: string
+  todayLabel: React.ReactNode  // string (D2) or an interactive date chip (D1, E-4)
   scope?: React.ReactNode      // E-3 scope toggle (D1 only)
 }) {
   return (

@@ -83,6 +83,13 @@ export interface DashboardData {
   highlights: DashboardHighlights
   hasAnyData: boolean
   weeksWithData: number
+  // E-20 — date range of each window (drives the column-header hover tooltips).
+  windows: {
+    week:     { start: string; end: string }
+    last4:    { start: string; end: string }
+    ytd:      { start: string; end: string }
+    priorYtd: { start: string; end: string }
+  }
 }
 
 // ─── Raw row shapes (as returned by the views / joined selects) ───────────────
@@ -308,9 +315,10 @@ async function fetchEntriesPaged(
 export async function fetchDashboardData(
   churchId: string,
   tracks: { tracks_volunteers: boolean; tracks_responses: boolean; tracks_giving: boolean },
+  asOf?: Date,   // anchor for all 4 windows; defaults to today (current week)
 ): Promise<DashboardData> {
   const supabase = createClient()
-  const b = buildBoundaries(new Date())
+  const b = buildBoundaries(asOf ?? new Date())
 
   // ── Tags (ministry axis) — group sections by these; tag_role drives the
   //    audience pivot. (Old tag_code/tag_name renamed → code/name; tag_role new.)
@@ -665,6 +673,12 @@ export async function fetchDashboardData(
     highlights,
     hasAnyData,
     weeksWithData,
+    windows: {
+      week:     { start: b.thisWeekStart,   end: shiftDays(b.thisWeekStart, 6) },
+      last4:    { start: b.fourWksAgoStart,  end: b.lastWeekEnd },
+      ytd:      { start: b.yearStart,        end: b.thisWeekStart },
+      priorYtd: { start: b.lastYearStart,    end: b.lastYearSameWeek },
+    },
   }
 }
 
