@@ -258,8 +258,12 @@ export function buildRows(
   // index drift and the parent-header alignment bug.
   const flatColumns = flattenColumns(config, collapseState);
 
-  // Group by month
-  const months = getMonthsInRange(dateRange);
+  // Group by month — NEWEST FIRST. Latest months render at the top so the
+  // recent weeks the user cares about are visible without scrolling; older
+  // months (incl. prior year) trail at the bottom (Builder request 2026-06-06).
+  // Only the time-block ORDER is reversed — each block keeps its internal
+  // header-above-metric-rows structure (we do not reverse the whole row list).
+  const months = getMonthsInRange(dateRange).reverse();
 
   // Track processed week anchors so weeks that span month boundaries are only emitted once.
   const processedWeekAnchors = new Set<number>();
@@ -289,8 +293,8 @@ export function buildRows(
       });
     }
 
-    // Weeks in this month
-    const weeks = getWeeksInMonth(month);
+    // Weeks in this month — newest week first (matches the months ordering).
+    const weeks = getWeeksInMonth(month).reverse();
 
     for (const week of weeks) {
       const weekAnchorMs = week.startDate.getTime();
@@ -329,7 +333,9 @@ export function buildRows(
       // Group by date
       const occurrencesByDate = groupByDate(weekOccurrences);
 
-      for (const [dateStr, dateOccurrences] of Object.entries(occurrencesByDate)) {
+      // Newest service date first within the week (entries are insertion-ordered
+      // ascending from the DB fetch; reverse for newest-at-top consistency).
+      for (const [dateStr, dateOccurrences] of Object.entries(occurrencesByDate).reverse()) {
         // Service date sub-header (acts as Day row)
         const serviceDate = new Date(dateStr);
         rows.push({
