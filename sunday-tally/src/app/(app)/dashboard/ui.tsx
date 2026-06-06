@@ -13,6 +13,8 @@ import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Ico, fmt, accentForRole, roleLabel } from '../entries/ui'
 import type { FourWin } from '@/lib/dashboard'
+import type { KeyMetricCatalogEntry, KeyMetricGroup } from '@/lib/dashboardKeyMetrics'
+import type { MetricSelector, DrillWindow } from '@/lib/dashboardDrilldown'
 
 // ── number / currency formatting (E-13 / O-2) ───────────────────────────────
 // Per-capita giving: currency, 0–2 dp (Intl). Plain numbers via Entries `fmt`.
@@ -104,7 +106,7 @@ export function ColumnHeaders({ windows }: {
 // ── 4-window data row (E-31 / E-51..E-53). Curr-Wk bold + delta_w_m4 badge,
 //    YTD + delta_ytd_prior badge. hideComparisons → only `w`, rest dashed. ─────
 export function FourColRow({
-  label, sub, values, prefix, suffix, indent, hideComparisons,
+  label, sub, values, prefix, suffix, indent, hideComparisons, selector, onDrill,
 }: {
   label: string
   sub?: string
@@ -113,27 +115,49 @@ export function FourColRow({
   suffix?: string
   indent?: boolean
   hideComparisons?: boolean
+  // #69 — when a selector + handler are supplied, each value cell becomes a
+  // button that opens the drill-down for that metric × window. Cells rendering a
+  // dash (hideComparisons) are not clickable.
+  selector?: MetricSelector | null
+  onDrill?: (selector: MetricSelector, window: DrillWindow) => void
 }) {
   const dash = <span className="text-slate-300">—</span>
+  const drillable = !!(selector && onDrill)
+
+  // Wrap a cell's content as a drill button (when enabled + has data) or plain div.
+  const Cell = ({ window, enabled, children }: { window: DrillWindow; enabled: boolean; children: React.ReactNode }) => {
+    if (drillable && enabled) {
+      return (
+        <button
+          type="button"
+          onClick={() => onDrill!(selector!, window)}
+          title="Show the detail behind this number"
+          className="w-full cursor-pointer rounded-md px-1 text-right transition-colors duration-150 hover:bg-[#4F6EF7]/8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/40"
+        >{children}</button>
+      )
+    }
+    return <div className="px-1 text-right">{children}</div>
+  }
+
   return (
-    <div className={`${GRID} items-start border-b border-slate-50 px-4 py-2 transition-colors duration-200 last:border-b-0 hover:bg-slate-50/60`}>
-      <div className={`text-[12px] font-medium leading-tight text-slate-600 ${indent ? 'pl-4' : ''}`}>
+    <div className={`${GRID} items-start border-b border-slate-50 px-3 py-2 transition-colors duration-200 last:border-b-0 hover:bg-slate-50/60`}>
+      <div className={`self-center text-[12px] font-medium leading-tight text-slate-600 ${indent ? 'pl-4' : 'pl-1'}`}>
         {label}{sub && <span className="ml-1 text-[10px] text-slate-400">{sub}</span>}
       </div>
-      <div className="text-right">
+      <Cell window="w" enabled={values.w !== null}>
         <p className="font-num text-[14px] font-semibold leading-tight text-slate-900">{fmtVal(values.w, prefix, suffix)}</p>
         {!hideComparisons && <div className="mt-0.5"><DeltaBadge delta={values.delta_w_m4} /></div>}
-      </div>
-      <div className="text-right">
+      </Cell>
+      <Cell window="m4" enabled={!hideComparisons && values.m4 !== null}>
         <p className="font-num text-[14px] font-semibold leading-tight text-slate-700">{hideComparisons ? dash : fmtVal(values.m4, prefix, suffix)}</p>
-      </div>
-      <div className="text-right">
+      </Cell>
+      <Cell window="ytd" enabled={!hideComparisons && values.ytd !== null}>
         <p className="font-num text-[14px] font-semibold leading-tight text-slate-900">{hideComparisons ? dash : fmtVal(values.ytd, prefix, suffix)}</p>
         {!hideComparisons && <div className="mt-0.5"><DeltaBadge delta={values.delta_ytd_prior} /></div>}
-      </div>
-      <div className="text-right">
+      </Cell>
+      <Cell window="priorYtd" enabled={!hideComparisons && values.priorYtd !== null}>
         <p className="font-num text-[14px] font-semibold leading-tight text-slate-700">{hideComparisons ? dash : fmtVal(values.priorYtd, prefix, suffix)}</p>
-      </div>
+      </Cell>
     </div>
   )
 }
@@ -190,17 +214,62 @@ export function KpiCard({
 }
 
 // ── Zone E — Key Metrics card (E-41..E-43). Big `w` + delta, small footer. ────
+// #70: an owner/admin can set an all-time TARGET (pencil, top-right). When set,
+// a comparison row shows Curr-Wk vs target — sage when met/above, amber when
+// below (NO RED, DS-2). No target → nothing extra renders.
 export function KeyMetricCard({
-  label, values, prefix, suffix,
+  label, values, prefix, suffix, metricKey, target, canEdit, onSaveTarget,
 }: {
   label: string
   values: FourWin
   prefix?: string
   suffix?: string
+  metricKey?: string
+  target?: number | null
+  canEdit?: boolean
+  onSaveTarget?: (metricKey: string, value: number | null) => void
 }) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState('')
+  const hasTarget = typeof target === 'number' && !Number.isNaN(target)
+
+  const openEditor = () => {
+    setDraft(hasTarget ? String(target) : '')
+    setEditing(true)
+  }
+  const save = () => {
+    if (!metricKey || !onSaveTarget) { setEditing(false); return }
+    const trimmed = draft.trim()
+    const parsed = trimmed === '' ? null : Number(trimmed)
+    onSaveTarget(metricKey, parsed === null || Number.isNaN(parsed) ? null : parsed)
+    setEditing(false)
+  }
+  const clear = () => {
+    if (metricKey && onSaveTarget) onSaveTarget(metricKey, null)
+    setEditing(false)
+  }
+
+  // Curr-Wk vs target comparison (KEY_METRICS_PLAN §9.1 — hero window = Curr Wk).
+  const met = hasTarget && values.w !== null && values.w >= (target as number)
+  const pctOfTarget = hasTarget && values.w !== null && (target as number) > 0
+    ? Math.round((values.w / (target as number)) * 100)
+    : null
+
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-      <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">{label}</p>
+      <div className="mb-1.5 flex items-start justify-between gap-2">
+        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{label}</p>
+        {canEdit && metricKey && !editing && (
+          <button
+            onClick={openEditor}
+            title={hasTarget ? 'Edit target' : 'Set a target'}
+            aria-label={hasTarget ? `Edit target for ${label}` : `Set a target for ${label}`}
+            className="-mr-1 -mt-1 flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-full text-slate-300 transition-colors duration-200 hover:bg-slate-100 hover:text-slate-600 focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/40"
+          >
+            <Ico.pencilFill className="h-3 w-3" />
+          </button>
+        )}
+      </div>
       <div className="flex items-end justify-between gap-2">
         <p className="font-num text-2xl font-bold leading-none tracking-tight text-slate-900">{fmtVal(values.w, prefix, suffix)}</p>
         <DeltaBadge delta={values.delta_w_m4} />
@@ -210,16 +279,138 @@ export function KeyMetricCard({
         <span>YTD <span className="font-semibold text-slate-900">{fmtVal(values.ytd, prefix, suffix)}</span></span>
         <span>Prior <span className="font-semibold text-slate-900">{fmtVal(values.priorYtd, prefix, suffix)}</span></span>
       </div>
+
+      {/* target editor (inline) */}
+      {editing && (
+        <div className="mt-3 border-t border-slate-100 pt-3">
+          <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-slate-400">Target</label>
+          <div className="flex items-center gap-1.5">
+            {prefix && <span className="font-num text-[13px] text-slate-400">{prefix}</span>}
+            <input
+              type="number"
+              inputMode="decimal"
+              value={draft}
+              autoFocus
+              onChange={e => setDraft(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') setEditing(false) }}
+              placeholder="—"
+              className="w-20 rounded-lg border border-slate-200 px-2 py-1 font-num text-[13px] text-slate-800 outline-none focus:border-[#4F6EF7]"
+            />
+            {suffix && <span className="font-num text-[13px] text-slate-400">{suffix}</span>}
+            <button onClick={save} className="ml-auto cursor-pointer rounded-lg px-2.5 py-1 text-[12px] font-semibold text-white shadow-sm transition-opacity hover:opacity-90" style={{ background: '#4F6EF7' }}>Save</button>
+            {hasTarget && <button onClick={clear} className="cursor-pointer rounded-lg px-2 py-1 text-[12px] font-medium text-slate-400 hover:text-slate-700">Clear</button>}
+          </div>
+        </div>
+      )}
+
+      {/* target comparison (when set, not editing) */}
+      {hasTarget && !editing && (
+        <div className="mt-2 flex items-center justify-between border-t border-slate-100 pt-2 font-num text-[11px]">
+          <span className="text-slate-400">Target <span className="font-semibold text-slate-700">{fmtVal(target as number, prefix, suffix)}</span></span>
+          <span
+            className="inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
+            style={met ? { background: 'rgba(34,197,94,.12)', color: '#15803D' } : { background: 'rgba(245,158,11,.14)', color: '#B45309' }}
+            title={met ? 'At or above target' : 'Below target'}
+          >
+            {met ? <><Ico.check className="h-2.5 w-2.5" />met</> : pctOfTarget !== null ? `${pctOfTarget}% of target` : 'below'}
+          </span>
+        </div>
+      )}
     </div>
   )
 }
 
-// ── section lane label (E-40) — plain accent bar + uppercase label ───────────
-export function LaneLabel({ label, accentClass, accentStyle }: { label: string; accentClass?: string; accentStyle?: React.CSSProperties }) {
+// ── Zone E — Key Metrics picker (#70). Owner/admin promotes ANY dashboard metric
+//    into the lane and reorders the featured set. Grouped catalog + checkboxes +
+//    ↑/↓ reorder (a11y-friendly, no drag dep — KEY_METRICS_PLAN §5/§9.2). ───────
+const KM_GROUP_ORDER: KeyMetricGroup[] = ['Totals', 'Per-Ministry', 'Ratios', 'Other']
+
+export function KeyMetricsPicker({
+  catalog, selected, onChange, onClose,
+}: {
+  catalog: KeyMetricCatalogEntry[]
+  selected: string[]                       // ordered featured keys
+  onChange: (next: string[]) => void       // persists on every change
+  onClose: () => void
+}) {
+  const selectedSet = new Set(selected)
+  const labelOf = (k: string) => catalog.find(e => e.key === k)?.label ?? k
+
+  const toggle = (key: string) => {
+    if (selectedSet.has(key)) onChange(selected.filter(k => k !== key))
+    else onChange([...selected, key])                 // append at end (render order)
+  }
+  const move = (idx: number, dir: -1 | 1) => {
+    const next = [...selected]
+    const j = idx + dir
+    if (j < 0 || j >= next.length) return
+    ;[next[idx], next[j]] = [next[j], next[idx]]
+    onChange(next)
+  }
+
+  const grouped = KM_GROUP_ORDER
+    .map(g => ({ group: g, entries: catalog.filter(e => e.group === g) }))
+    .filter(g => g.entries.length > 0)
+
+  return (
+    <div className="mb-3 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="flex items-center justify-between border-b border-slate-100 px-4 py-2.5">
+        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-700">Choose Key Metrics</span>
+        <button onClick={onClose} className="cursor-pointer rounded-lg px-3 py-1 text-[12px] font-semibold text-white shadow-sm transition-opacity hover:opacity-90" style={{ background: '#4F6EF7' }}>Done</button>
+      </div>
+
+      {/* featured order (reorderable) */}
+      {selected.length > 0 && (
+        <div className="border-b border-slate-100 bg-slate-50/60 px-4 py-3">
+          <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400">Featured order</p>
+          <div className="space-y-1.5">
+            {selected.map((key, i) => (
+              <div key={key} className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5">
+                <span className="truncate text-[12px] font-semibold text-slate-700">{i + 1}. {labelOf(key)}</span>
+                <span className="flex shrink-0 items-center gap-0.5">
+                  <button onClick={() => move(i, -1)} disabled={i === 0} title="Move up" aria-label="Move up" className="flex h-6 w-6 items-center justify-center rounded text-slate-400 enabled:cursor-pointer enabled:hover:bg-slate-100 enabled:hover:text-slate-700 disabled:opacity-30"><Ico.arrowUp className="h-3 w-3" /></button>
+                  <button onClick={() => move(i, 1)} disabled={i === selected.length - 1} title="Move down" aria-label="Move down" className="flex h-6 w-6 items-center justify-center rounded text-slate-400 enabled:cursor-pointer enabled:hover:bg-slate-100 enabled:hover:text-slate-700 disabled:opacity-30"><Ico.arrowDown className="h-3 w-3" /></button>
+                  <button onClick={() => toggle(key)} title="Remove" aria-label="Remove from Key Metrics" className="flex h-6 w-6 cursor-pointer items-center justify-center rounded text-slate-300 hover:bg-slate-100 hover:text-slate-700">✕</button>
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* catalog (grouped checkboxes) */}
+      <div className="max-h-80 overflow-y-auto px-4 py-3">
+        {grouped.map(({ group, entries }) => (
+          <div key={group} className="mb-3 last:mb-0">
+            <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">{group}</p>
+            <div className="grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2">
+              {entries.map(e => (
+                <label key={e.key} className="flex cursor-pointer items-center gap-2 text-[12px] text-slate-700">
+                  <input
+                    type="checkbox"
+                    className="rounded border-slate-300 text-[#4F6EF7] focus:ring-[#4F6EF7]"
+                    checked={selectedSet.has(e.key)}
+                    onChange={() => toggle(e.key)}
+                  />
+                  <span className="truncate">{e.label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ── section lane label (E-40) — plain accent bar + uppercase label (+ optional
+//    right-edge control, e.g. the Key Metrics picker cog) ───────────────────────
+export function LaneLabel({ label, accentClass, accentStyle, trailing }: { label: string; accentClass?: string; accentStyle?: React.CSSProperties; trailing?: React.ReactNode }) {
   return (
     <div className="flex items-center gap-2 px-1 pb-2">
       <span className={`h-4 w-1.5 shrink-0 rounded-full ${accentClass ?? ''}`} style={accentStyle} aria-hidden />
       <span className="text-[11px] font-bold uppercase tracking-wider text-slate-700">{label}</span>
+      {trailing && <span className="ml-auto">{trailing}</span>}
     </div>
   )
 }

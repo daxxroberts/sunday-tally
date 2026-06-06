@@ -165,7 +165,7 @@ function roundOrNull(n: number | null): number | null {
 
 // ─── Date boundaries (UNCHANGED) ───────────────────────────────────────────────
 
-interface Boundaries {
+export interface Boundaries {
   today: string
   thisWeekStart: string
   lastWeekEnd: string
@@ -175,7 +175,7 @@ interface Boundaries {
   lastYearSameWeek: string
 }
 
-function weekStartOf(d: Date): string {
+export function weekStartOf(d: Date): string {
   const day = d.getDay()
   const sunday = new Date(d)
   sunday.setDate(d.getDate() - day)
@@ -183,13 +183,13 @@ function weekStartOf(d: Date): string {
   return sunday.toISOString().split('T')[0]
 }
 
-function shiftDays(dateStr: string, days: number): string {
+export function shiftDays(dateStr: string, days: number): string {
   const d = new Date(dateStr + 'T12:00:00')
   d.setDate(d.getDate() + days)
   return d.toISOString().split('T')[0]
 }
 
-function buildBoundaries(now: Date): Boundaries {
+export function buildBoundaries(now: Date): Boundaries {
   const today = now.toISOString().split('T')[0]
   const thisWeekStart = weekStartOf(now)
   const lastWeekEnd = shiftDays(thisWeekStart, -1)
@@ -202,7 +202,7 @@ function buildBoundaries(now: Date): Boundaries {
   return { today, thisWeekStart, lastWeekEnd, fourWksAgoStart, yearStart, lastYearStart, lastYearSameWeek }
 }
 
-function weekOf(dateStr: string): string {
+export function weekOf(dateStr: string): string {
   return weekStartOf(new Date(dateStr + 'T12:00:00'))
 }
 

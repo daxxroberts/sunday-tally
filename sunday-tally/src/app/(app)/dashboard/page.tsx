@@ -37,12 +37,34 @@ import {
 } from '@/lib/dashboardPrefs'
 import type { UserRole, Church } from '@/types'
 import {
+  buildKeyMetricCatalog, resolveKeyMetricKeys, resolveKeyMetricTargets, featuredEntries,
+  type KeyMetricsConfig, type KeyMetricTargetsConfig,
+} from '@/lib/dashboardKeyMetrics'
+import {
+  fetchMetricSeries,
+  type MetricSelector, type DrillWindow, type MetricSeries, type AttendanceColumn,
+} from '@/lib/dashboardDrilldown'
+import { DrillDownDrawer } from './drilldown'
+import {
   DashHeader, ColumnHeaders, FourColRow, CardHeader, NotInTotalTag, KpiCard,
-  KeyMetricCard, LaneLabel, EmptyState, fmtVal, Ico, accentForRole,
+  KeyMetricCard, KeyMetricsPicker, LaneLabel, EmptyState, fmtVal, Ico, accentForRole,
 } from './ui'
 
+// role → the attendance-view column its audience aggregate reads (mirrors
+// dashboard.ts attendanceForRole). Used to build per-ministry drill selectors.
+const ROLE_TO_ATT_COLUMN: Record<string, AttendanceColumn> = {
+  ADULT_SERVICE: 'adults_attendance',
+  KIDS_MINISTRY: 'kids_attendance',
+  YOUTH_MINISTRY: 'youth_attendance',
+  OTHER: 'other_attendance',
+}
+
 type Tracks = { tracks_volunteers: boolean; tracks_responses: boolean; tracks_giving: boolean }
-interface GridPrefs { excludedTotalMinistries?: string[] }
+interface GridPrefs {
+  excludedTotalMinistries?: string[]
+  keyMetrics?: KeyMetricsConfig            // #70 — ordered featured keys (church-wide)
+  keyMetricTargets?: KeyMetricTargetsConfig // #70 — per-metric all-time targets
+}
 
 // ── derive a grandTotal FourWin honouring excludedTotalMinistries (E-22/E-54).
 //
@@ -87,7 +109,7 @@ function subtractFourWin(a: FourWin, b: FourWin): FourWin {
 // ── Zone D — Summary card (E-30..E-33) + include-in-total edit (E-22 / I) ─────
 function SummaryCard({
   summary, grandTotalOverride, tagSections, roleByTag, excluded, flags, onChangeFlags, onSavePrefs,
-  tracks, hideComparisons, readOnly, windows,
+  tracks, hideComparisons, readOnly, windows, onDrill,
 }: {
   summary: DashboardData['summary']
   grandTotalOverride: FourWin
@@ -101,6 +123,7 @@ function SummaryCard({
   hideComparisons: boolean
   readOnly: boolean
   windows: DashboardData['windows']
+  onDrill?: (selector: MetricSelector, window: DrillWindow) => void
 }) {
   const [customize, setCustomize] = useState(false)
   const [editTotals, setEditTotals] = useState(false)
@@ -131,6 +154,21 @@ function SummaryCard({
     if (k === 'firstTimeDecisions' && !tracks.tracks_responses) return true
     if (k === 'giving' && !tracks.tracks_giving) return true
     return !flags[k]
+  }
+
+  // #69 — per-row drill selectors. Attendance-backed summary rows + giving are
+  // clickable; volunteers / first-time-decisions are not drillable in Phase 1.
+  const ATT_COLUMN_FOR_SUMMARY: Partial<Record<SummaryMetricKey, AttendanceColumn>> = {
+    grandTotal: 'total_attendance',
+    adults:     'adults_attendance',
+    kids:       'kids_attendance',
+    youth:      'youth_attendance',
+  }
+  const selectorFor = (key: SummaryMetricKey): MetricSelector | null => {
+    const col = ATT_COLUMN_FOR_SUMMARY[key]
+    if (col) return { label: attendanceLabel(key), source: { kind: 'attendance', column: col } }
+    if (key === 'giving') return { label: 'Giving', prefix: '$', source: { kind: 'giving-weekly' } }
+    return null
   }
 
   const metricValues: Record<SummaryMetricKey, { values: FourWin; prefix?: string }> = {
@@ -247,6 +285,8 @@ function SummaryCard({
             values={metricValues[key].values}
             prefix={metricValues[key].prefix}
             hideComparisons={hideComparisons}
+            selector={selectorFor(key)}
+            onDrill={onDrill}
           />
         ))}
       </div>
@@ -260,7 +300,7 @@ function SummaryCard({
 
 // ── Zone F — per-ministry breakdown card (E-50..E-54) ─────────────────────────
 function TagBlock({
-  section, role, excluded, tracks, hideComparisons, windows,
+  section, role, excluded, tracks, hideComparisons, windows, onDrill,
 }: {
   section: TagSection
   role: string | null
@@ -268,8 +308,16 @@ function TagBlock({
   tracks: { tracks_volunteers: boolean; tracks_responses: boolean }
   hideComparisons: boolean
   windows: DashboardData['windows']
+  onDrill?: (selector: MetricSelector, window: DrillWindow) => void
 }) {
   const isUnassigned = section.tag_id === 'UNASSIGNED'
+  // #69 — per-ministry attendance is drillable; its values come from the role's
+  // audience column (mirrors dashboard.ts attendanceForRole), so the drawer
+  // reconciles with this row exactly.
+  const attCol = role ? ROLE_TO_ATT_COLUMN[role] : undefined
+  const attSelector: MetricSelector | null = !isUnassigned && attCol
+    ? { label: `${section.tag_name} · Attendance`, source: { kind: 'attendance', column: attCol } }
+    : null
   return (
     <div className={`overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-opacity duration-200 ${excluded ? 'opacity-60' : ''}`}>
       <CardHeader
@@ -280,7 +328,7 @@ function TagBlock({
       />
       <ColumnHeaders windows={windows} />
       <div>
-        {!isUnassigned && <FourColRow label="Attendance" values={section.attendance} hideComparisons={hideComparisons} />}
+        {!isUnassigned && <FourColRow label="Attendance" values={section.attendance} hideComparisons={hideComparisons} selector={attSelector} onDrill={onDrill} />}
         {tracks.tracks_volunteers && <FourColRow label="Volunteers" values={section.volunteers} hideComparisons={hideComparisons} />}
         {tracks.tracks_responses && section.stats.map(s => (
           <FourColRow key={s.category_id} label={s.category_name} values={s.values} hideComparisons={hideComparisons} />
@@ -417,12 +465,30 @@ export default function DashboardPage() {
     if (userId && church) saveSummaryMetrics(userId, church.id, next)
   }
 
-  // E-22 / N-6 — persist church-wide include-in-total to churches.grid_config
-  async function handleSavePrefs(next: GridPrefs) {
+  // E-22 / N-6 — persist church-wide prefs to churches.grid_config. The argument
+  // is a PATCH merged over the current gridPrefs (which holds the full grid_config
+  // loaded at mount), so saving one section (e.g. include-in-total) never drops
+  // another section saved earlier this session (e.g. keyMetrics). #70.
+  async function handleSavePrefs(patch: GridPrefs) {
     if (!churchId) return
+    const next = { ...gridPrefs, ...patch }
     setGridPrefs(next)
-    const existing = ((church as unknown as { grid_config?: object } | null)?.grid_config as object) ?? {}
-    await supabase.from('churches').update({ grid_config: { ...existing, ...next } }).eq('id', churchId)
+    await supabase.from('churches').update({ grid_config: next }).eq('id', churchId)
+  }
+
+  // ── Key Metrics (#70) — owner/admin only. Persist ordered featured keys +
+  //    per-metric all-time targets church-wide (grid_config, no migration).
+  const canEditKeyMetrics = role === 'owner' || role === 'admin'
+  const [pickerOpen, setPickerOpen] = useState(false)
+
+  function handleSaveKeyMetrics(keys: string[]) {
+    handleSavePrefs({ keyMetrics: { ...(gridPrefs.keyMetrics ?? {}), churchWide: keys } })
+  }
+  function handleSaveTarget(metricKey: string, value: number | null) {
+    const cur = { ...(gridPrefs.keyMetricTargets?.churchWide ?? {}) }
+    if (value === null) delete cur[metricKey]
+    else cur[metricKey] = value
+    handleSavePrefs({ keyMetricTargets: { ...(gridPrefs.keyMetricTargets ?? {}), churchWide: cur } })
   }
 
   // E-4 — "as of" anchor. Defaults to today (current week); picking a past date
@@ -446,6 +512,31 @@ export default function DashboardPage() {
     }, anchor)
     setData(d)
     setRefreshing(false)
+  }
+
+  // ── Drill-down (#69) — clicking a value cell opens a drawer with the 4-week
+  //    sittings grid + YTD chart for that metric. Anchored to the same asOf date
+  //    as the dashboard so the drawer numbers reconcile with the cards.
+  const [drillOpen, setDrillOpen] = useState(false)
+  const [drillLoading, setDrillLoading] = useState(false)
+  const [drillSeries, setDrillSeries] = useState<MetricSeries | null>(null)
+  const [drillWindow, setDrillWindow] = useState<DrillWindow | null>(null)
+
+  async function handleDrill(selector: MetricSelector, window: DrillWindow) {
+    if (!church) return
+    setDrillWindow(window)
+    setDrillSeries(null)
+    setDrillLoading(true)
+    setDrillOpen(true)
+    const anchor = asOfStr ? new Date(asOfStr + 'T12:00:00') : undefined
+    try {
+      const series = await fetchMetricSeries(church.id, selector, anchor)
+      setDrillSeries(series)
+    } catch (e) {
+      console.error('[dashboard] drill fetch failed:', e)
+    } finally {
+      setDrillLoading(false)
+    }
   }
 
   const highlightDelta = (h: { current: number; prior: number }) =>
@@ -484,9 +575,29 @@ export default function DashboardPage() {
     return total
   }, [data, excluded, roleByTag])
 
-  const tracks: Tracks = church
-    ? { tracks_volunteers: church.tracks_volunteers, tracks_responses: church.tracks_responses, tracks_giving: church.tracks_giving }
-    : { tracks_volunteers: false, tracks_responses: false, tracks_giving: false }
+  // Stable across renders so dependent memos (keyMetricCatalog) actually cache
+  // (FELIX #70 Finding 3 — a fresh object literal each render busted the memo).
+  const tracks: Tracks = useMemo(
+    () => church
+      ? { tracks_volunteers: church.tracks_volunteers, tracks_responses: church.tracks_responses, tracks_giving: church.tracks_giving }
+      : { tracks_volunteers: false, tracks_responses: false, tracks_giving: false },
+    [church],
+  )
+
+  // Key Metrics (#70): build the catalog from already-derived dashboard values
+  // (numbers reconcile with the cards verbatim — no new fetch), then resolve the
+  // featured set + targets from grid_config (church-wide, Phase 1). Grand Total
+  // uses the exclusion-adjusted override so it matches the Totals card (Finding 1).
+  const keyMetricCatalog = useMemo(
+    () => (data ? buildKeyMetricCatalog(data, roleByTag, tracks, grandTotalOverride) : []),
+    [data, roleByTag, tracks, grandTotalOverride],
+  )
+  const keyMetricKeys = useMemo(() => resolveKeyMetricKeys(gridPrefs.keyMetrics), [gridPrefs])
+  const keyMetricTargets = useMemo(() => resolveKeyMetricTargets(gridPrefs.keyMetricTargets), [gridPrefs])
+  const featuredKeyMetrics = useMemo(
+    () => featuredEntries(keyMetricKeys, keyMetricCatalog),
+    [keyMetricKeys, keyMetricCatalog],
+  )
 
   return (
     <AppLayout role={readOnly ? 'viewer' : role}>
@@ -580,18 +691,53 @@ export default function DashboardPage() {
                     )}
                   </div>
 
-                  {/* ── Zone E — Key Metrics strip (E-40..E-43) — moved up to sit with the top KPI cards ─ */}
+                  {/* ── Zone E — Key Metrics strip (#70) — curated + targets, moved up to
+                       sit with the top KPI cards. Owner/admin pick ANY dashboard metric
+                       via the gear and set an all-time target per card. ─ */}
                   <div>
-                    <LaneLabel label="Key Metrics" accentStyle={{ background: '#06B6D4' }} />
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                      <KeyMetricCard label="Avg Weekly Attendance" values={data.reportingMetrics.weeklyAvgAttendance} />
-                      {tracks.tracks_volunteers && (
-                        <KeyMetricCard label="Volunteers / Attendance" values={data.reportingMetrics.volToAttendancePct} suffix="%" />
-                      )}
-                      {tracks.tracks_giving && (
-                        <KeyMetricCard label="Per-Capita Giving" values={data.reportingMetrics.perCapitaGiving} prefix="$" />
-                      )}
-                    </div>
+                    <LaneLabel
+                      label="Key Metrics"
+                      accentStyle={{ background: '#06B6D4' }}
+                      trailing={canEditKeyMetrics ? (
+                        <button
+                          onClick={() => setPickerOpen(o => !o)}
+                          title={pickerOpen ? 'Done choosing Key Metrics' : 'Choose which Key Metrics show'}
+                          aria-label="Choose which Key Metrics show"
+                          className={`flex h-7 w-7 cursor-pointer items-center justify-center rounded-full transition-colors duration-200 hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-[#06B6D4]/40 ${pickerOpen ? 'bg-slate-100 text-[#06B6D4]' : 'text-slate-400 hover:text-slate-700'}`}
+                        >
+                          <Ico.gear className="h-3.5 w-3.5" />
+                        </button>
+                      ) : undefined}
+                    />
+                    {pickerOpen && canEditKeyMetrics && (
+                      <KeyMetricsPicker
+                        catalog={keyMetricCatalog}
+                        selected={keyMetricKeys}
+                        onChange={handleSaveKeyMetrics}
+                        onClose={() => setPickerOpen(false)}
+                      />
+                    )}
+                    {featuredKeyMetrics.length === 0 ? (
+                      <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-6 text-center text-[12px] text-slate-400">
+                        No Key Metrics selected{canEditKeyMetrics ? ' — use the gear to choose some.' : '.'}
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                        {featuredKeyMetrics.map(m => (
+                          <KeyMetricCard
+                            key={m.key}
+                            metricKey={m.key}
+                            label={m.label}
+                            values={m.values}
+                            prefix={m.prefix}
+                            suffix={m.suffix}
+                            target={keyMetricTargets[m.key] ?? null}
+                            canEdit={canEditKeyMetrics}
+                            onSaveTarget={handleSaveTarget}
+                          />
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   {/* ── Zone D — Summary card (E-30..E-33) + E-22 edit. Column headers (E-20)
@@ -609,6 +755,7 @@ export default function DashboardPage() {
                     hideComparisons={hideComparisons}
                     readOnly={readOnly}
                     windows={data.windows}
+                    onDrill={handleDrill}
                   />
 
                   {/* ── Zone F — per-ministry breakdown (E-50..E-55) ────────── */}
@@ -621,6 +768,7 @@ export default function DashboardPage() {
                       tracks={{ tracks_volunteers: tracks.tracks_volunteers, tracks_responses: tracks.tracks_responses }}
                       hideComparisons={hideComparisons}
                       windows={data.windows}
+                      onDrill={handleDrill}
                     />
                   ))}
 
@@ -650,6 +798,15 @@ export default function DashboardPage() {
           </>
         )}
       </div>
+
+      {/* ── #69 — drill-down drawer (portaled to body) ─────────────────────── */}
+      <DrillDownDrawer
+        open={drillOpen}
+        loading={drillLoading}
+        series={drillSeries}
+        triggerWindow={drillWindow}
+        onClose={() => setDrillOpen(false)}
+      />
     </AppLayout>
   )
 }
