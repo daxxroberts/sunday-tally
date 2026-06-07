@@ -9,6 +9,7 @@ import { useRouter } from 'next/navigation'
 import AppLayout from '@/components/layouts/AppLayout'
 import InlineEditField from '@/components/shared/InlineEditField'
 import { createClient } from '@/lib/supabase/client'
+import { seedMinistryMetrics } from './actions'
 import type { UserRole } from '@/types'
 
 type TagRole = 'ADULT_SERVICE' | 'KIDS_MINISTRY' | 'YOUTH_MINISTRY' | 'OTHER'
@@ -137,6 +138,11 @@ export default function SettingsTagsPage() {
         setNewName('')
         setNewRole('OTHER')
         setNewParentId('')
+        // Auto-seed this ministry's standard metrics so it is immediately
+        // enterable on the Entries tab (attendance always; volunteers/decisions
+        // per the church's tracking flags). Without this a new ministry shows
+        // zero fields. Idempotent + owner/admin-gated server-side.
+        await seedMinistryMetrics(data.id)
       }
     })
   }
