@@ -297,17 +297,6 @@ export default function ServicesSettingsPage() {
               {churchName && <div className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: '#3D5BD4' }}>{churchName}</div>}
               <h1 className="text-lg font-extrabold leading-tight tracking-tight text-slate-900">Services &amp; Ministries</h1>
             </div>
-            {/* G2 — Add service entry point (owner/admin only; shown after role loads) */}
-            {!loading && write && (
-              <button
-                onClick={() => router.push('/settings/services/new')}
-                className="flex shrink-0 items-center gap-1.5 rounded-xl border border-[#4F6EF7]/30 bg-[#4F6EF7]/5 px-3 py-2 text-[13px] font-semibold text-[#3D5BD4] transition-colors duration-200 hover:bg-[#4F6EF7]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/40"
-                aria-label="Add a new service"
-              >
-                <Ico.plus className="h-4 w-4" />
-                Add service
-              </button>
-            )}
           </div>
         </header>
 
@@ -330,6 +319,17 @@ export default function ServicesSettingsPage() {
             </div>
           ) : (
             <div className="space-y-4">
+              {/* G2 — Add service entry point, above the first card (owner/admin only) */}
+              {write && (
+                <button
+                  onClick={() => router.push('/settings/services/new')}
+                  className="flex w-full items-center justify-center gap-1.5 rounded-2xl border border-dashed border-[#4F6EF7]/40 bg-[#4F6EF7]/5 px-4 py-3 text-[14px] font-semibold text-[#3D5BD4] transition-colors duration-200 hover:bg-[#4F6EF7]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/40"
+                  aria-label="Add a new service"
+                >
+                  <Ico.plus className="h-4 w-4" />
+                  Add service
+                </button>
+              )}
               {cards.map(card => (
                 <ServiceCardView
                   key={card.id}
