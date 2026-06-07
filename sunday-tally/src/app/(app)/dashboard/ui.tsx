@@ -217,8 +217,11 @@ export function KpiCard({
 // #70: an owner/admin can set an all-time TARGET (pencil, top-right). When set,
 // a comparison row shows Curr-Wk vs target — sage when met/above, amber when
 // below (NO RED, DS-2). No target → nothing extra renders.
+// #73: when drillSelector + onDrill are supplied the footer numbers become
+// clickable and open the drill drawer. Non-drillable metrics stay plain.
 export function KeyMetricCard({
   label, values, prefix, suffix, metricKey, target, canEdit, onSaveTarget,
+  drillSelector, onDrill,
 }: {
   label: string
   values: FourWin
@@ -228,6 +231,8 @@ export function KeyMetricCard({
   target?: number | null
   canEdit?: boolean
   onSaveTarget?: (metricKey: string, value: number | null) => void
+  drillSelector?: MetricSelector | null
+  onDrill?: (selector: MetricSelector, window: DrillWindow) => void
 }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState('')
@@ -255,6 +260,26 @@ export function KeyMetricCard({
     ? Math.round((values.w / (target as number)) * 100)
     : null
 
+  // #73 — drill helpers for footer cells.
+  const drillable = !!(drillSelector && onDrill)
+  const footerCell = (window: DrillWindow, windowValue: number | null, footerLabel: string) => {
+    const inner = <span className="font-semibold text-slate-900">{fmtVal(windowValue, prefix, suffix)}</span>
+    if (drillable && windowValue !== null) {
+      return (
+        <button
+          type="button"
+          onClick={() => onDrill!(drillSelector!, window)}
+          title={`Show detail for ${footerLabel}`}
+          aria-label={`Show detail for ${footerLabel} — ${label}`}
+          className="cursor-pointer rounded-md px-1 py-0.5 transition-colors duration-150 hover:bg-[#4F6EF7]/8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/40"
+        >
+          {footerLabel} {inner}
+        </button>
+      )
+    }
+    return <span>{footerLabel} {inner}</span>
+  }
+
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
       <div className="mb-1.5 flex items-start justify-between gap-2">
@@ -271,13 +296,25 @@ export function KeyMetricCard({
         )}
       </div>
       <div className="flex items-end justify-between gap-2">
-        <p className="font-num text-2xl font-bold leading-none tracking-tight text-slate-900">{fmtVal(values.w, prefix, suffix)}</p>
+        {drillable && values.w !== null ? (
+          <button
+            type="button"
+            onClick={() => onDrill!(drillSelector!, 'w')}
+            title="Show detail behind this number"
+            aria-label={`Show detail for current week — ${label}`}
+            className="cursor-pointer rounded-md font-num text-2xl font-bold leading-none tracking-tight text-slate-900 transition-colors duration-150 hover:bg-[#4F6EF7]/8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/40"
+          >
+            {fmtVal(values.w, prefix, suffix)}
+          </button>
+        ) : (
+          <p className="font-num text-2xl font-bold leading-none tracking-tight text-slate-900">{fmtVal(values.w, prefix, suffix)}</p>
+        )}
         <DeltaBadge delta={values.delta_w_m4} />
       </div>
       <div className="mt-2 flex items-center justify-between font-num text-[11px] text-slate-400">
-        <span>4-wk <span className="font-semibold text-slate-900">{fmtVal(values.m4, prefix, suffix)}</span></span>
-        <span>YTD <span className="font-semibold text-slate-900">{fmtVal(values.ytd, prefix, suffix)}</span></span>
-        <span>Prior <span className="font-semibold text-slate-900">{fmtVal(values.priorYtd, prefix, suffix)}</span></span>
+        {footerCell('m4', values.m4, '4-wk')}
+        {footerCell('ytd', values.ytd, 'YTD')}
+        {footerCell('priorYtd', values.priorYtd, 'Prior')}
       </div>
 
       {/* target editor (inline) */}

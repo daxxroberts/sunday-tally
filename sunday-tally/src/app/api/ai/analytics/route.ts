@@ -12,7 +12,7 @@ const SYSTEM_PROMPT = `You are the Sunday Tally analytics assistant. You answer 
 
 You have six tools:
   - probe_data()          — checks what data is logged; call before time-bounded metric calls
-  - list_dimensions()     — returns the church's services, locations, categories, and giving sources
+  - list_dimensions()     — returns the church's services, locations, and metric categories (giving is church-wide weekly totals; there are no per-source giving breakdowns)
   - run_metric()          — runs a named metric query (see the tool schema for allowed metric IDs)
   - render_chart()        — displays a line, bar, or area chart to the user
   - render_data_review()  — displays metric rows in a grid panel with a question and 2–4 choices for the user to answer
@@ -30,7 +30,7 @@ When to call probe_data:
   - CALL for time-bounded questions ("last year", "2024", "Q1", any specific date range) — pass the start/end of that range
   - CALL before ytd_vs_prior — it always returns rows; use probe to verify weeks will be non-zero
   - CALL with tag_code when you plan to filter a metric by tag — pass the same tag_code
-  - SKIP for dimension-only questions (list services, list giving sources)
+  - SKIP for dimension-only questions (list services, list categories)
   - SKIP when following up on data already retrieved in this conversation
 
 Reading probe_data results:
@@ -43,7 +43,7 @@ Reading run_metric results:
 
 const DIMENSIONS_TOOL: Anthropic.Messages.Tool = {
   name: 'list_dimensions',
-  description: 'Lists the church\'s dimensions — services, locations, volunteer categories, response categories, giving sources, and tags.',
+  description: 'Lists the church\'s dimensions — services, locations, volunteer metric definitions, response metric definitions, and ministry tags. Note: per-source giving breakdown is not available; giving_sources will always be an empty array.',
   input_schema: { type: 'object', properties: {} },
 }
 
@@ -188,21 +188,28 @@ export async function POST(req: Request) {
               return probeData(ctx.supabase, ctx.churchId, input as ProbeInput)
             },
             list_dimensions: async (_input, ctx) => {
-              const [templates, locations, volCats, respCats, givSrcs, tags] = await Promise.all([
+              // Unified schema (migrations 0022+): volunteer_categories,
+              // response_categories, and giving_sources tables were dropped.
+              // - Volunteer categories → metrics WHERE reporting_tag_code='VOLUNTEERS'
+              // - Response categories → metrics WHERE reporting_tag_code='RESPONSE_STAT'
+              // - Giving sources      → not available (giving is church-wide weekly totals)
+              // - service_tags.code/name replaces the old tag_code/tag_name columns.
+              // metrics.reporting_tag_id is a FK to reporting_tags.id; filter by
+              // code via PostgREST join (reporting_tags!inner(code)).
+              const [templates, locations, volMetrics, respMetrics, tags] = await Promise.all([
                 ctx.supabase.from('service_templates').select('id, display_name, service_code').eq('church_id', ctx.churchId).eq('is_active', true),
                 ctx.supabase.from('church_locations').select('id, name, code').eq('church_id', ctx.churchId).eq('is_active', true),
-                ctx.supabase.from('volunteer_categories').select('category_code, category_name, primary_tag_id').eq('church_id', ctx.churchId).eq('is_active', true),
-                ctx.supabase.from('response_categories').select('category_code, category_name, stat_scope, primary_tag_id').eq('church_id', ctx.churchId).eq('is_active', true),
-                ctx.supabase.from('giving_sources').select('source_code, source_name').eq('church_id', ctx.churchId).eq('is_active', true),
-                ctx.supabase.from('service_tags').select('tag_code, tag_name').eq('church_id', ctx.churchId).eq('is_active', true),
+                ctx.supabase.from('metrics').select('id, code, name, ministry_tag_id, reporting_tags!inner(code)').eq('church_id', ctx.churchId).eq('is_active', true).eq('reporting_tags.code', 'VOLUNTEERS'),
+                ctx.supabase.from('metrics').select('id, code, name, ministry_tag_id, reporting_tags!inner(code)').eq('church_id', ctx.churchId).eq('is_active', true).eq('reporting_tags.code', 'RESPONSE_STAT'),
+                ctx.supabase.from('service_tags').select('id, code, name, tag_role').eq('church_id', ctx.churchId).eq('is_active', true).order('display_order', { ascending: true }),
               ])
               return {
-                service_templates:    templates.data ?? [],
-                locations:            locations.data ?? [],
-                volunteer_categories: volCats.data   ?? [],
-                response_categories:  respCats.data  ?? [],
-                giving_sources:       givSrcs.data   ?? [],
-                service_tags:         tags.data      ?? [],
+                service_templates:    templates.data   ?? [],
+                locations:            locations.data   ?? [],
+                volunteer_categories: volMetrics.data  ?? [],   // id, code, name, ministry_tag_id
+                response_categories:  respMetrics.data ?? [],   // id, code, name, ministry_tag_id
+                giving_sources:       [],                        // not available in unified schema
+                service_tags:         tags.data        ?? [],   // id, code, name, tag_role
               }
             },
             run_metric: async (input, ctx) => {

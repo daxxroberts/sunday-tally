@@ -43,6 +43,7 @@ import {
 import {
   fetchMetricSeries,
   type MetricSelector, type DrillWindow, type MetricSeries, type AttendanceColumn,
+  type RatioOperand,
 } from '@/lib/dashboardDrilldown'
 import { DrillDownDrawer } from './drilldown'
 import {
@@ -156,8 +157,10 @@ function SummaryCard({
     return !flags[k]
   }
 
-  // #69 — per-row drill selectors. Attendance-backed summary rows + giving are
-  // clickable; volunteers / first-time-decisions are not drillable in Phase 1.
+  // #69/#73 — per-row drill selectors.
+  // Attendance-backed summary rows + giving + volunteers are clickable.
+  // first-time-decisions has no single metricId in the summary (it aggregates
+  // all FTD-code metrics), so it remains non-drillable for now.
   const ATT_COLUMN_FOR_SUMMARY: Partial<Record<SummaryMetricKey, AttendanceColumn>> = {
     grandTotal: 'total_attendance',
     adults:     'adults_attendance',
@@ -168,6 +171,7 @@ function SummaryCard({
     const col = ATT_COLUMN_FOR_SUMMARY[key]
     if (col) return { label: attendanceLabel(key), source: { kind: 'attendance', column: col } }
     if (key === 'giving') return { label: 'Giving', prefix: '$', source: { kind: 'giving-weekly' } }
+    if (key === 'volunteers') return { label: 'Total Volunteers', source: { kind: 'volunteers-total' } }
     return null
   }
 
@@ -311,12 +315,14 @@ function TagBlock({
   onDrill?: (selector: MetricSelector, window: DrillWindow) => void
 }) {
   const isUnassigned = section.tag_id === 'UNASSIGNED'
-  // #69 — per-ministry attendance is drillable; its values come from the role's
-  // audience column (mirrors dashboard.ts attendanceForRole), so the drawer
-  // reconciles with this row exactly.
+  // #69 — per-ministry attendance drillable via audience column.
   const attCol = role ? ROLE_TO_ATT_COLUMN[role] : undefined
   const attSelector: MetricSelector | null = !isUnassigned && attCol
     ? { label: `${section.tag_name} · Attendance`, source: { kind: 'attendance', column: attCol } }
+    : null
+  // #73 — per-ministry volunteers drillable via 'volunteers-ministry' source.
+  const volSelector: MetricSelector | null = !isUnassigned
+    ? { label: `${section.tag_name} · Volunteers`, source: { kind: 'volunteers-ministry', ministryTagId: section.tag_id } }
     : null
   return (
     <div className={`overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-opacity duration-200 ${excluded ? 'opacity-60' : ''}`}>
@@ -329,9 +335,24 @@ function TagBlock({
       <ColumnHeaders windows={windows} />
       <div>
         {!isUnassigned && <FourColRow label="Attendance" values={section.attendance} hideComparisons={hideComparisons} selector={attSelector} onDrill={onDrill} />}
-        {tracks.tracks_volunteers && <FourColRow label="Volunteers" values={section.volunteers} hideComparisons={hideComparisons} />}
+        {tracks.tracks_volunteers && (
+          <FourColRow
+            label="Volunteers"
+            values={section.volunteers}
+            hideComparisons={hideComparisons}
+            selector={isUnassigned ? null : volSelector}
+            onDrill={onDrill}
+          />
+        )}
         {tracks.tracks_responses && section.stats.map(s => (
-          <FourColRow key={s.category_id} label={s.category_name} values={s.values} hideComparisons={hideComparisons} />
+          <FourColRow
+            key={s.category_id}
+            label={s.category_name}
+            values={s.values}
+            hideComparisons={hideComparisons}
+            selector={{ label: `${section.tag_name} · ${s.category_name}`, source: { kind: 'stat', metricId: s.category_id } }}
+            onDrill={onDrill}
+          />
         ))}
       </div>
     </div>
@@ -365,10 +386,11 @@ function VolunteerBreakoutBlock({ breakout, hideComparisons, windows }: {
 }
 
 // ── Zone H — Other stats (church-wide remainder, E-70) ────────────────────────
-function OtherStatsBlock({ rows, hideComparisons, windows }: {
+function OtherStatsBlock({ rows, hideComparisons, windows, onDrill }: {
   rows: DashboardData['otherStats']
   hideComparisons: boolean
   windows: DashboardData['windows']
+  onDrill?: (selector: MetricSelector, window: DrillWindow) => void
 }) {
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -380,7 +402,14 @@ function OtherStatsBlock({ rows, hideComparisons, windows }: {
           <ColumnHeaders windows={windows} />
           <div>
             {rows.map(r => (
-              <FourColRow key={r.key} label={r.category_name} values={r.values} hideComparisons={hideComparisons} />
+              <FourColRow
+                key={r.key}
+                label={r.category_name}
+                values={r.values}
+                hideComparisons={hideComparisons}
+                selector={{ label: r.category_name, source: { kind: 'stat', metricId: r.category_id } }}
+                onDrill={onDrill}
+              />
             ))}
           </div>
         </>
@@ -599,6 +628,65 @@ export default function DashboardPage() {
     [keyMetricKeys, keyMetricCatalog],
   )
 
+  // #73 — resolve a catalog key → MetricSelector so KeyMetricCard cells can open
+  // the drill drawer. Covers all catalog key shapes (see dashboardKeyMetrics.ts).
+  // Returns null when no drill is possible (e.g. firstTimeDecisions aggregate).
+  function selectorForKeyMetric(key: string, label: string, prefix?: string, suffix?: string): MetricSelector | null {
+    // Totals (summary)
+    if (key === 'summary:grandTotal') return { label, source: { kind: 'attendance', column: 'total_attendance' } }
+    if (key === 'summary:adults')     return { label, source: { kind: 'attendance', column: 'adults_attendance' } }
+    if (key === 'summary:kids')       return { label, source: { kind: 'attendance', column: 'kids_attendance' } }
+    if (key === 'summary:youth')      return { label, source: { kind: 'attendance', column: 'youth_attendance' } }
+    if (key === 'summary:volunteers') return { label, source: { kind: 'volunteers-total' } }
+    if (key === 'summary:giving')     return { label, prefix: '$', source: { kind: 'giving-weekly' } }
+    // summary:firstTimeDecisions — aggregates multiple FTD metrics; no single metricId → not drillable.
+
+    // Per-ministry keys: "ministry:{tagId}:attendance" | "ministry:{tagId}:volunteers" | "ministry:{tagId}:stat:{metricId}"
+    const ministryAttMatch = key.match(/^ministry:([^:]+):attendance$/)
+    if (ministryAttMatch) {
+      const tagId = ministryAttMatch[1]
+      const role = roleByTag.get(tagId) ?? null
+      const col: AttendanceColumn = role ? (ROLE_TO_ATT_COLUMN[role] ?? 'total_attendance') : 'total_attendance'
+      return { label, source: { kind: 'attendance', column: col } }
+    }
+    const ministryVolMatch = key.match(/^ministry:([^:]+):volunteers$/)
+    if (ministryVolMatch) {
+      const tagId = ministryVolMatch[1]
+      return { label, source: { kind: 'volunteers-ministry', ministryTagId: tagId } }
+    }
+    const ministryStatMatch = key.match(/^ministry:([^:]+):stat:(.+)$/)
+    if (ministryStatMatch) {
+      const metricId = ministryStatMatch[2]
+      return { label, source: { kind: 'stat', metricId } }
+    }
+
+    // Other stats: "other:{metricId}|{tagCode}"
+    const otherMatch = key.match(/^other:(.+)\|/)
+    if (otherMatch) {
+      const metricId = otherMatch[1]
+      return { label, source: { kind: 'stat', metricId } }
+    }
+
+    // Reporting / ratio metrics
+    if (key === 'reporting:weeklyAvgAttendance') {
+      return { label, source: { kind: 'attendance', column: 'total_attendance' } }
+    }
+    if (key === 'reporting:volToAttendancePct') {
+      return {
+        label, suffix: '%',
+        source: { kind: 'ratio', numerator: 'volunteers-total' as RatioOperand, denominator: 'attendance-total' as RatioOperand, scale: 100 },
+      }
+    }
+    if (key === 'reporting:perCapitaGiving') {
+      return {
+        label, prefix: '$',
+        source: { kind: 'ratio', numerator: 'giving' as RatioOperand, denominator: 'attendance-total' as RatioOperand, scale: 1 },
+      }
+    }
+
+    return null
+  }
+
   return (
     <AppLayout role={readOnly ? 'viewer' : role}>
       <style>{`
@@ -734,6 +822,8 @@ export default function DashboardPage() {
                             target={keyMetricTargets[m.key] ?? null}
                             canEdit={canEditKeyMetrics}
                             onSaveTarget={handleSaveTarget}
+                            drillSelector={selectorForKeyMetric(m.key, m.label, m.prefix, m.suffix)}
+                            onDrill={handleDrill}
                           />
                         ))}
                       </div>
@@ -779,7 +869,7 @@ export default function DashboardPage() {
 
                   {/* ── Zone H — Other stats (E-70) ─────────────────────────── */}
                   {tracks.tracks_responses && (
-                    <OtherStatsBlock rows={data.otherStats} hideComparisons={hideComparisons} windows={data.windows} />
+                    <OtherStatsBlock rows={data.otherStats} hideComparisons={hideComparisons} windows={data.windows} onDrill={handleDrill} />
                   )}
 
                   {/* ── E-82 — comparisons-pending note ─────────────────────── */}
