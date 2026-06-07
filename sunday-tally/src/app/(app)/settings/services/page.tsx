@@ -9,7 +9,10 @@
 // reorder a ministry by writing service_template_tags (D-073, template-level —
 // D-075). Status circle goes amber-outline when a service has 0 ministries
 // (won't render in Entries). No red (DS-2). Reuses Entries primitives.
-// (Schedule management lives at /settings/services/[templateId] — untouched.)
+//
+// G1: inline cadence display per card ("Sundays · 9:00 AM" or Unscheduled).
+//     "Set schedule" / "Change schedule" link on each card.
+// G2: "Add service" button in header → /settings/services/new (owner/admin).
 // ─────────────────────────────────────────────────────────────────────────
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -22,6 +25,19 @@ import type { UserRole } from '@/types'
 
 const PAGE = 1000 // PostgREST cap (N-9)
 
+// 0=Sun..6=Sat — plural day names for cadence display (G1)
+const DAY_NAMES_PLURAL = ['Sundays', 'Mondays', 'Tuesdays', 'Wednesdays', 'Thursdays', 'Fridays', 'Saturdays']
+
+// Format "HH:MM" or "HH:MM:SS" → "9:00 AM" (G1)
+function fmt12h(t: string): string {
+  const [hStr, mStr] = t.split(':')
+  const h = parseInt(hStr, 10)
+  const m = (mStr ?? '00').padStart(2, '0')
+  const ampm = h < 12 ? 'AM' : 'PM'
+  const h12 = h % 12 === 0 ? 12 : h % 12
+  return `${h12}:${m} ${ampm}`
+}
+
 interface Ministry {
   link_id: string         // service_template_tags.id
   tag_id: string          // service_tags.id
@@ -30,12 +46,17 @@ interface Ministry {
   sort_order: number
   metricCount: number     // canonical active metrics for this tag
 }
+interface ScheduleSummary {            // G1
+  day_of_week: number
+  start_time: string
+}
 interface ServiceCard {
   id: string              // service_templates.id
   name: string
   locationName: string | null
   sort_order: number
   ministries: Ministry[]
+  schedule: ScheduleSummary | null    // G1: active cadence (null = unscheduled)
 }
 interface TagOption {
   id: string
@@ -61,7 +82,7 @@ export default function ServicesSettingsPage() {
 
   const write = canWrite(role)
 
-  /* ── load everything: templates → links+tags → metric counts ──────────── */
+  /* ── load everything: templates → links+tags → metric counts → schedules ─ */
   const load = useCallback(async (cid: string) => {
     type EmbeddedLoc = { name: string } | { name: string }[] | null
     type EmbeddedTag = { id: string; name: string; tag_role: string | null } | { id: string; name: string; tag_role: string | null }[] | null
@@ -137,7 +158,26 @@ export default function ServicesSettingsPage() {
     }
     for (const list of byTemplate.values()) list.sort((a, b) => a.sort_order - b.sort_order)
 
-    setCards(templates.map(t => ({ ...t, ministries: byTemplate.get(t.id) ?? [] })))
+    // G1: active schedule version per template (is_active=true, effective_end_date IS NULL)
+    const scheduleByTemplate = new Map<string, ScheduleSummary>()
+    if (templates.length > 0) {
+      const { data: schedRows } = await supabase
+        .from('service_schedule_versions')
+        .select('service_template_id, day_of_week, start_time')
+        .in('service_template_id', templates.map(t => t.id))
+        .eq('is_active', true)
+        .is('effective_end_date', null)
+        .range(0, PAGE - 1)
+      for (const s of ((schedRows ?? []) as { service_template_id: string; day_of_week: number; start_time: string }[])) {
+        scheduleByTemplate.set(s.service_template_id, { day_of_week: s.day_of_week, start_time: s.start_time })
+      }
+    }
+
+    setCards(templates.map(t => ({
+      ...t,
+      ministries: byTemplate.get(t.id) ?? [],
+      schedule: scheduleByTemplate.get(t.id) ?? null,
+    })))
 
     // E-27 picker source: all active ministry tags for the church
     const { data: tagRows } = await supabase
@@ -253,10 +293,21 @@ export default function ServicesSettingsPage() {
               className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition-colors duration-200 hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/40">
               <Ico.left className="h-5 w-5" />
             </button>
-            <div>
+            <div className="min-w-0 flex-1">
               {churchName && <div className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: '#3D5BD4' }}>{churchName}</div>}
               <h1 className="text-lg font-extrabold leading-tight tracking-tight text-slate-900">Services &amp; Ministries</h1>
             </div>
+            {/* G2 — Add service entry point (owner/admin only; shown after role loads) */}
+            {!loading && write && (
+              <button
+                onClick={() => router.push('/settings/services/new')}
+                className="flex shrink-0 items-center gap-1.5 rounded-xl border border-[#4F6EF7]/30 bg-[#4F6EF7]/5 px-3 py-2 text-[13px] font-semibold text-[#3D5BD4] transition-colors duration-200 hover:bg-[#4F6EF7]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/40"
+                aria-label="Add a new service"
+              >
+                <Ico.plus className="h-4 w-4" />
+                Add service
+              </button>
+            )}
           </div>
         </header>
 
@@ -271,7 +322,11 @@ export default function ServicesSettingsPage() {
             /* E-30 empty state (no red) */
             <div className="rounded-2xl border border-slate-200 bg-white px-6 py-12 text-center shadow-sm">
               <p className="text-sm font-semibold text-slate-600">No services yet</p>
-              <p className="mt-1 text-[12px] text-slate-400">Services are created during onboarding or scheduling.</p>
+              <p className="mt-1 text-[12px] text-slate-400">
+                {write
+                  ? <>Use the <button onClick={() => router.push('/settings/services/new')} className="font-semibold text-[#3D5BD4] hover:underline">Add service</button> button to create your first service.</>
+                  : 'Services are created during onboarding or via settings.'}
+              </p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -300,6 +355,7 @@ export default function ServicesSettingsPage() {
 
 /* ─────────────────────────────────────────────────────────────────────────
  * Service card — mirrors the Entries Occurrence card (DS-7/DS-25)
+ * G1: cadence badge + schedule link in card header.
  * ──────────────────────────────────────────────────────────────────────── */
 function ServiceCardView({ card, allTags, write, busy, onAdd, onRemove, onMove }: {
   card: ServiceCard
@@ -318,15 +374,41 @@ function ServiceCardView({ card, allTags, write, busy, onAdd, onRemove, onMove }
   // E-29 status: amber-outline when 0 ministries (won't render in Entries), else complete
   const status = card.ministries.length === 0 ? 'needs' : 'complete'
 
+  // G1: cadence label e.g. "Sundays · 9:00 AM"
+  const cadenceLabel = card.schedule
+    ? `${DAY_NAMES_PLURAL[card.schedule.day_of_week]} · ${fmt12h(card.schedule.start_time)}`
+    : null
+
   return (
     <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-      {/* card header (DS-7): name · campus  …  status circle far right */}
+      {/* card header (DS-7): name · campus · cadence badge  …  status circle */}
       <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-3">
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <h3 className="truncate text-[17px] font-bold tracking-tight text-slate-900">
             {card.name}
             {card.locationName && <span className="ml-2 text-[12px] font-medium text-slate-400">· {card.locationName}</span>}
           </h3>
+          {/* G1: cadence row — neutral DS-16 slate tag when scheduled, amber when not */}
+          <div className="mt-1 flex items-center gap-2">
+            {cadenceLabel ? (
+              <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium uppercase tracking-wide text-slate-500">
+                {cadenceLabel}
+              </span>
+            ) : (
+              <span className="rounded-md border border-[#F59E0B]/40 bg-[#F59E0B]/5 px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-[#B45309]">
+                Unscheduled
+              </span>
+            )}
+            {/* G1: schedule link visible to owner/admin */}
+            {write && (
+              <Link
+                href={`/settings/services/${card.id}/schedule`}
+                className="rounded text-[11px] font-semibold text-[#3D5BD4] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/40"
+              >
+                {card.schedule ? 'Change schedule →' : 'Set schedule →'}
+              </Link>
+            )}
+          </div>
         </div>
         <Dot s={status} />
       </div>

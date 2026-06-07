@@ -9,7 +9,7 @@ import { useRouter } from 'next/navigation'
 import OnboardingLayout from '@/components/layouts/OnboardingLayout'
 import { saveTemplatesAction, getChurchData, type TemplateInput } from './actions'
 
-interface ServiceTag { id: string; tag_name: string; tag_code: string; effective_start_date: string | null; effective_end_date: string | null }
+interface ServiceTag { id: string; name: string; code: string; tag_role: string | null }
 interface Location { id: string; name: string }
 interface Template { id: string | null; display_name: string; location_id: string; sort_order: number; primary_tag_id: string; subtag_ids: string[] }
 
@@ -40,8 +40,8 @@ export default function OnboardingServicesPage() {
     })
   }, [])
 
-  // D-046: primary tag picker shows only undated tags
-  const primaryTagOptions = allTags.filter(t => !t.effective_start_date && !t.effective_end_date)
+  // D-046: primary tag picker — all active tags (effective_start/end_date removed in unified schema)
+  const primaryTagOptions = allTags
   const multiCampus = locations.length > 1
 
   const hasValid = templates.some(t => t.display_name.trim() && t.primary_tag_id && t.location_id)
@@ -136,7 +136,7 @@ export default function OnboardingServicesPage() {
                 className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:opacity-50"
               >
                 <option value="">Select a tag</option>
-                {primaryTagOptions.map(t => <option key={t.id} value={t.id}>{t.tag_name}</option>)}
+                {primaryTagOptions.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
               </select>
             </div>
 
@@ -164,7 +164,7 @@ export default function OnboardingServicesPage() {
                             : 'bg-white text-gray-600 border-gray-300 hover:border-gray-600'
                         }`}
                       >
-                        {t.tag_name}
+                        {t.name}
                       </button>
                     )
                   })}

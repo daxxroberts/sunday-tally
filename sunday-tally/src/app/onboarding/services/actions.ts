@@ -1,7 +1,7 @@
 'use server'
 
 // T6 service template actions
-// E2e: primary tag required | D-042 | D-046 | apply_tag_to_occurrences on subtag assign
+// E2e: primary tag required | D-042 | D-046
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
@@ -63,34 +63,28 @@ export async function saveTemplatesAction(templates: TemplateInput[]): Promise<{
       templateId = data.id
     }
 
-    // Stamp primary tag onto occurrences (Rule 6 / D-040)
-    await supabase.rpc('apply_tag_to_occurrences', {
-      p_tag_id: tmpl.primary_tag_id,
-      p_template_id: templateId,
-    })
-
-    // Handle subtags (E2f)
-    if (tmpl.subtag_ids.length > 0) {
-      // Remove old subtags
-      await supabase
-        .from('service_template_tags')
-        .delete()
-        .eq('service_template_id', templateId)
-
-      // Insert new subtags
-      const subtags = tmpl.subtag_ids.map(tagId => ({
+    // Write ministry composition to service_template_tags. The Services & Entries
+    // screens read composition ENTIRELY from this table (D-076: equal-peer
+    // ministries, no "primary" badge), so the primary ministry MUST be written
+    // here too — not only to service_templates.primary_tag_id — or the service
+    // shows zero ministries and never renders in Entries. Replace-all: primary
+    // first (sort_order 0), then subtags, de-duped. Tags are read at query time;
+    // no per-occurrence stamping in the unified schema.
+    const ministryIds = [tmpl.primary_tag_id, ...tmpl.subtag_ids]
+      .filter((id, i, arr) => !!id && arr.indexOf(id) === i)
+    await supabase
+      .from('service_template_tags')
+      .delete()
+      .eq('church_id', churchId)
+      .eq('service_template_id', templateId)
+    if (ministryIds.length > 0) {
+      const rows = ministryIds.map((tagId, i) => ({
+        church_id: churchId,
         service_template_id: templateId,
-        service_tag_id: tagId,
+        ministry_tag_id: tagId,
+        sort_order: i,
       }))
-      await supabase.from('service_template_tags').insert(subtags)
-
-      // Stamp each subtag
-      for (const tagId of tmpl.subtag_ids) {
-        await supabase.rpc('apply_tag_to_occurrences', {
-          p_tag_id: tagId,
-          p_template_id: templateId,
-        })
-      }
+      await supabase.from('service_template_tags').insert(rows)
     }
   }
 
@@ -114,7 +108,7 @@ export async function getChurchData() {
 
   const [locResult, tagResult, tmplResult] = await Promise.all([
     supabase.from('church_locations').select('id, name, sort_order').eq('church_id', churchId).eq('is_active', true).order('sort_order'),
-    supabase.from('service_tags').select('id, tag_name, tag_code, effective_start_date, effective_end_date').eq('church_id', churchId).eq('is_active', true),
+    supabase.from('service_tags').select('id, name, code, tag_role').eq('church_id', churchId).eq('is_active', true),
     supabase.from('service_templates').select('id, display_name, location_id, sort_order, primary_tag_id').eq('church_id', churchId).eq('is_active', true).order('sort_order'),
   ])
 
