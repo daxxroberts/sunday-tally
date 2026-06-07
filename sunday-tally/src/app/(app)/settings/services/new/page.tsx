@@ -121,27 +121,25 @@ export default function NewServicePage() {
       // 1. Create service template
       const createResult = await createServiceAction({
         display_name: displayName.trim(),
-        location_id: locationId,
+        location_id: locationId === 'ALL' ? undefined : locationId,
+        all_locations: locationId === 'ALL',
         primary_tag_id: primaryTagId,
         subtag_ids: subtagIds,
       })
 
-      if (!createResult.templateId) {
+      const templateIds = createResult.templateIds ?? []
+      if (templateIds.length === 0) {
         setStep2Error(createResult.error ?? 'Failed to create service.')
         return
       }
 
-      // 2. Save schedule version
-      const schedResult = await saveScheduleAction(
-        createResult.templateId,
-        dayOfWeek,
-        startTime,
-        effectiveDate,
-      )
-
-      if (schedResult.error) {
-        setStep2Error(`Service created but schedule could not be saved: ${schedResult.error}`)
-        return
+      // 2. Apply the schedule to each created service (one per location).
+      for (const tid of templateIds) {
+        const schedResult = await saveScheduleAction(tid, dayOfWeek, startTime, effectiveDate)
+        if (schedResult.error) {
+          setStep2Error(`Service created but schedule could not be saved: ${schedResult.error}`)
+          return
+        }
       }
 
       setSaved(true)
@@ -254,6 +252,7 @@ export default function NewServicePage() {
                     className={inputCls}
                   >
                     <option value="">Select a location</option>
+                    <option value="ALL">All locations</option>
                     {locations.map(l => (
                       <option key={l.id} value={l.id}>{l.name}</option>
                     ))}
@@ -355,7 +354,7 @@ export default function NewServicePage() {
                 <p className="text-[13px] font-semibold text-slate-700">{displayName}</p>
                 {!isMultiCampus
                   ? null
-                  : <p className="text-[12px] text-slate-400">{locations.find(l => l.id === locationId)?.name ?? ''}</p>
+                  : <p className="text-[12px] text-slate-400">{locationId === 'ALL' ? 'All locations' : (locations.find(l => l.id === locationId)?.name ?? '')}</p>
                 }
               </div>
 
