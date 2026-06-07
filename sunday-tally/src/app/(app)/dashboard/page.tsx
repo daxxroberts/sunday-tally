@@ -15,7 +15,7 @@
 // with an honest title. Campus-scoped fetch is a flagged fast-follow (see report).
 // ─────────────────────────────────────────────────────────────────────────
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import AppLayout from '@/components/layouts/AppLayout'
 import { createClient } from '@/lib/supabase/client'
 import {
@@ -498,11 +498,35 @@ export default function DashboardPage() {
   // is a PATCH merged over the current gridPrefs (which holds the full grid_config
   // loaded at mount), so saving one section (e.g. include-in-total) never drops
   // another section saved earlier this session (e.g. keyMetrics). #70.
+  // Transient save status for church-wide grid_config writes (Key Metrics
+  // selection, per-metric targets, include-in-total). Surfaces "Saved ✓" /
+  // "Couldn't save" and rolls back the optimistic update on failure. #70.
+  const [prefsStatus, setPrefsStatus] = useState<null | 'saving' | 'saved' | 'error'>(null)
+  const prefsStatusTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   async function handleSavePrefs(patch: GridPrefs) {
     if (!churchId) return
+    const prev = gridPrefs
     const next = { ...gridPrefs, ...patch }
-    setGridPrefs(next)
-    await supabase.from('churches').update({ grid_config: next }).eq('id', churchId)
+    setGridPrefs(next)                 // optimistic
+    setPrefsStatus('saving')
+    // .select() so we can tell a real write from a silent RLS no-op: an UPDATE
+    // that matches zero rows (e.g. caller isn't owner/admin) returns NO error
+    // but writes nothing — the exact failure that made saves "vanish on refresh".
+    const { data, error } = await supabase
+      .from('churches')
+      .update({ grid_config: next })
+      .eq('id', churchId)
+      .select('id')
+    if (error || !data || data.length === 0) {
+      setGridPrefs(prev)               // roll back — never leave a false "saved" state on screen
+      setPrefsStatus('error')
+      if (error) console.error('grid_config save failed:', error.message)
+      else console.error('grid_config save wrote 0 rows (blocked by RLS or no matching church).')
+    } else {
+      setPrefsStatus('saved')
+    }
+    if (prefsStatusTimer.current) clearTimeout(prefsStatusTimer.current)
+    prefsStatusTimer.current = setTimeout(() => setPrefsStatus(null), 2500)
   }
 
   // ── Key Metrics (#70) — owner/admin only. Persist ordered featured keys +
@@ -786,22 +810,28 @@ export default function DashboardPage() {
                     <LaneLabel
                       label="Key Metrics"
                       accentStyle={{ background: '#06B6D4' }}
-                      trailing={canEditKeyMetrics ? (
-                        <button
-                          onClick={() => setPickerOpen(o => !o)}
-                          title={pickerOpen ? 'Done choosing Key Metrics' : 'Choose which Key Metrics show'}
-                          aria-label="Choose which Key Metrics show"
-                          className={`flex h-7 w-7 cursor-pointer items-center justify-center rounded-full transition-colors duration-200 hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-[#06B6D4]/40 ${pickerOpen ? 'bg-slate-100 text-[#06B6D4]' : 'text-slate-400 hover:text-slate-700'}`}
-                        >
-                          <Ico.gear className="h-3.5 w-3.5" />
-                        </button>
-                      ) : undefined}
+                      trailing={
+                        <div className="flex items-center gap-2">
+                          {prefsStatus === 'saved' && <span className="text-[11px] font-semibold text-emerald-600">Saved ✓</span>}
+                          {prefsStatus === 'error' && <span className="text-[11px] font-semibold text-[#B45309]">Couldn’t save — try again</span>}
+                          {canEditKeyMetrics && (
+                            <button
+                              onClick={() => setPickerOpen(o => !o)}
+                              title={pickerOpen ? 'Done choosing Key Metrics' : 'Choose which Key Metrics show'}
+                              aria-label="Choose which Key Metrics show"
+                              className={`flex h-7 w-7 cursor-pointer items-center justify-center rounded-full transition-colors duration-200 hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-[#06B6D4]/40 ${pickerOpen ? 'bg-slate-100 text-[#06B6D4]' : 'text-slate-400 hover:text-slate-700'}`}
+                            >
+                              <Ico.gear className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      }
                     />
                     {pickerOpen && canEditKeyMetrics && (
                       <KeyMetricsPicker
                         catalog={keyMetricCatalog}
                         selected={keyMetricKeys}
-                        onChange={handleSaveKeyMetrics}
+                        onSave={handleSaveKeyMetrics}
                         onClose={() => setPickerOpen(false)}
                       />
                     )}

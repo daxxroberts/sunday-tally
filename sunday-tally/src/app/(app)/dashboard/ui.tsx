@@ -363,27 +363,31 @@ export function KeyMetricCard({
 const KM_GROUP_ORDER: KeyMetricGroup[] = ['Totals', 'Per-Ministry', 'Ratios', 'Other']
 
 export function KeyMetricsPicker({
-  catalog, selected, onChange, onClose,
+  catalog, selected, onSave, onClose,
 }: {
   catalog: KeyMetricCatalogEntry[]
-  selected: string[]                       // ordered featured keys
-  onChange: (next: string[]) => void       // persists on every change
-  onClose: () => void
+  selected: string[]                       // committed featured keys
+  onSave: (next: string[]) => void         // commit on Save (not per-change)
+  onClose: () => void                      // close without committing
 }) {
-  const selectedSet = new Set(selected)
+  // Draft model (mirrors the include-in-total panel): edits stay local until
+  // Save, so Cancel can discard and the church-wide write happens once.
+  const [draft, setDraft] = useState<string[]>(() => selected)
+  const draftSet = new Set(draft)
   const labelOf = (k: string) => catalog.find(e => e.key === k)?.label ?? k
 
-  const toggle = (key: string) => {
-    if (selectedSet.has(key)) onChange(selected.filter(k => k !== key))
-    else onChange([...selected, key])                 // append at end (render order)
-  }
-  const move = (idx: number, dir: -1 | 1) => {
-    const next = [...selected]
-    const j = idx + dir
-    if (j < 0 || j >= next.length) return
-    ;[next[idx], next[j]] = [next[j], next[idx]]
-    onChange(next)
-  }
+  const toggle = (key: string) =>
+    setDraft(d => (d.includes(key) ? d.filter(k => k !== key) : [...d, key]))
+  const move = (idx: number, dir: -1 | 1) =>
+    setDraft(d => {
+      const next = [...d]
+      const j = idx + dir
+      if (j < 0 || j >= next.length) return d
+      ;[next[idx], next[j]] = [next[j], next[idx]]
+      return next
+    })
+
+  const dirty = draft.length !== selected.length || draft.some((k, i) => k !== selected[i])
 
   const grouped = KM_GROUP_ORDER
     .map(g => ({ group: g, entries: catalog.filter(e => e.group === g) }))
@@ -393,20 +397,29 @@ export function KeyMetricsPicker({
     <div className="mb-3 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
       <div className="flex items-center justify-between border-b border-slate-100 px-4 py-2.5">
         <span className="text-[11px] font-bold uppercase tracking-wider text-slate-700">Choose Key Metrics</span>
-        <button onClick={onClose} className="cursor-pointer rounded-lg px-3 py-1 text-[12px] font-semibold text-white shadow-sm transition-opacity hover:opacity-90" style={{ background: '#4F6EF7' }}>Done</button>
+        <span className="flex items-center gap-1.5">
+          <button onClick={onClose} className="cursor-pointer rounded-lg px-3 py-1 text-[12px] font-medium text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700">Cancel</button>
+          <button
+            onClick={() => { onSave(draft); onClose() }}
+            disabled={!dirty}
+            title={dirty ? 'Save Key Metrics for the whole church' : 'No changes to save'}
+            className="cursor-pointer rounded-lg px-3 py-1 text-[12px] font-semibold text-white shadow-sm transition-opacity hover:opacity-90 disabled:cursor-default disabled:opacity-40"
+            style={{ background: '#4F6EF7' }}
+          >Save</button>
+        </span>
       </div>
 
       {/* featured order (reorderable) */}
-      {selected.length > 0 && (
+      {draft.length > 0 && (
         <div className="border-b border-slate-100 bg-slate-50/60 px-4 py-3">
           <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400">Featured order</p>
           <div className="space-y-1.5">
-            {selected.map((key, i) => (
+            {draft.map((key, i) => (
               <div key={key} className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5">
                 <span className="truncate text-[12px] font-semibold text-slate-700">{i + 1}. {labelOf(key)}</span>
                 <span className="flex shrink-0 items-center gap-0.5">
                   <button onClick={() => move(i, -1)} disabled={i === 0} title="Move up" aria-label="Move up" className="flex h-6 w-6 items-center justify-center rounded text-slate-400 enabled:cursor-pointer enabled:hover:bg-slate-100 enabled:hover:text-slate-700 disabled:opacity-30"><Ico.arrowUp className="h-3 w-3" /></button>
-                  <button onClick={() => move(i, 1)} disabled={i === selected.length - 1} title="Move down" aria-label="Move down" className="flex h-6 w-6 items-center justify-center rounded text-slate-400 enabled:cursor-pointer enabled:hover:bg-slate-100 enabled:hover:text-slate-700 disabled:opacity-30"><Ico.arrowDown className="h-3 w-3" /></button>
+                  <button onClick={() => move(i, 1)} disabled={i === draft.length - 1} title="Move down" aria-label="Move down" className="flex h-6 w-6 items-center justify-center rounded text-slate-400 enabled:cursor-pointer enabled:hover:bg-slate-100 enabled:hover:text-slate-700 disabled:opacity-30"><Ico.arrowDown className="h-3 w-3" /></button>
                   <button onClick={() => toggle(key)} title="Remove" aria-label="Remove from Key Metrics" className="flex h-6 w-6 cursor-pointer items-center justify-center rounded text-slate-300 hover:bg-slate-100 hover:text-slate-700">✕</button>
                 </span>
               </div>
@@ -426,7 +439,7 @@ export function KeyMetricsPicker({
                   <input
                     type="checkbox"
                     className="rounded border-slate-300 text-[#4F6EF7] focus:ring-[#4F6EF7]"
-                    checked={selectedSet.has(e.key)}
+                    checked={draftSet.has(e.key)}
                     onChange={() => toggle(e.key)}
                   />
                   <span className="truncate">{e.label}</span>

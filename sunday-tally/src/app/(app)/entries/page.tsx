@@ -215,8 +215,34 @@ export default function EntriesPage() {
       template_name: (Array.isArray(r.service_templates) ? r.service_templates[0]?.display_name : r.service_templates?.display_name) ?? 'Service',
     }))
 
-    // QP-ENTRIES-MINISTRIES — ministries per template (cache per template)
-    const templateIds = Array.from(new Set(rawInstances.map(i => i.template_id)))
+    // Schedule-derived expected services for this week+campus (E-70). Any week —
+    // past, present, or future — that the schedule says a service runs is shown
+    // as an enterable occurrence even with no row yet; the row is created on the
+    // first entry (materializeVirtual). A missed/forgotten week is never lost.
+    const { data: schedTmplRows } = await supabase
+      .from('service_templates')
+      .select('id, display_name')
+      .eq('church_id', churchId).eq('location_id', campus.id).eq('is_active', true)
+    const schedTmplName = new Map((schedTmplRows ?? []).map(t => [t.id as string, (t.display_name as string) ?? 'Service']))
+    const schedTmplIds = (schedTmplRows ?? []).map(t => t.id as string)
+    const expected: Array<{ template_id: string; service_date: string }> = []
+    if (schedTmplIds.length > 0) {
+      const { data: schedRows } = await supabase
+        .from('service_schedule_versions')
+        .select('service_template_id, day_of_week, effective_start_date, effective_end_date')
+        .in('service_template_id', schedTmplIds).eq('is_active', true)
+      for (const s of (schedRows ?? []) as Array<{ service_template_id: string; day_of_week: number; effective_start_date: string | null; effective_end_date: string | null }>) {
+        const date = toDateStr(addDays(weekStart, s.day_of_week))   // weekStart = Sunday, day_of_week 0=Sun
+        if (s.effective_start_date && date < s.effective_start_date) continue
+        if (s.effective_end_date && date > s.effective_end_date) continue
+        expected.push({ template_id: s.service_template_id, service_date: date })
+      }
+    }
+    const haveKey = new Set(rawInstances.map(i => `${i.template_id}|${i.service_date}`))
+    const virtualExpected = expected.filter(e => !haveKey.has(`${e.template_id}|${e.service_date}`))
+
+    // QP-ENTRIES-MINISTRIES — ministries per template (materialized + scheduled)
+    const templateIds = Array.from(new Set([...rawInstances.map(i => i.template_id), ...virtualExpected.map(e => e.template_id)]))
     const ministriesByTemplate = new Map<string, Ministry[]>()
 
     if (templateIds.length > 0) {
@@ -270,6 +296,20 @@ export default function EntriesPage() {
       ministries: ministriesByTemplate.get(i.template_id) ?? [],
     }))
 
+    // Virtual (not-yet-created) occurrences for scheduled services this week.
+    // id = `virtual:<templateId>:<YYYY-MM-DD>` — materialized on first entry.
+    const virtualInstances: Instance[] = virtualExpected.map(e => ({
+      id: `virtual:${e.template_id}:${e.service_date}`,
+      service_date: e.service_date,
+      template_id: e.template_id,
+      template_name: schedTmplName.get(e.template_id) ?? 'Service',
+      start_datetime: null,
+      ministries: ministriesByTemplate.get(e.template_id) ?? [],
+    }))
+    const allInstances: Instance[] = [...builtInstances, ...virtualInstances].sort((a, b) =>
+      a.service_date < b.service_date ? -1 : a.service_date > b.service_date ? 1
+        : (a.start_datetime ?? '') < (b.start_datetime ?? '') ? -1 : 1)
+
     // ── Prefill existing metric_entries (N-7: paginate past 1000) ─────────
     const instIds = builtInstances.map(i => i.id)
     const nextEntries: EntryMap = {}
@@ -314,30 +354,53 @@ export default function EntriesPage() {
       }
     }
 
-    setInstances(builtInstances)
+    setInstances(allInstances)
     setEntries(nextEntries)
     setWeekLoading(false)
 
     // keep current tab valid: if a closed occurrence tab, fall back to Totals (N-3)
     setTab(prev => {
       if (prev === 'Totals' || prev === 'Stat Entries') return prev
-      return builtInstances.some(i => i.id === prev) ? prev : 'Totals'
+      return allInstances.some(i => i.id === prev) ? prev : 'Totals'
     })
   }, [supabase, churchId, campus, weekStart, weekStartStr, periodMetrics])
 
   useEffect(() => { loadWeek() }, [loadWeek])
 
+  // Materialize a schedule-derived (virtual) occurrence on first write — creates
+  // the real service_instance via the server route (owner/admin-gated, LD-1),
+  // then swaps the virtual id for the real one in state. Returns the real id.
+  // For an already-real id it's a no-op passthrough.
+  const materializeVirtual = useCallback(async (instId: string): Promise<string> => {
+    if (!instId.startsWith('virtual:') || !churchId || !campus) return instId
+    const parts = instId.split(':')          // ['virtual', templateId, 'YYYY-MM-DD']
+    const res = await fetch('/api/occurrences', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ church_id: churchId, service_template_id: parts[1], service_date: parts[2], location_id: campus.id }),
+    })
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}))
+      throw new Error(body.error === 'Forbidden' ? 'You have view-only access — ask an editor or admin to enter this.' : 'Could not start this service.')
+    }
+    const { occurrence_id } = await res.json()
+    setInstances(list => list.map(i => (i.id === instId ? { ...i, id: occurrence_id as string } : i)))
+    setTab(t => (t === instId ? (occurrence_id as string) : t))
+    return occurrence_id as string
+  }, [churchId, campus])
+
   /* ── autosave (E-40 / DS-11 / N-2): optimistic upsert on uq_metric_entry ─ */
   const upsertInstance = useCallback(async (metric: Metric, instId: string, value: number | null) => {
     if (!churchId) throw new Error('no church')
-    const key = `${metric.id}|${instId}`
+    const realId = await materializeVirtual(instId)   // create the occurrence if this is a scheduled (virtual) one
+    const key = `${metric.id}|${realId}`
     const prev = entries[key]
     // optimistic
     setEntries(e => ({ ...e, [key]: { value, is_not_applicable: false } }))
     const { error } = await supabase.from('metric_entries').upsert({
       church_id: churchId,
       metric_id: metric.id,
-      service_instance_id: instId,
+      service_instance_id: realId,
       period_anchor: null,
       value,
       is_not_applicable: false,
@@ -348,7 +411,7 @@ export default function EntriesPage() {
       setEntries(e => ({ ...e, [key]: prev ?? { value: null, is_not_applicable: false } }))
       throw error
     }
-  }, [supabase, churchId, campus, entries])
+  }, [supabase, churchId, campus, entries, materializeVirtual])
 
   const upsertPeriod = useCallback(async (metric: Metric, anchor: string, value: number | null) => {
     if (!churchId) throw new Error('no church')
@@ -374,23 +437,24 @@ export default function EntriesPage() {
   // E-24 "Didn't meet?" — set all this ministry's canonical metrics N/A on this occurrence
   const toggleDidntMeet = useCallback(async (m: Ministry, instId: string, na: boolean) => {
     if (!churchId || readOnly) return
+    const realId = await materializeVirtual(instId)   // create the occurrence if scheduled (virtual)
     const optimistic: EntryMap = {}
     for (const metric of m.metrics) {
-      optimistic[`${metric.id}|${instId}`] = { value: na ? null : (entries[`${metric.id}|${instId}`]?.value ?? null), is_not_applicable: na }
+      optimistic[`${metric.id}|${realId}`] = { value: na ? null : (entries[`${metric.id}|${realId}`]?.value ?? null), is_not_applicable: na }
     }
     setEntries(e => ({ ...e, ...optimistic }))
     const payload = m.metrics.map(metric => ({
       church_id: churchId,
       metric_id: metric.id,
-      service_instance_id: instId,
+      service_instance_id: realId,
       period_anchor: null,
-      value: na ? null : (entries[`${metric.id}|${instId}`]?.value ?? null),
+      value: na ? null : (entries[`${metric.id}|${realId}`]?.value ?? null),
       is_not_applicable: na,
       reporting_tag_code: metric.reporting_tag_code,
       location_id: campus?.id ?? null,
     }))
     await supabase.from('metric_entries').upsert(payload, { onConflict: 'metric_id,service_instance_id,period_anchor' })
-  }, [supabase, churchId, campus, entries, readOnly])
+  }, [supabase, churchId, campus, entries, readOnly, materializeVirtual])
 
   /* ── grid_config include-in-total prefs (E-12 / N-8) ────────────────────── */
   const saveGridPrefs = useCallback(async (next: GridPrefs) => {
