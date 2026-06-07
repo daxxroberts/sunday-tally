@@ -45,7 +45,11 @@ export async function POST(req: Request) {
   }
   const { messages: clientMessages, currentMapping, pendingQuestions = [] } = body
 
-  const systemPrompt = `You are the Data Assistant for SundayTally. Your job is to help the user configure their data import mapping.
+  // #67 — split the system prompt into a STATIC prefix (identical every call →
+  // prompt-cached) and a DYNAMIC tail (the current mapping + pending questions,
+  // which change each turn). Every walkthrough answer fires one of these calls
+  // with the same long static prefix, so caching it cuts repeat input cost.
+  const systemStatic = `You are the Data Assistant for SundayTally. Your job is to help the user configure their data import mapping.
 
 The mapping uses ONE core concept — a METRIC = (ministry_tag × reporting_tag × scope):
 - ministry_tag = WHO the number is about. Its tag_role is one of ADULT_SERVICE | KIDS_MINISTRY | YOUTH_MINISTRY | OTHER.
@@ -135,9 +139,9 @@ just say what you mean. Don't bolt options onto every reply.
 
 The "Other" line is required whenever you list options so the user always has a
 typed-answer fallback. If the choice is genuinely just yes/no, skip the format and
-just ask the question normally.
+just ask the question normally.`
 
-Here is the user's current mapping:
+  const systemDynamic = `Here is the user's current mapping:
 \`\`\`json
 ${JSON.stringify(currentMapping, null, 2)}
 \`\`\`
@@ -161,7 +165,7 @@ ${
   }))
 
   // Haiku is enough for diff-style mapping edits driven by user answers, and it's
-  // ~10x cheaper / 3x faster than Sonnet — which matters because every answer
+  // ~3x cheaper (and faster) than Sonnet — which matters because every answer
   // during the walkthrough triggers one of these calls.
   const model = 'claude-haiku-4-5-20251001'
 
@@ -172,7 +176,12 @@ ${
       // update_mapping tool's new_mapping field truncates and the grid never
       // updates. Same bug we hit in stageA's Decision Maker.
       max_tokens: 16384,
-      system: systemPrompt,
+      // #67 — static prefix cached (ephemeral); dynamic tail uncached. Cache is a
+      // no-op (not an error) if the prefix is under the model's min cache length.
+      system: [
+        { type: 'text', text: systemStatic, cache_control: { type: 'ephemeral' } },
+        { type: 'text', text: systemDynamic },
+      ],
       tools: [
         {
           name: 'update_mapping',

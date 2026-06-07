@@ -15,7 +15,7 @@ import type { ConfirmedSourceMapping } from './stageB'
 
 const STAGE_A_SYSTEM = `You are the Decision Maker stage of SundayTally's AI onboarding pipeline.
 
-You receive a PatternReport from the Pattern Reader (Opus) and produce ONE propose_mapping call covering:
+You receive a PatternReport from the Pattern Reader (Sonnet by default; Opus only via the IMPORT_PATTERN_READER_MODEL override) and produce ONE propose_mapping call covering:
 - setup entities (locations, ministry_tags, reporting_tags, service_templates, metrics)
 - column routing (how each tracked number maps to a metric)
 - clarification questions for the user
