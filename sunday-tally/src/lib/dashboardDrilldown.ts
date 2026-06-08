@@ -459,6 +459,7 @@ export async function fetchMetricSeries(
         .select('id, ministry_tag_id')
         .eq('church_id', churchId)
         .eq('is_active', true)
+        .neq('mode', 'rollup')
         .eq('ministry_tag_id', src.ministryTagId)
         .range(offset, offset + limit - 1),
     )

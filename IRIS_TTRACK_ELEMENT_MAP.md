@@ -26,7 +26,7 @@ Two-pane (desktop) / stacked (mobile). Left = tree (drag-to-nest). Right = selec
 - **E-6 · "Groups inside" card** — lists child nodes (click to **drill in**), with "Add a group inside [name]" (owner/admin) that creates a child `service_tags` node (parent_tag_id set). Shows for any node with children, or for owner/admin on any node.
 - **E-7 · Kind sections** — Attendance · Volunteers · Stats. A Kind section renders **only when it has ≥1 metric** (no forced empty sections). Container nodes show none.
 - **E-8 · "Add a count"** (owner/admin) — pick a Kind (dropdown) + name → creates a `metrics` row (scope='instance', mode='entry', canonical per C2 guard).
-- **E-9 · Metric row** — name (InlineEditField) · ★ canonical (read-only, auto) · **mode toggle Typed/Roll-up** · Remove (amber confirm). Second line:
+- **E-9 · Metric row** — name (InlineEditField) · ★ canonical (read-only, auto) · **mode toggle Entry / Roll up children** · Remove (amber confirm). Second line:
   - **Entry ("Typed")** → "Rolls up into → [picker]": eligible ancestor roll-ups of the **same Kind**, or "— stays local —". If none eligible, hint to make a roll-up on a parent first.
   - **Roll-up** → "Combines its children: [Sum/Average/Largest]" + child-count, or **amber "⚠ Nothing points up to this yet"** when unreferenced. No value field (it's computed, Phase B).
 - **E-10 · Read-only mode** — editor/viewer see tree + groups + metrics with no controls (no handles, toggles, pickers, add/remove).
@@ -38,6 +38,7 @@ Two-pane (desktop) / stacked (mobile). Left = tree (drag-to-nest). Right = selec
 - **Scope = 'instance'** for all metrics here. Giving stays church-wide (not shown here).
 - **Tenancy:** every insert/update carries `church_id`.
 - **Defensive load:** the metrics fetch falls back to base columns if 0034 (mode/rollup_op/parent_metric_id) isn't applied yet, treating all metrics as 'entry' — the page never hard-breaks pre-migration.
+- **History/reporting protection:** roll-up metrics are filtered out (`.neq('mode','rollup')`) of the History grid (`derive_grid_config`), weekly entry (`entries/page`), and dashboard (`dashboard.ts`, `dashboardDrilldown.ts`) so they never surface as empty editable columns/inputs. They become computed columns only in Phase B. Nesting/mode changes never alter `metric_entries` or how existing entries flow.
 
 ## Server-action contract (`settings/track/actions.ts`, all owner/admin re-checked)
 - `createMinistry({name, tag_role, parent_tag_id?})` → service_tags insert (+ auto Attendance entry metric, auto-wired to ancestor roll-up when present).

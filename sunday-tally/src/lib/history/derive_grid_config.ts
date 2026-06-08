@@ -137,7 +137,8 @@ export async function deriveGridConfigFromSchema(
       .from('metrics')
       .select('id, code, name, ministry_tag_id, reporting_tag_id, scope, is_canonical, is_active')
       .eq('church_id', churchId)
-      .eq('is_active', true),
+      .eq('is_active', true)
+      .neq('mode', 'rollup'),   // roll-up metrics are computed (Phase B), not grid columns
   ])
 
   const church    = churchRes.data as ChurchRow | null

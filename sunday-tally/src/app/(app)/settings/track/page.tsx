@@ -21,9 +21,9 @@ import { useCallback, useEffect, useMemo, useState, useTransition } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import {
-  DndContext, useDraggable, useDroppable, closestCenter,
+  DndContext, DragOverlay, useDraggable, useDroppable, closestCenter,
   PointerSensor, KeyboardSensor, useSensor, useSensors,
-  type DragEndEvent,
+  type DragEndEvent, type DragStartEvent,
 } from '@dnd-kit/core'
 import AppLayout from '@/components/layouts/AppLayout'
 import InlineEditField from '@/components/shared/InlineEditField'
@@ -376,6 +376,7 @@ export default function TrackPage() {
   }
 
   // ── DnD ───────────────────────────────────────────────────────────────────
+  const [activeDragId, setActiveDragId] = useState<string | null>(null)
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor),
@@ -428,7 +429,13 @@ export default function TrackPage() {
               {[1, 2, 3].map(i => <div key={i} className="h-16 animate-pulse rounded-2xl bg-slate-100" />)}
             </div>
           ) : (
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragStart={(e: DragStartEvent) => setActiveDragId(String(e.active.id))}
+              onDragCancel={() => setActiveDragId(null)}
+              onDragEnd={(e) => { setActiveDragId(null); onDragEnd(e) }}
+            >
               <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
 
                 {/* Left tree */}
@@ -521,6 +528,14 @@ export default function TrackPage() {
                   )}
                 </div>
               </div>
+              <DragOverlay dropAnimation={null}>
+                {activeDragId ? (
+                  <div className="flex items-center gap-2 rounded-xl border-2 border-[#4F6EF7] bg-white px-3 py-2 text-[13px] font-semibold text-slate-800 shadow-2xl">
+                    <svg viewBox="0 0 16 16" className="h-3.5 w-3.5 text-slate-400" fill="currentColor" aria-hidden><circle cx="5" cy="3" r="1.3"/><circle cx="11" cy="3" r="1.3"/><circle cx="5" cy="8" r="1.3"/><circle cx="11" cy="8" r="1.3"/><circle cx="5" cy="13" r="1.3"/><circle cx="11" cy="13" r="1.3"/></svg>
+                    {ministries.find(m => m.id === activeDragId)?.name ?? 'Moving…'}
+                  </div>
+                ) : null}
+              </DragOverlay>
             </DndContext>
           )}
         </main>
@@ -588,7 +603,7 @@ function RootDropZone() {
   return (
     <div
       ref={setNodeRef}
-      className={`border-b border-dashed px-4 py-1.5 text-center text-[10px] font-semibold uppercase tracking-wider transition-colors ${isOver ? 'border-[#4F6EF7] bg-[#4F6EF7]/10 text-[#3D5BD4]' : 'border-slate-200 text-slate-300'}`}
+      className={`border-b border-dashed px-4 py-1.5 text-center text-[10px] font-semibold uppercase tracking-wider transition-colors ${isOver ? 'border-[#4F6EF7] bg-[#4F6EF7]/20 text-[#3D5BD4] ring-2 ring-inset ring-[#4F6EF7]' : 'border-slate-200 text-slate-300'}`}
     >
       Top level
     </div>
@@ -629,7 +644,7 @@ function MinistryTreeNode({
     <li>
       <div
         ref={setDropRef}
-        className={`group flex cursor-pointer items-center gap-2 border-b border-slate-50 px-4 py-3 transition-colors duration-200 hover:bg-slate-50 ${isSelected ? 'bg-[#4F6EF7]/8' : ''} ${isOver ? 'bg-[#4F6EF7]/10 ring-1 ring-inset ring-[#4F6EF7]/40' : ''} ${isDragging ? 'opacity-40' : ''}`}
+        className={`group flex cursor-pointer items-center gap-2 border-b border-slate-50 px-4 py-3 transition-colors duration-200 hover:bg-slate-50 ${isSelected ? 'bg-[#4F6EF7]/8' : ''} ${isOver ? 'bg-[#4F6EF7]/20 ring-2 ring-inset ring-[#4F6EF7]' : ''} ${isDragging ? 'opacity-30' : ''}`}
         style={{ paddingLeft: `${0.75 + level * 1.1}rem`, ...(isSelected ? { boxShadow: `inset 2px 0 0 ${color?.strong ?? '#4F6EF7'}` } : {}) }}
         onClick={() => onSelect(ministry.id)}
         role="button"
@@ -1075,11 +1090,11 @@ function MetricRowItem({
               <button
                 onClick={() => onSetMode('entry')}
                 className={`px-2 py-1 transition-colors ${!isRollup ? 'bg-[#4F6EF7] text-white' : 'bg-white text-slate-500 hover:bg-slate-50'}`}
-              >Typed</button>
+              >Entry</button>
               <button
                 onClick={() => onSetMode('rollup', metric.rollup_op ?? 'sum')}
-                className={`px-2 py-1 transition-colors ${isRollup ? 'bg-[#4F6EF7] text-white' : 'bg-white text-slate-500 hover:bg-slate-50'}`}
-              >Roll-up</button>
+                className={`whitespace-nowrap px-2 py-1 transition-colors ${isRollup ? 'bg-[#4F6EF7] text-white' : 'bg-white text-slate-500 hover:bg-slate-50'}`}
+              >Roll up children</button>
             </div>
             {confirmRemove ? (
               <span className="flex items-center gap-1">

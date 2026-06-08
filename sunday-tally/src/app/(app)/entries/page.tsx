@@ -177,6 +177,7 @@ export default function EntriesPage() {
         .eq('church_id', churchId)
         .eq('scope', 'period')
         .eq('is_active', true)
+        .neq('mode', 'rollup')   // roll-ups are computed (Phase B), not typed here
       if (cancelled) return
       const mapped: Metric[] = (data ?? []).map((m: any) => ({
         id: m.id, name: m.name, code: m.code, scope: 'period',
@@ -262,6 +263,7 @@ export default function EntriesPage() {
           .eq('church_id', churchId)
           .eq('scope', 'instance')
           .eq('is_active', true)
+          .neq('mode', 'rollup')   // roll-ups are computed (Phase B), not typed here
           .in('ministry_tag_id', tagIds)
         for (const m of (metricRows ?? []) as any[]) {
           const metric: Metric = {

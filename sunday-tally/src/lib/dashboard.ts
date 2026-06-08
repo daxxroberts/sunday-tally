@@ -339,6 +339,7 @@ export async function fetchDashboardData(
     .select('id, code, name, ministry_tag_id, reporting_tag_id, scope')
     .eq('church_id', churchId)
     .eq('is_active', true)
+    .neq('mode', 'rollup')   // roll-up metrics are computed (Phase B), excluded from aggregation
   if (metricsErr) console.error('[dashboard] metrics fetch failed:', metricsErr)
   const metricById = new Map<string, MetricRow>()
   for (const m of (metricsData ?? []) as MetricRow[]) metricById.set(m.id, m)
