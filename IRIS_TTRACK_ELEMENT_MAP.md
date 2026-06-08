@@ -26,7 +26,7 @@ Two-pane (desktop) / stacked (mobile). Left = tree (drag-to-nest). Right = selec
 - **E-6 · "Groups inside" card** — lists child nodes (click to **drill in**), with "Add a group inside [name]" (owner/admin) that creates a child `service_tags` node (parent_tag_id set). Shows for any node with children, or for owner/admin on any node.
 - **E-7 · Kind sections** — Attendance · Volunteers · Stats. A Kind section renders **only when it has ≥1 metric** (no forced empty sections). Container nodes show none.
 - **E-8 · "Add a count"** (owner/admin) — pick a Kind (dropdown) + name → creates a `metrics` row (scope='instance', mode='entry', canonical per C2 guard).
-- **E-9 · Metric row** — name (InlineEditField) · ★ canonical (read-only, auto) · **mode toggle Entry / Roll up children** · Remove (amber confirm). Second line:
+- **E-9 · Metric row** — name (InlineEditField) · ★ canonical (read-only, auto) · **mode toggle Entry / Roll up sub-entries** · Remove (amber confirm). Second line:
   - **Entry ("Typed")** → "Rolls up into → [picker]": eligible ancestor roll-ups of the **same Kind**, or "— stays local —". If none eligible, hint to make a roll-up on a parent first.
   - **Roll-up** → "Combines its children: [Sum/Average/Largest]" + child-count, or **amber "⚠ Nothing points up to this yet"** when unreferenced. No value field (it's computed, Phase B).
 - **E-10 · Read-only mode** — editor/viewer see tree + groups + metrics with no controls (no handles, toggles, pickers, add/remove).

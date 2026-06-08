@@ -368,11 +368,13 @@ export async function addCount(params: {
       .maybeSingle()
     const tagCode = (mtag?.code as string | null) ?? 'MIN'
 
+    // Church-wide code uniqueness (uq_metric_code is on church_id+code, not
+    // per-ministry) — check ALL the church's metric codes so the suffix loop
+    // can't generate a code that collides with another ministry's metric.
     const { data: existingMetrics } = await supabase
       .from('metrics')
       .select('code')
       .eq('church_id', churchId)
-      .eq('ministry_tag_id', params.ministryId)
     const haveCodes = new Set((existingMetrics ?? []).map(m => m.code as string))
 
     const baseSuffix = slugifyCode(name) || 'COUNT'

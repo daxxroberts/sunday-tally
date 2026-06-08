@@ -1094,7 +1094,7 @@ function MetricRowItem({
               <button
                 onClick={() => onSetMode('rollup', metric.rollup_op ?? 'sum')}
                 className={`whitespace-nowrap px-2 py-1 transition-colors ${isRollup ? 'bg-[#4F6EF7] text-white' : 'bg-white text-slate-500 hover:bg-slate-50'}`}
-              >Roll up children</button>
+              >Roll up sub-entries</button>
             </div>
             {confirmRemove ? (
               <span className="flex items-center gap-1">
