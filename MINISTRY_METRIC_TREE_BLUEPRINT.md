@@ -24,7 +24,7 @@ Date: 2026-06-07.
 
 ## SCHEMA — data reality (verified live 2026-06-07)
 **No migration is required for functionality.** Tables already present and correct:
-- `service_tags` (nodes): `id, church_id, code, name, tag_role, parent_tag_id, is_active, display_order`. RLS: split SELECT/INSERT/UPDATE (role-aware) — **writes work.** ✅
+- `service_tags` (nodes): `id, church_id, code, name, tag_role, parent_tag_id, is_active, display_order`. RLS: split SELECT/INSERT/UPDATE but **church-isolation only — NOT role-gated** (corrected by BOT review; any member can write). Writes work, but needs an owner/admin policy — see Addendum C1. ⚠️
 - `metrics` (counts/leaves): `ministry_tag_id, reporting_tag_id, scope('instance'|'period'), is_canonical, is_active, code, name, cadence`. RLS: **only `church_isolation` (ALL)** — writes work but are **not owner/admin-gated at the DB.**
 - `reporting_tags` (the 4 Kinds): system-seeded, protected by trigger.
 - Counts at write-time land in `metric_entries` (instance via `service_instance_id`, weekly via `period_anchor`).
@@ -109,4 +109,24 @@ Two-pane: tree (left) + selected-node detail (right). Owner/admin editable; othe
 ---
 
 ## SAGE gate
-This is a new nav surface + interaction model. **Builder approves this Blueprint → then a Sub-Agent build (Phase 1 first), FELIX + LENS gated.** Disjoint from the 0032 occurrence/RLS chat except the shared `metrics` RLS item (#4) — coordinate that one. Nothing ships without SAGE.
+This is a new nav surface + interaction model. **Builder approves this Blueprint → then a Sub-Agent build (Phase 1 first), FELIX + LENS gated.** Disjoint from the 0032 occurrence/RLS chat except the shared RLS item — coordinate that one. Nothing ships without SAGE.
+
+---
+
+## ADDENDUM — BOT REVIEW v2 (2026-06-07) · Verdict: SOUND-WITH-CHANGES
+Two independent read-only reviews (AXIOM+STRATA on claims/schema; STEEL+QUINN+NOVA on breakage/feasibility) pressure-tested this spec against live code + DB. Model is correct; no functional migration for Phase 1. Apply these:
+
+**Corrections to this spec**
+- **C1 (spec was WRONG):** `service_tags` write RLS is **church-isolation only, NOT role-gated** — same as `metrics`. **BOTH** tables need an owner/admin write policy (+ a WITH CHECK on `service_tags_update`). → one migration (0033-style), **REQUIRED before release** (not "optional"). Coordinate with the 0032 chat.
+- **C2:** `addCount()` MUST guard `is_canonical` — SELECT the existing canonical for (church, ministry, Kind) first; set `true` only if none exists, else the partial unique index `uq_metric_canonical` throws. Default `false`.
+- **C3:** Import (stageB `upsert_metric`) can collide with a manually-added canonical on re-import — it must SELECT the existing canonical before promoting. Fix alongside the 0032/import work.
+- **C4:** `/settings/volunteer-roles` is *double*-broken (also selects dropped `tag_name`). Retiring it moots this.
+- **C5:** `ATTENDANCE.agg_default = avg` (the other 3 Kinds = sum). Tree/Kind UI + any rollup must respect it.
+
+**Blockers — Phase 2 only (Phase 1 is unaffected)**
+- **B1 (BLOCKER for weekly):** period-scoped **ATTENDANCE has no path to the dashboard/History today** — only GIVING has a period fallback in `dashboard.ts`; attendance is 100% occurrence-based. So Life Groups *weekly* attendance would be **entered-but-invisible (reported as 0).** Before S2/Life-Groups ships, DECIDE the mechanism: (a) add a period-attendance fetch to `fetchDashboardData()` and merge into the weekly maps, or **(b) a separate "Weekly ministries" section (recommended — cleaner, no double-count).**
+- **B2:** Life Groups scope rework is a **data migration**, not a value tweak — flip existing metrics `instance→period` AND migrate/clear their existing `metric_entries` (XOR constraint).
+
+**Revised phasing**
+- **Phase 1 — SOUND, proceed** (after IRIS map + C1/C2): tree editor for **per-service** ministries (Experience/LifeKids/Switch — all instance-scoped, already reach the dashboard) + add/rename/deactivate counts + **retire the 3 broken screens FIRST** + S3 add-service step. Ship with the **keyboard "Move under…"** nesting only — no drag-and-drop library is installed; drag is later polish. Sizes: S1=M (no drag), S2=M, S3=M, retire=S.
+- **Phase 2 — gated on B1 decision + B2 migration:** Weekly entry (S2) + Life Groups period model. Do NOT build until B1 is specified.
