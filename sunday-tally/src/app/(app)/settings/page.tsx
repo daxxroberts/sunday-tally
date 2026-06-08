@@ -139,6 +139,14 @@ export default function SettingsHubPage() {
               writable={write}
               loading={loading}
             />
+            {/* What we track — T_TRACK tree editor (IRIS_TTRACK_ELEMENT_MAP) */}
+            <HubRow
+              href="/settings/track"
+              label="What we track"
+              meta={plural(counts.ministries, 'ministry', 'ministries')}
+              writable={write}
+              loading={loading}
+            />
           </Section>
 
           {/* ── E-6 — Data (owner/admin) ────────────────────────────────── */}
