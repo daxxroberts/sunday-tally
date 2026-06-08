@@ -47,8 +47,21 @@ function isoForGrid(date: string): string {
 }
 
 function dedupeConfig(cfg: GridConfig): GridConfig {
+  // Strip the dead "Tags" column/group. The per-occurrence tag junction table was
+  // dropped in the schema cutover, so this column could never save (the save route
+  // skips it). Removed at the source (derive_grid_config) too; this also cleans any
+  // grid_config already stored with the column.
+  const isTagData = (c: { type: string; dataType?: string }) => c.type === 'data' && c.dataType === 'tags'
+  const columns = cfg.columns
+    .filter(c => !(c.type === 'group' && c.id === 'group_tags') && !isTagData(c))
+    .map(c => (c.type === 'group' ? { ...c, children: (c.children ?? []).filter(ch => !isTagData(ch)) } : c))
   return {
     ...cfg,
+    columns,
+    serviceTemplates: cfg.serviceTemplates?.map(st => ({
+      ...st,
+      populatesColumnGroups: (st.populatesColumnGroups ?? []).filter(g => g !== 'group_tags'),
+    })) ?? cfg.serviceTemplates,
     weeklyMetrics:    normalizeMetrics(cfg.weeklyMetrics),
     monthlyMetrics:   normalizeMetrics(cfg.monthlyMetrics),
     singleDayMetrics: cfg.singleDayMetrics ? normalizeMetrics(cfg.singleDayMetrics) : cfg.singleDayMetrics,
@@ -63,7 +76,6 @@ export default function HistoryPage() {
   const [config, setConfig]             = useState<GridConfig | null>(null)
   const [occurrences, setOccurrences]   = useState<OccurrenceForGrid[]>([])
   const [initialData, setInitialData]   = useState<Map<string, unknown>>(new Map())
-  const [availableTags, setAvailableTags] = useState<Array<{id: string, name: string}>>([])
   const [codeMaps, setCodeMaps]         = useState<CodeMaps | null>(null)
   const [loading, setLoading]           = useState(true)
   const [emptyReason, setEmptyReason]   = useState<string | null>(null)
@@ -143,18 +155,6 @@ export default function HistoryPage() {
           setEmptyReason('No active services with a primary tag yet. Set up your services first.')
         }
         setConfig(derived ? dedupeConfig(derived) : null)
-      }
-
-      // Unified schema: service_tags.tag_name was renamed to `name` (migrations
-      // 0022/0023). Query `name` — the old column no longer exists and returned 400.
-      const { data: tagsData } = await supabase
-        .from('service_tags')
-        .select('id, name')
-        .eq('church_id', ch.id)
-        .eq('is_active', true)
-
-      if (tagsData) {
-        setAvailableTags(tagsData.map(t => ({ id: t.id, name: t.name })))
       }
     })
   }, [router])
@@ -462,7 +462,6 @@ export default function HistoryPage() {
                   serviceDate:       o.serviceDate,
                 }))}
                 initialData={initialData}
-                availableTags={availableTags}
                 onSave={handleSave}
                 groupColorMap={groupColorMap}
               />

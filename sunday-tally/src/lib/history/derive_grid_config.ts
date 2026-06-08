@@ -319,18 +319,9 @@ export async function deriveGridConfigFromSchema(
     }
   }
 
-  // MASS TAG ASSIGNMENT
-  columns.push({
-    type: 'group', id: 'group_tags', label: 'Tags', scope: 'SV',
-    children: [
-      { type: 'data', id: 'occurrence_tags', label: 'Assignments', scope: 'SV', editable: true, dataType: 'tags' },
-    ],
-  })
-  existingGroups.push('group_tags')
-
   // ── Map Service Templates to Column Groups ───────────────────────────────────
   for (const tmpl of templates) {
-    const populates: string[] = ['group_tags']
+    const populates: string[] = []
 
     const bucket = tagIdToBucket(tmpl.primary_tag_id)
     const primaryGroupId = BUCKET_META[bucket].groupId
