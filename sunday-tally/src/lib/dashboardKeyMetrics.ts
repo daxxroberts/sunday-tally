@@ -25,11 +25,13 @@ export type KeyMetricGroup = 'Totals' | 'Per-Ministry' | 'Ratios' | 'Other'
 
 export interface KeyMetricCatalogEntry {
   key: string                 // stable id (see KEY_METRICS_PLAN §4)
-  label: string               // human label (audience labels are church-dynamic)
+  label: string               // full human label ("Life Groups · Attendance") — used in the Featured list
   group: KeyMetricGroup
   values: FourWin
   prefix?: string             // '$' for currency
   suffix?: string             // '%' for ratios
+  ministryName?: string       // Per-Ministry: owning ministry, for sub-grouping the picker checkboxes
+  subLabel?: string           // Per-Ministry: short label shown under the ministry ("Attendance")
 }
 
 // ── grid_config shapes (jsonb on churches; no migration — plan §6) ────────────
@@ -117,6 +119,8 @@ export function buildKeyMetricCatalog(
       label: `${sec.tag_name} · Attendance`,
       group: 'Per-Ministry',
       values: sec.attendance,
+      ministryName: sec.tag_name,
+      subLabel: 'Attendance',
     })
     if (tracks.tracks_volunteers) {
       out.push({
@@ -124,6 +128,8 @@ export function buildKeyMetricCatalog(
         label: `${sec.tag_name} · Volunteers`,
         group: 'Per-Ministry',
         values: sec.volunteers,
+        ministryName: sec.tag_name,
+        subLabel: 'Volunteers',
       })
     }
     if (tracks.tracks_responses) {
@@ -133,6 +139,8 @@ export function buildKeyMetricCatalog(
           label: `${sec.tag_name} · ${stat.category_name}`,
           group: 'Per-Ministry',
           values: stat.values,
+          ministryName: sec.tag_name,
+          subLabel: stat.category_name,
         })
       }
     }

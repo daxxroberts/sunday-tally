@@ -362,6 +362,19 @@ export function KeyMetricCard({
 //    ↑/↓ reorder (a11y-friendly, no drag dep — KEY_METRICS_PLAN §5/§9.2). ───────
 const KM_GROUP_ORDER: KeyMetricGroup[] = ['Totals', 'Per-Ministry', 'Ratios', 'Other']
 
+// Sub-group Per-Ministry catalog entries by their owning ministry, preserving
+// first-seen order, so the picker reads "Life Groups → [Attendance, Volunteers]".
+function groupByMinistry(entries: KeyMetricCatalogEntry[]): { ministry: string; items: KeyMetricCatalogEntry[] }[] {
+  const order: string[] = []
+  const map = new Map<string, KeyMetricCatalogEntry[]>()
+  for (const e of entries) {
+    const m = e.ministryName ?? 'Other'
+    if (!map.has(m)) { map.set(m, []); order.push(m) }
+    map.get(m)!.push(e)
+  }
+  return order.map(m => ({ ministry: m, items: map.get(m)! }))
+}
+
 export function KeyMetricsPicker({
   catalog, selected, onSave, onClose,
 }: {
@@ -433,19 +446,42 @@ export function KeyMetricsPicker({
         {grouped.map(({ group, entries }) => (
           <div key={group} className="mb-3 last:mb-0">
             <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">{group}</p>
-            <div className="grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2">
-              {entries.map(e => (
-                <label key={e.key} className="flex cursor-pointer items-center gap-2 text-[12px] text-slate-700">
-                  <input
-                    type="checkbox"
-                    className="rounded border-slate-300 text-[#4F6EF7] focus:ring-[#4F6EF7]"
-                    checked={draftSet.has(e.key)}
-                    onChange={() => toggle(e.key)}
-                  />
-                  <span className="truncate">{e.label}</span>
-                </label>
-              ))}
-            </div>
+            {group === 'Per-Ministry' ? (
+              <div className="space-y-2">
+                {groupByMinistry(entries).map(({ ministry, items }) => (
+                  <div key={ministry} className="rounded-lg border border-slate-100 bg-slate-50/50 px-3 py-2">
+                    <p className="mb-1 text-[11px] font-semibold text-slate-600">{ministry}</p>
+                    <div className="grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2">
+                      {items.map(e => (
+                        <label key={e.key} className="flex cursor-pointer items-center gap-2 text-[12px] text-slate-700">
+                          <input
+                            type="checkbox"
+                            className="rounded border-slate-300 text-[#4F6EF7] focus:ring-[#4F6EF7]"
+                            checked={draftSet.has(e.key)}
+                            onChange={() => toggle(e.key)}
+                          />
+                          <span className="truncate">{e.subLabel ?? e.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2">
+                {entries.map(e => (
+                  <label key={e.key} className="flex cursor-pointer items-center gap-2 text-[12px] text-slate-700">
+                    <input
+                      type="checkbox"
+                      className="rounded border-slate-300 text-[#4F6EF7] focus:ring-[#4F6EF7]"
+                      checked={draftSet.has(e.key)}
+                      onChange={() => toggle(e.key)}
+                    />
+                    <span className="truncate">{e.label}</span>
+                  </label>
+                ))}
+              </div>
+            )}
           </div>
         ))}
       </div>
