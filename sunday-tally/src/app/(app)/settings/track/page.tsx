@@ -1104,9 +1104,6 @@ function MetricRowItem({
     <li className="group px-5 py-3 transition-colors duration-200 hover:bg-slate-50">
       <div className="flex items-center gap-3">
         <div className="flex-1 min-w-0 flex items-center gap-2">
-          {metric.is_canonical && (
-            <span className="font-num shrink-0 text-[13px] text-[#F59E0B]" title="Primary count for this kind" aria-label="Primary count">★</span>
-          )}
           {write ? (
             <InlineEditField value={metric.name} onSave={onRename} aria-label={metric.name} className="text-[14px] font-medium text-slate-800" />
           ) : (
