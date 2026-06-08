@@ -552,13 +552,40 @@ export async function deactivateCount(metricId: string): Promise<ActionResult> {
     const supabase = await createClient()
     const churchId = await requireOwnerAdmin(supabase)
 
-    const { error } = await supabase
+    // Load first so we can free / transfer the canonical slot. The partial
+    // unique index uq_metric_canonical ignores is_active, so a removed row that
+    // keeps is_canonical=true would block re-adding the same kind — clear it.
+    const { data: metric } = await supabase
       .from('metrics')
-      .update({ is_active: false })
+      .select('id, ministry_tag_id, reporting_tag_id, is_canonical')
       .eq('id', metricId)
       .eq('church_id', churchId)
+      .maybeSingle()
 
+    const { error } = await supabase
+      .from('metrics')
+      .update({ is_active: false, is_canonical: false })
+      .eq('id', metricId)
+      .eq('church_id', churchId)
     if (error) return { ok: false, error: error.message }
+
+    // If we removed the headline (★) metric and active siblings remain for the
+    // same (ministry, kind), promote the oldest so that kind keeps a headline.
+    if (metric?.is_canonical) {
+      const { data: sibling } = await supabase
+        .from('metrics')
+        .select('id')
+        .eq('church_id', churchId)
+        .eq('ministry_tag_id', metric.ministry_tag_id as string)
+        .eq('reporting_tag_id', metric.reporting_tag_id as string)
+        .eq('is_active', true)
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .maybeSingle()
+      if (sibling) {
+        await supabase.from('metrics').update({ is_canonical: true }).eq('id', sibling.id).eq('church_id', churchId)
+      }
+    }
     return { ok: true }
   } catch (e) {
     return { ok: false, error: (e as Error).message }
