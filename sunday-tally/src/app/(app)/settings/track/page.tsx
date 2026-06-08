@@ -1036,6 +1036,8 @@ function KindSection({
   onSetParent: (metricId: string, parentId: string | null) => Promise<void>
   onSetOp: (metricId: string, op: RollupOp) => Promise<void>
 }) {
+  const [expanded, setExpanded] = useState(true)
+
   const kindAccent = kindCode === 'ATTENDANCE'
     ? 'bg-[#4F6EF7]/8 border-[#4F6EF7]/20'
     : kindCode === 'VOLUNTEERS'
@@ -1044,8 +1046,14 @@ function KindSection({
 
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className={`flex items-center justify-between gap-3 border-b px-5 py-3 ${kindAccent}`}>
-        <div className="flex items-baseline gap-2">
+      <button
+        type="button"
+        onClick={() => setExpanded(x => !x)}
+        aria-expanded={expanded}
+        className={`flex w-full items-center justify-between gap-3 border-b px-5 py-3 text-left transition-colors ${kindAccent}`}
+      >
+        <div className="flex items-center gap-2">
+          <Ico.chevron className={`h-4 w-4 shrink-0 text-slate-400 transition-transform duration-150 ${expanded ? '' : '-rotate-90'}`} />
           <h3 className="text-[13px] font-bold uppercase tracking-wider text-slate-700">{kindLabel}</h3>
           <span
             className="text-[10px] font-medium text-slate-400 cursor-help"
@@ -1054,8 +1062,11 @@ function KindSection({
             reporting type
           </span>
         </div>
-        <span className="font-num text-[12px] font-semibold text-slate-400">{metrics.length}</span>
-      </div>
+        <span className="font-num text-[12px] font-semibold text-slate-400">
+          {metrics.length} count{metrics.length === 1 ? '' : 's'}
+        </span>
+      </button>
+      {expanded && (
       <ul className="divide-y divide-slate-50">
         {metrics.map(m => (
           <MetricRowItem
@@ -1074,6 +1085,7 @@ function KindSection({
           />
         ))}
       </ul>
+      )}
     </div>
   )
 }
