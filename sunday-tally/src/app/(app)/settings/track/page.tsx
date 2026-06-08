@@ -88,13 +88,10 @@ function canWrite(role: UserRole) {
   return role === 'owner' || role === 'admin'
 }
 
-function rolePillClasses(role: string | null | undefined): string {
-  switch (role) {
-    case 'KIDS_MINISTRY': return 'bg-[#8B5CF6]/10 text-[#6D28D9]'
-    case 'YOUTH_MINISTRY': return 'bg-[#06B6D4]/10 text-[#0E7490]'
-    case 'ADULT_SERVICE': return 'bg-[#4F6EF7]/10 text-[#3D5BD4]'
-    default: return 'bg-slate-100 text-slate-500'
-  }
+// Muted, low-emphasis role chip — the colored accent bar already carries the
+// group color, so the role reads as quiet metadata (Builder feedback 2026-06-08).
+function rolePillClasses(): string {
+  return 'bg-slate-100 text-slate-400'
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -267,6 +264,16 @@ export default function TrackPage() {
       m.reporting_tag_id === metric.reporting_tag_id &&
       anc.has(m.ministry_tag_id))
   }, [metrics, ancestorIds])
+
+  // Fully-qualified label for a roll-up target so it's unambiguous when many
+  // metrics share a name ("Attendance") several levels deep → "Life Groups · Attendance".
+  const ministryNameById = useMemo(() => new Map(ministries.map(m => [m.id, m.name] as const)), [ministries])
+  const parentLabel = useCallback((m: Metric): string => {
+    const minName = ministryNameById.get(m.ministry_tag_id) ?? 'Group'
+    const rt = rtById.get(m.reporting_tag_id)
+    const kind = rt ? (KIND_LABEL[rt.code as KindCode] ?? rt.name) : ''
+    return kind ? `${minName} · ${kind}` : minName
+  }, [ministryNameById, rtById])
 
   function countSummary(minId: string): string {
     const list = metricsByMinistry.get(minId) ?? []
@@ -511,6 +518,7 @@ export default function TrackPage() {
                       reportingTags={reportingTags}
                       color={colorForNode(selected.id)}
                       eligibleParentsFor={eligibleParentsFor}
+                      parentLabel={parentLabel}
                       unreferencedRollupIds={unreferencedRollupIds}
                       childCountFor={(rollupId) => metrics.filter(m => m.parent_metric_id === rollupId && m.is_active).length}
                       onSelectChild={setSelectedId}
@@ -603,7 +611,7 @@ function RootDropZone() {
   return (
     <div
       ref={setNodeRef}
-      className={`border-b border-dashed px-4 py-1.5 text-center text-[10px] font-semibold uppercase tracking-wider transition-colors ${isOver ? 'border-[#4F6EF7] bg-[#4F6EF7]/20 text-[#3D5BD4] ring-2 ring-inset ring-[#4F6EF7]' : 'border-slate-200 text-slate-300'}`}
+      className={`border-b border-dashed px-4 py-1.5 text-center text-[9px] font-medium uppercase tracking-wider transition-colors ${isOver ? 'border-[#4F6EF7] bg-[#4F6EF7]/20 text-[#3D5BD4] ring-2 ring-inset ring-[#4F6EF7]' : 'border-slate-200 text-slate-300'}`}
     >
       Top level
     </div>
@@ -681,7 +689,7 @@ function MinistryTreeNode({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <span className="truncate text-[14px] font-semibold text-slate-800">{ministry.name}</span>
-            <span className={`shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${rolePillClasses(ministry.tag_role)}`}>
+            <span className={`shrink-0 rounded-md px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide ${rolePillClasses()}`}>
               {roleLabel(ministry.tag_role)}
             </span>
             {hasUnreferenced(ministry.id) && (
@@ -765,7 +773,7 @@ function MoveMenu({
         className="fixed z-50 min-w-[180px] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg"
         style={{ top: pos.top, left: pos.left }}
       >
-        <p className="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">Move under…</p>
+        <p className="px-3 pt-2 pb-1 text-[9px] font-medium uppercase tracking-wider text-slate-400">Move under…</p>
         <ul className="max-h-60 overflow-y-auto">
           <li>
             <button onClick={() => onPick(null)} className="w-full px-3 py-2 text-left text-[13px] text-slate-600 transition-colors hover:bg-slate-50">Top level</button>
@@ -788,7 +796,7 @@ function MoveMenu({
 // ─────────────────────────────────────────────────────────────────────────
 function DetailPanel({
   ministry, write, metricsForNode, childNodes, reportingTags, color,
-  eligibleParentsFor, unreferencedRollupIds, childCountFor,
+  eligibleParentsFor, parentLabel, unreferencedRollupIds, childCountFor,
   onSelectChild, onAddGroupHere,
   onRename, onRoleChange, onDeactivate,
   onAddMetric, onRenameMetric, onRemoveMetric, onSetMode, onSetParent, onSetOp,
@@ -800,6 +808,7 @@ function DetailPanel({
   reportingTags: ReportingTag[]
   color?: GroupColor
   eligibleParentsFor: (m: Metric) => Metric[]
+  parentLabel: (m: Metric) => string
   unreferencedRollupIds: Set<string>
   childCountFor: (rollupId: string) => number
   onSelectChild: (id: string) => void
@@ -836,11 +845,20 @@ function DetailPanel({
         <div className="flex items-center gap-3 border-b border-slate-100 px-5 py-4">
           <span className="h-8 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: accent }} aria-hidden />
           <div className="flex-1 min-w-0">
+            <span
+              className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 cursor-help"
+              title={ministry.parent_tag_id
+                ? 'A group lives inside a ministry. It can hold its own groups and counts, and roll its numbers up into its parent.'
+                : 'A ministry is a top-level group. It reports on its own and can hold groups inside it. Everything you track lives under a ministry.'}
+            >
+              {ministry.parent_tag_id ? 'Group' : 'Ministry'}
+            </span>
             {write ? (
               <InlineEditField value={ministry.name} onSave={onRename} aria-label="Ministry name" className="text-[17px] font-bold text-slate-900" inputClassName="text-[17px] font-bold" />
             ) : (
               <h2 className="text-[17px] font-bold text-slate-900">{ministry.name}</h2>
             )}
+            <p className="mt-0.5 text-[12px] text-slate-400">Everything below belongs to {ministry.name}.</p>
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-4 px-5 py-3">
@@ -851,7 +869,7 @@ function DetailPanel({
                 {ROLE_OPTIONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
               </select>
             ) : (
-              <span className={`rounded-md px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${rolePillClasses(ministry.tag_role)}`}>{roleLabel(ministry.tag_role)}</span>
+              <span className={`rounded-md px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide ${rolePillClasses()}`}>{roleLabel(ministry.tag_role)}</span>
             )}
           </div>
           {write && (
@@ -866,7 +884,7 @@ function DetailPanel({
       {(childNodes.length > 0 || write) && (
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div className="flex items-center justify-between gap-3 border-b border-slate-100 bg-slate-50/60 px-5 py-3">
-            <h3 className="text-[13px] font-bold uppercase tracking-wider text-slate-600">Groups inside</h3>
+            <h3 className="text-[13px] font-bold uppercase tracking-wider text-slate-600">Groups inside {ministry.name}</h3>
             <span className="font-num text-[12px] font-semibold text-slate-400">{childNodes.length}</span>
           </div>
           {childNodes.length > 0 && (
@@ -876,7 +894,7 @@ function DetailPanel({
                   <button onClick={() => onSelectChild(c.id)} className="flex w-full items-center gap-2 px-5 py-2.5 text-left transition-colors hover:bg-slate-50">
                     <Ico.chevron className="h-3.5 w-3.5 -rotate-90 text-slate-300" />
                     <span className="text-[14px] font-medium text-slate-700">{c.name}</span>
-                    <span className={`rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${rolePillClasses(c.tag_role)}`}>{roleLabel(c.tag_role)}</span>
+                    <span className={`rounded-md px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide ${rolePillClasses()}`}>{roleLabel(c.tag_role)}</span>
                   </button>
                 </li>
               ))}
@@ -922,6 +940,7 @@ function DetailPanel({
             metrics={list}
             write={write}
             eligibleParentsFor={eligibleParentsFor}
+            parentLabel={parentLabel}
             unreferencedRollupIds={unreferencedRollupIds}
             childCountFor={childCountFor}
             onRenameMetric={onRenameMetric}
@@ -999,7 +1018,7 @@ function AddMetricControl({
 // ─────────────────────────────────────────────────────────────────────────
 function KindSection({
   kindCode, kindLabel, metrics, write,
-  eligibleParentsFor, unreferencedRollupIds, childCountFor,
+  eligibleParentsFor, parentLabel, unreferencedRollupIds, childCountFor,
   onRenameMetric, onRemoveMetric, onSetMode, onSetParent, onSetOp,
 }: {
   kindCode: KindCode
@@ -1007,6 +1026,7 @@ function KindSection({
   metrics: Metric[]
   write: boolean
   eligibleParentsFor: (m: Metric) => Metric[]
+  parentLabel: (m: Metric) => string
   unreferencedRollupIds: Set<string>
   childCountFor: (rollupId: string) => number
   onRenameMetric: (metricId: string, name: string) => Promise<void>
@@ -1024,7 +1044,15 @@ function KindSection({
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
       <div className={`flex items-center justify-between gap-3 border-b px-5 py-3 ${kindAccent}`}>
-        <h3 className="text-[13px] font-bold uppercase tracking-wider text-slate-700">{kindLabel}</h3>
+        <div className="flex items-baseline gap-2">
+          <h3 className="text-[13px] font-bold uppercase tracking-wider text-slate-700">{kindLabel}</h3>
+          <span
+            className="text-[10px] font-medium text-slate-400 cursor-help"
+            title={`"${kindLabel}" is a reporting type — it tells the dashboard how to handle these numbers. The counts you add here all report as ${kindLabel}.`}
+          >
+            reporting type
+          </span>
+        </div>
         <span className="font-num text-[12px] font-semibold text-slate-400">{metrics.length}</span>
       </div>
       <ul className="divide-y divide-slate-50">
@@ -1034,6 +1062,7 @@ function KindSection({
             metric={m}
             write={write}
             eligibleParents={eligibleParentsFor(m)}
+            parentLabel={parentLabel}
             unreferenced={unreferencedRollupIds.has(m.id)}
             childCount={childCountFor(m.id)}
             onRename={name => onRenameMetric(m.id, name)}
@@ -1052,12 +1081,13 @@ function KindSection({
 // MetricRowItem — name + mode toggle + (entry: rolls-up-into) / (rollup: op)
 // ─────────────────────────────────────────────────────────────────────────
 function MetricRowItem({
-  metric, write, eligibleParents, unreferenced, childCount,
+  metric, write, eligibleParents, parentLabel, unreferenced, childCount,
   onRename, onRemove, onSetMode, onSetParent, onSetOp,
 }: {
   metric: Metric
   write: boolean
   eligibleParents: Metric[]
+  parentLabel: (m: Metric) => string
   unreferenced: boolean
   childCount: number
   onRename: (name: string) => Promise<void>
@@ -1140,14 +1170,14 @@ function MetricRowItem({
                   className="rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[12px] text-slate-700 outline-none focus:border-[#4F6EF7]"
                 >
                   <option value="">— stays local —</option>
-                  {eligibleParents.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  {eligibleParents.map(p => <option key={p.id} value={p.id}>{parentLabel(p)}</option>)}
                 </select>
               ) : (
                 <span className="text-slate-400">— stays local (make a roll-up on a parent first)</span>
               )
             ) : (
               <span className="font-medium text-slate-600">
-                {metric.parent_metric_id ? (eligibleParents.find(p => p.id === metric.parent_metric_id)?.name ?? 'a parent roll-up') : 'stays local'}
+                {metric.parent_metric_id ? (() => { const p = eligibleParents.find(x => x.id === metric.parent_metric_id); return p ? parentLabel(p) : 'a parent roll-up' })() : 'stays local'}
               </span>
             )}
           </>
