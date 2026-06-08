@@ -265,14 +265,15 @@ export default function TrackPage() {
       anc.has(m.ministry_tag_id))
   }, [metrics, ancestorIds])
 
-  // Fully-qualified label for a roll-up target so it's unambiguous when many
-  // metrics share a name ("Attendance") several levels deep → "Life Groups · Attendance".
+  // Fully-qualified label for a roll-up target: "Ministry › Kind › Metric name".
+  // Includes the metric's own name so two same-kind roll-ups on one node (e.g.
+  // two Volunteers roll-ups) are distinguishable — the name is the disambiguator.
   const ministryNameById = useMemo(() => new Map(ministries.map(m => [m.id, m.name] as const)), [ministries])
   const parentLabel = useCallback((m: Metric): string => {
     const minName = ministryNameById.get(m.ministry_tag_id) ?? 'Group'
     const rt = rtById.get(m.reporting_tag_id)
     const kind = rt ? (KIND_LABEL[rt.code as KindCode] ?? rt.name) : ''
-    return kind ? `${minName} · ${kind}` : minName
+    return kind ? `${minName} › ${kind} › ${m.name}` : `${minName} › ${m.name}`
   }, [ministryNameById, rtById])
 
   function countSummary(minId: string): string {
