@@ -1,51 +1,62 @@
 # IRIS Element Map — T_TRACK · "What We Track" tree editor
-Screen: `/settings/track` · Status: SPEC for Phase 1 build · 2026-06-07
-Source: MINISTRY_METRIC_TREE_BLUEPRINT.md (S1) + BOT review v2 corrections. Build must match this map (One Rule).
+Screen: `/settings/track` · Status: BUILT (Phase A overhaul) · 2026-06-08
+Source: MINISTRY_METRIC_TREE_BLUEPRINT.md + roll-up overhaul (plan: lively-sparking-catmull). Build must match this map (One Rule).
 
 ## Purpose
-One screen to see and edit a church's whole tracking structure as a tree:
-**Ministry/Group (service_tags) → Kind (1 of 4) → Count (metrics leaf).** Replaces the
-3 dropped-table screens. Phase 1 = per-service ministries (instance-scoped); weekly/Life-Groups is Phase 2.
+One screen to set a church's whole tracking structure as a tree:
+**Node (service_tags, nestable) → Kind (Attendance/Volunteers/Stats) → Metric.**
+A node can be a pure **container** (holds child groups, no metrics of its own).
+A metric is **Entry** (typed at its node) or **Roll-up** (sums/avgs/maxes the
+children that point at it). Children point up EXPLICITLY (parent_metric_id).
+This is the editor that produces the structure the History grid renders.
 
 ## Roles (R-7)
-- **owner / admin:** full edit. · **editor / viewer:** read-only (no add/edit/▾ controls rendered).
-- Server actions re-check role (owner/admin) — UI gate is not the authority.
+- **owner / admin:** full edit. · **editor / viewer:** read-only (no controls).
+- Every server action re-checks owner/admin (`requireOwnerAdmin`) — UI gate is not the authority.
 
 ## Layout
-Two-pane (desktop) / stacked (mobile). Left = tree. Right = selected node detail. Header = title + "Add ministry".
+Two-pane (desktop) / stacked (mobile). Left = tree (drag-to-nest). Right = selected node detail.
 
 ## Elements
-- **E-1 · Header** — eyebrow "Settings", H1 "What we track", one-line helper: "Each ministry and the numbers you count for it."
-- **E-2 · "Add ministry or group" button** (owner/admin only) → inline create row: name (req) + role select (Adults / Kids / Youth / Other) → creates a `service_tags` node, auto-seeds an Attendance count, selects it. Copy: button "Add ministry or group".
-- **E-3 · Tree panel (left)** — nodes in `display_order`, child nodes indented under parent (`parent_tag_id`). Each node row:
-  - name · role chip (Adults/Kids/Youth/Other, accent by role — reuse `accentForRole`) · count summary ("Attendance · Volunteers · Stats") · ▾ actions (owner/admin).
-  - expand/collapse caret when it has children. Selected node highlighted.
-- **E-4 · Nest control (NO drag in Phase 1)** — each node ▾ menu: "Move under…" → list of eligible parents (+ "Top level"). Sets `parent_tag_id`. (Drag-and-drop is Phase 2 polish; no DnD lib installed.)
-- **E-5 · Detail header (right)** — selected node: editable name (InlineEditField), role select, and a read-only mode chip ("Counts each service" — Phase 1 is all per-service). "Deactivate ministry" (soft-delete `is_active=false`, confirm dialog).
-- **E-6 · Kind sections** — three sections for Phase 1: **Attendance · Volunteers · Stats** (Giving is church-wide, not shown per-ministry here). Each section header names the Kind; under it, its Counts.
-- **E-7 · "Add a count" (per Kind, owner/admin)** — inline name input → creates a `metrics` row (reporting_tag = that Kind, scope='instance'). Copy: "+ Add a count".
-- **E-8 · Count row** — name · headline marker (★, read-only, auto) · rename (pencil, InlineEditField) · "Remove" (soft-delete `is_active=false`). Reorder via ▴▾ (a11y) within a Kind.
-- **E-9 · Empty states** — node with only the seeded Attendance count shows it + "Add more above". No ministries yet → "Add your first ministry."
-- **E-10 · Read-only mode** — editor/viewer see the tree + counts, no Add/▾/pencil/Remove controls.
+- **E-1 · Header** — eyebrow "Settings", H1 "What we track", helper "Each ministry, the groups inside it, and the numbers you count."
+- **E-2 · "Add ministry or group"** (owner/admin) → inline form: name + role (Adults/Kids/Youth/Other) → creates a top-level `service_tags` node, auto-seeds an Attendance **entry** metric, selects it.
+- **E-3 · Tree panel (left)** — nodes in `display_order`, children indented under parent. Each row: **drag handle** (⋮⋮, owner/admin) · caret (if children) · root-colored accent bar · name · role pill · **⚠** if any roll-up on the node is unreferenced · count/group summary. Selected row highlighted with the node's root color.
+- **E-4 · Nesting** — two ways: (a) **drag-and-drop** via @dnd-kit (drag a node's handle onto another node to nest, or onto the "Top level" drop strip to un-nest); (b) **"Move under…"** menu (the ▾ on each row) — **rendered in a portal** so it is never clipped by the tree column; keyboard/click a11y fallback. Descendant drops are rejected.
+- **E-5 · Detail header (right)** — root-colored accent, editable name (InlineEditField), role select, "Remove ministry" (amber confirm; server child-guard blocks if it has active children).
+- **E-6 · "Groups inside" card** — lists child nodes (click to **drill in**), with "Add a group inside [name]" (owner/admin) that creates a child `service_tags` node (parent_tag_id set). Shows for any node with children, or for owner/admin on any node.
+- **E-7 · Kind sections** — Attendance · Volunteers · Stats. A Kind section renders **only when it has ≥1 metric** (no forced empty sections). Container nodes show none.
+- **E-8 · "Add a count"** (owner/admin) — pick a Kind (dropdown) + name → creates a `metrics` row (scope='instance', mode='entry', canonical per C2 guard).
+- **E-9 · Metric row** — name (InlineEditField) · ★ canonical (read-only, auto) · **mode toggle Typed/Roll-up** · Remove (amber confirm). Second line:
+  - **Entry ("Typed")** → "Rolls up into → [picker]": eligible ancestor roll-ups of the **same Kind**, or "— stays local —". If none eligible, hint to make a roll-up on a parent first.
+  - **Roll-up** → "Combines its children: [Sum/Average/Largest]" + child-count, or **amber "⚠ Nothing points up to this yet"** when unreferenced. No value field (it's computed, Phase B).
+- **E-10 · Read-only mode** — editor/viewer see tree + groups + metrics with no controls (no handles, toggles, pickers, add/remove).
 
-## Hard rules (from BOT review — the build MUST honor)
-- **C2 — canonical guard:** when creating a Count, set `is_canonical=true` ONLY if no active canonical exists for (church, ministry, Kind); else `false`. The partial unique index `uq_metric_canonical` throws otherwise. Never expose ★ as a user toggle in Phase 1.
-- **C5 — ATTENDANCE aggregates as `avg`** (others `sum`) — display/rollup elsewhere must respect; this screen just lists counts.
-- **Scope = 'instance'** for all Phase-1 counts (per-service ministries). No weekly/period here (Phase 2).
-- **Tenancy:** every insert/update carries `church_id`; service_template_tags untouched here (composition stays on /settings/services).
+## Hard rules (the build honors these)
+- **C2 — canonical guard:** a new metric is `is_canonical=true` ONLY if no active canonical exists for (church, ministry, Kind); else false. ★ is never a user toggle.
+- **Mode/link rules (server-enforced in actions.ts):** only an `entry` metric may point up; a child may point only to a roll-up of the **same Kind** on an **ancestor** node; rollup→entry is **blocked while children still point at it**; a roll-up defaults to `sum`.
+- **Auto-wire:** adding a node under a parent that has an active ATTENDANCE roll-up auto-points the new node's seeded Attendance at it (nearest ancestor wins; still unwireable).
+- **Scope = 'instance'** for all metrics here. Giving stays church-wide (not shown here).
+- **Tenancy:** every insert/update carries `church_id`.
+- **Defensive load:** the metrics fetch falls back to base columns if 0034 (mode/rollup_op/parent_metric_id) isn't applied yet, treating all metrics as 'entry' — the page never hard-breaks pre-migration.
 
 ## Server-action contract (`settings/track/actions.ts`, all owner/admin re-checked)
-- `createMinistry({name, tag_role})` → service_tags insert (+ auto Attendance metric via canonical guard) → returns node.
-- `updateMinistry(id, {name?, tag_role?, parent_tag_id?})` → service_tags update.
-- `deactivateMinistry(id)` → is_active=false.
-- `addCount({ministryId, reportingTagCode, name})` → metrics insert (scope='instance', canonical per C2).
-- `renameCount(metricId, name)` · `deactivateCount(metricId)` · `reorderCounts(ids[])`.
+- `createMinistry({name, tag_role, parent_tag_id?})` → service_tags insert (+ auto Attendance entry metric, auto-wired to ancestor roll-up when present).
+- `updateMinistry(id, {name?, tag_role?, parent_tag_id?})` · `deactivateMinistry(id)` (child-guard).
+- `addCount({ministryId, reportingTagCode, name, mode?, rollupOp?, parentMetricId?})` (C2 guard + parent-link validation).
+- `setMetricMode(metricId, mode, rollupOp?)` · `setMetricParent(metricId, parentMetricId|null)` (ancestor + same-Kind validation) · `setRollupOp(metricId, rollupOp)`.
+- `renameCount(metricId, name)` · `deactivateCount(metricId)`.
+
+## Schema (migration 0034 — NEEDS-APPROVAL, file only)
+Adds to `metrics`: `mode` ('entry'|'rollup', default 'entry'), `rollup_op` ('sum'|'avg'|'max', nullable), `parent_metric_id` (uuid → metrics, ON DELETE SET NULL), with CHECKs + an index. Ancestor/same-Kind guardrails are enforced in actions.ts (need a parent_tag_id walk).
 
 ## DS / reuse
-Reuse Entries/Settings primitives (cards, `InlineEditField`, `Ico`, `accentForRole`, status circles). DS-2 no-red. Fira numerals where numbers appear. Match the look of `/settings/services` + `/settings/tags`.
+Reuse `InlineEditField`, `Ico`, `roleLabel`, and the History palette via `buildGroupColorMap`/`GroupColor` (`@/components/history-grid/group-colors`) so node colors match the History grid. @dnd-kit/core for drag. DS-2 no-red (amber for warnings/removes). Fira numerals on counts.
 
 ## Nav
-Add a "What we track" entry to the Settings hub (`/settings`). Retire links to stats/volunteer-roles/giving-sources.
+"What we track" entry in the Settings hub. Retired: /settings/{stats,volunteer-roles,giving-sources} (redirect here).
+
+## Phase B (not built here)
+Roll-up SUMMATION (a roll-up's computed value) in History/dashboard/entry — on-read recursive aggregation, plus narrowing the importer's `upsert_metric` so re-import can't reset mode/rollup_op/parent_metric_id. Spec in plan lively-sparking-catmull §4.
 
 ## Gate
-FELIX (server actions + canonical guard + role re-check + tsc/build) → LENS (render vs this map) → SAGE. RLS hardening (owner/admin write policies on service_tags + metrics) is a separate NEEDS-APPROVAL migration coordinated with the 0032 chat — not built here.
+FELIX (server actions + ancestor/Kind validation + role re-check + tsc/lint) → SAGE. Migration 0034 applied only on explicit "apply", coordinated with the 0032/#79 chat (#79 = owner/admin write RLS on service_tags+metrics, still open).

@@ -17,6 +17,11 @@ import { createClient } from '@/lib/supabase/server'
 
 export type TagRole = 'ADULT_SERVICE' | 'KIDS_MINISTRY' | 'YOUTH_MINISTRY' | 'OTHER'
 
+/** A metric is either typed at its node ('entry') or sums its children ('rollup'). */
+export type MetricMode = 'entry' | 'rollup'
+/** Aggregation a roll-up applies over the children that point at it. */
+export type RollupOp = 'sum' | 'avg' | 'max'
+
 export interface ActionResult<T = void> {
   ok: boolean
   data?: T
@@ -47,6 +52,63 @@ async function requireOwnerAdmin(supabase: Awaited<ReturnType<typeof createClien
   if (!membership) throw new Error('No membership found')
   if (membership.role !== 'owner' && membership.role !== 'admin') throw new Error('Forbidden')
   return membership.church_id as string
+}
+
+/**
+ * Set of node ids that are ANCESTORS of `tagId` (walking parent_tag_id upward).
+ * Server mirror of page.tsx's downward descendantIds. Cycle-guarded.
+ */
+async function ancestorTagIds(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  churchId: string,
+  tagId: string,
+): Promise<Set<string>> {
+  const { data } = await supabase
+    .from('service_tags')
+    .select('id, parent_tag_id')
+    .eq('church_id', churchId)
+  const parentOf = new Map<string, string | null>()
+  for (const r of (data ?? []) as { id: string; parent_tag_id: string | null }[]) {
+    parentOf.set(r.id, r.parent_tag_id)
+  }
+  const out = new Set<string>()
+  let cur = parentOf.get(tagId) ?? null
+  while (cur && !out.has(cur)) {
+    out.add(cur)
+    cur = parentOf.get(cur) ?? null
+  }
+  return out
+}
+
+/**
+ * Validate that an entry metric on (childTagId, childReportingTagId) may point at
+ * roll-up `parentMetricId`. Returns an error message, or null if the link is valid.
+ * Rules: parent is an active roll-up in the same church, of the SAME Kind, living
+ * on an ANCESTOR node of the child. (These need a parent_tag_id walk, so they are
+ * enforced here rather than in SQL.)
+ */
+async function validateParentLink(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  churchId: string,
+  childTagId: string,
+  childReportingTagId: string,
+  parentMetricId: string,
+): Promise<string | null> {
+  const { data: parent } = await supabase
+    .from('metrics')
+    .select('id, church_id, reporting_tag_id, ministry_tag_id, mode, is_active')
+    .eq('id', parentMetricId)
+    .eq('church_id', churchId)
+    .maybeSingle()
+  if (!parent) return 'That roll-up no longer exists.'
+  if (!parent.is_active) return 'That roll-up has been removed.'
+  if (parent.mode !== 'rollup') return 'You can only point a count at a roll-up.'
+  if (parent.reporting_tag_id !== childReportingTagId) return 'A count can only roll up into the same kind.'
+  const ancestors = await ancestorTagIds(supabase, churchId, childTagId)
+  if (!ancestors.has(parent.ministry_tag_id as string)) {
+    return 'A count can only roll up into a group above it.'
+  }
+  return null
 }
 
 // ── createMinistry ────────────────────────────────────────────────────────
@@ -113,11 +175,52 @@ export async function createMinistry(params: {
     if (error || !data) return { ok: false, error: error?.message ?? 'Insert failed' }
     const node = data as MinistryNode
 
+    // If an ancestor already has an active ATTENDANCE roll-up, auto-wire the
+    // new node's seeded Attendance into it (the common case needs no manual
+    // pointing; the user can still unwire it). Pick the NEAREST such ancestor.
+    let autoParentMetricId: string | null = null
+    if (node.parent_tag_id) {
+      const { data: attRt } = await supabase
+        .from('reporting_tags')
+        .select('id')
+        .eq('church_id', churchId)
+        .eq('code', 'ATTENDANCE')
+        .maybeSingle()
+      if (attRt) {
+        const ancestors = await ancestorTagIds(supabase, churchId, node.id)
+        if (ancestors.size > 0) {
+          const { data: rollups } = await supabase
+            .from('metrics')
+            .select('id, ministry_tag_id')
+            .eq('church_id', churchId)
+            .eq('reporting_tag_id', attRt.id as string)
+            .eq('mode', 'rollup')
+            .eq('is_active', true)
+            .in('ministry_tag_id', Array.from(ancestors))
+          // nearest ancestor wins — walk up from the node's parent
+          const byTag = new Map<string, string>()
+          for (const r of (rollups ?? []) as { id: string; ministry_tag_id: string }[]) byTag.set(r.ministry_tag_id, r.id)
+          if (byTag.size > 0) {
+            const { data: tagRows } = await supabase
+              .from('service_tags').select('id, parent_tag_id').eq('church_id', churchId)
+            const parentOf = new Map<string, string | null>()
+            for (const t of (tagRows ?? []) as { id: string; parent_tag_id: string | null }[]) parentOf.set(t.id, t.parent_tag_id)
+            let cur: string | null = node.parent_tag_id
+            while (cur) {
+              if (byTag.has(cur)) { autoParentMetricId = byTag.get(cur)!; break }
+              cur = parentOf.get(cur) ?? null
+            }
+          }
+        }
+      }
+    }
+
     // Auto-seed Attendance count via addCount (respects C2 canonical guard)
     await addCount({
       ministryId: node.id,
       reportingTagCode: 'ATTENDANCE',
       name: `${name} Attendance`,
+      parentMetricId: autoParentMetricId,
     })
 
     return { ok: true, data: node }
@@ -201,12 +304,20 @@ export interface MetricRow {
   reporting_tag_id: string
   is_canonical: boolean
   is_active: boolean
+  mode: MetricMode
+  rollup_op: RollupOp | null
+  parent_metric_id: string | null
 }
+
+const METRIC_SELECT = 'id, code, name, reporting_tag_id, is_canonical, is_active, mode, rollup_op, parent_metric_id'
 
 export async function addCount(params: {
   ministryId: string
   reportingTagCode: string   // 'ATTENDANCE' | 'VOLUNTEERS' | 'RESPONSE_STAT'
   name: string
+  mode?: MetricMode          // default 'entry'
+  rollupOp?: RollupOp        // used when mode='rollup' (default 'sum')
+  parentMetricId?: string | null  // entry only: the roll-up this count feeds
 }): Promise<ActionResult<MetricRow>> {
   try {
     const supabase = await createClient()
@@ -214,6 +325,8 @@ export async function addCount(params: {
 
     const name = params.name.trim()
     if (!name) return { ok: false, error: 'Name is required' }
+
+    const mode: MetricMode = params.mode ?? 'entry'
 
     // Resolve reporting_tag id from code
     const { data: rtag } = await supabase
@@ -225,6 +338,14 @@ export async function addCount(params: {
     if (!rtag) return { ok: false, error: `Reporting tag ${params.reportingTagCode} not found` }
 
     const reportingTagId = rtag.id as string
+
+    // Roll-up fields. Only entry metrics may point up; roll-ups carry an op.
+    const rollupOp: RollupOp | null = mode === 'rollup' ? (params.rollupOp ?? 'sum') : null
+    const parentMetricId: string | null = mode === 'entry' ? (params.parentMetricId ?? null) : null
+    if (parentMetricId) {
+      const err = await validateParentLink(supabase, churchId, params.ministryId, reportingTagId, parentMetricId)
+      if (err) return { ok: false, error: err }
+    }
 
     // C2: check for existing active canonical for (church, ministry, kind)
     const { data: existingCanonical } = await supabase
@@ -270,11 +391,127 @@ export async function addCount(params: {
         name,
         is_canonical: isCanonical,
         is_active: true,
+        mode,
+        rollup_op: rollupOp,
+        parent_metric_id: parentMetricId,
       })
-      .select('id, code, name, reporting_tag_id, is_canonical, is_active')
+      .select(METRIC_SELECT)
       .single()
 
     if (error || !data) return { ok: false, error: error?.message ?? 'Insert failed' }
+    return { ok: true, data: data as MetricRow }
+  } catch (e) {
+    return { ok: false, error: (e as Error).message }
+  }
+}
+
+// ── setMetricMode ──────────────────────────────────────────────────────────
+// Flip a metric between 'entry' (typed) and 'rollup' (sums children).
+//  • entry → rollup: set rollup_op (default 'sum'), clear parent_metric_id.
+//  • rollup → entry: blocked while active children still point at it.
+export async function setMetricMode(
+  metricId: string,
+  mode: MetricMode,
+  rollupOp?: RollupOp,
+): Promise<ActionResult<MetricRow>> {
+  try {
+    const supabase = await createClient()
+    const churchId = await requireOwnerAdmin(supabase)
+
+    const update: Record<string, unknown> = { mode }
+    if (mode === 'rollup') {
+      update.rollup_op = rollupOp ?? 'sum'
+      update.parent_metric_id = null
+    } else {
+      // rollup → entry: refuse if children still reference it
+      const { count } = await supabase
+        .from('metrics')
+        .select('id', { count: 'exact', head: true })
+        .eq('church_id', churchId)
+        .eq('parent_metric_id', metricId)
+        .eq('is_active', true)
+      if ((count ?? 0) > 0) {
+        return { ok: false, error: 'Detach the counts pointing at this first.' }
+      }
+      update.rollup_op = null
+    }
+
+    const { data, error } = await supabase
+      .from('metrics')
+      .update(update)
+      .eq('id', metricId)
+      .eq('church_id', churchId)
+      .select(METRIC_SELECT)
+      .single()
+
+    if (error || !data) return { ok: false, error: error?.message ?? 'Update failed' }
+    return { ok: true, data: data as MetricRow }
+  } catch (e) {
+    return { ok: false, error: (e as Error).message }
+  }
+}
+
+// ── setMetricParent ──────────────────────────────────────────────────────────
+// Point an entry metric at a roll-up (or pass null to unwire / "stays local").
+export async function setMetricParent(
+  metricId: string,
+  parentMetricId: string | null,
+): Promise<ActionResult<MetricRow>> {
+  try {
+    const supabase = await createClient()
+    const churchId = await requireOwnerAdmin(supabase)
+
+    const { data: child } = await supabase
+      .from('metrics')
+      .select('id, reporting_tag_id, ministry_tag_id, mode')
+      .eq('id', metricId)
+      .eq('church_id', churchId)
+      .maybeSingle()
+    if (!child) return { ok: false, error: 'Count not found.' }
+    if (child.mode !== 'entry') return { ok: false, error: 'Only a typed count can roll up.' }
+
+    if (parentMetricId) {
+      const err = await validateParentLink(
+        supabase, churchId,
+        child.ministry_tag_id as string,
+        child.reporting_tag_id as string,
+        parentMetricId,
+      )
+      if (err) return { ok: false, error: err }
+    }
+
+    const { data, error } = await supabase
+      .from('metrics')
+      .update({ parent_metric_id: parentMetricId })
+      .eq('id', metricId)
+      .eq('church_id', churchId)
+      .select(METRIC_SELECT)
+      .single()
+
+    if (error || !data) return { ok: false, error: error?.message ?? 'Update failed' }
+    return { ok: true, data: data as MetricRow }
+  } catch (e) {
+    return { ok: false, error: (e as Error).message }
+  }
+}
+
+// ── setRollupOp ──────────────────────────────────────────────────────────────
+// Change a roll-up's aggregation operation (sum / avg / max).
+export async function setRollupOp(metricId: string, rollupOp: RollupOp): Promise<ActionResult<MetricRow>> {
+  try {
+    const supabase = await createClient()
+    const churchId = await requireOwnerAdmin(supabase)
+
+    const { data, error } = await supabase
+      .from('metrics')
+      .update({ rollup_op: rollupOp })
+      .eq('id', metricId)
+      .eq('church_id', churchId)
+      .eq('mode', 'rollup')
+      .select(METRIC_SELECT)
+      .single()
+
+    if (error || !data) return { ok: false, error: error?.message ?? 'Update failed' }
     return { ok: true, data: data as MetricRow }
   } catch (e) {
     return { ok: false, error: (e as Error).message }
