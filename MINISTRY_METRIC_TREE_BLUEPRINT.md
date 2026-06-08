@@ -124,6 +124,7 @@ Two independent read-only reviews (AXIOM+STRATA on claims/schema; STEEL+QUINN+NO
 - **C5:** `ATTENDANCE.agg_default = avg` (the other 3 Kinds = sum). Tree/Kind UI + any rollup must respect it.
 
 **Blockers — Phase 2 only (Phase 1 is unaffected)**
+- **B1 — DECIDED 2026-06-07: Option B** (separate "Weekly ministries" section — keeps numbers clean, avoids double-counting people who attend both a service and a group). Below is the original framing.
 - **B1 (BLOCKER for weekly):** period-scoped **ATTENDANCE has no path to the dashboard/History today** — only GIVING has a period fallback in `dashboard.ts`; attendance is 100% occurrence-based. So Life Groups *weekly* attendance would be **entered-but-invisible (reported as 0).** Before S2/Life-Groups ships, DECIDE the mechanism: (a) add a period-attendance fetch to `fetchDashboardData()` and merge into the weekly maps, or **(b) a separate "Weekly ministries" section (recommended — cleaner, no double-count).**
 - **B2:** Life Groups scope rework is a **data migration**, not a value tweak — flip existing metrics `instance→period` AND migrate/clear their existing `metric_entries` (XOR constraint).
 
