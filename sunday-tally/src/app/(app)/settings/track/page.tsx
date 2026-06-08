@@ -27,7 +27,6 @@ import {
   addCount,
   renameCount,
   deactivateCount,
-  reorderCounts,
 } from './actions'
 import type { TagRole, MetricRow } from './actions'
 
@@ -123,12 +122,12 @@ export default function TrackPage() {
     if (minIds.length > 0) {
       const { data: metricRows } = await supabase
         .from('metrics')
-        .select('id, code, name, reporting_tag_id, is_canonical, is_active, display_order, ministry_tag_id')
+        .select('id, code, name, reporting_tag_id, is_canonical, is_active, ministry_tag_id')
         .eq('church_id', cid)
         .eq('is_active', true)
         .eq('scope', 'instance')
         .in('ministry_tag_id', minIds)
-        .order('display_order', { ascending: true })
+        .order('is_canonical', { ascending: false })
 
       type MetricWithMin = MetricRow & { ministry_tag_id: string }
       const grouped: Record<string, CountsByKind> = {}
@@ -137,7 +136,7 @@ export default function TrackPage() {
         const kinds = grouped[m.ministry_tag_id]
         // group by reporting_tag_id
         if (!kinds[m.reporting_tag_id]) kinds[m.reporting_tag_id] = []
-        kinds[m.reporting_tag_id].push({ id: m.id, code: m.code, name: m.name, reporting_tag_id: m.reporting_tag_id, is_canonical: m.is_canonical, is_active: m.is_active, display_order: m.display_order })
+        kinds[m.reporting_tag_id].push({ id: m.id, code: m.code, name: m.name, reporting_tag_id: m.reporting_tag_id, is_canonical: m.is_canonical, is_active: m.is_active })
       }
       setCountsByMinistry(grouped)
     } else {
@@ -286,23 +285,6 @@ export default function TrackPage() {
       copy[ministryId] = kinds
       return copy
     })
-  }
-
-  async function handleReorder(ministryId: string, rtId: string, fromIdx: number, dir: -1 | 1) {
-    const list = [...(countsByMinistry[ministryId]?.[rtId] ?? [])]
-    const toIdx = fromIdx + dir
-    if (toIdx < 0 || toIdx >= list.length) return
-    const tmp = list[fromIdx]; list[fromIdx] = list[toIdx]; list[toIdx] = tmp
-    // Optimistic update
-    setCountsByMinistry(prev => {
-      const copy = { ...prev }
-      const kinds = { ...(copy[ministryId] ?? {}) }
-      kinds[rtId] = list
-      copy[ministryId] = kinds
-      return copy
-    })
-    // Persist
-    await reorderCounts(list.map(m => m.id))
   }
 
   // ── Rendering ────────────────────────────────────────────────────────────
@@ -456,7 +438,6 @@ export default function TrackPage() {
                     onAddCount={(rtCode, name) => handleAddCount(selected.id, rtCode, name)}
                     onRenameCount={(rtId, metricId, name) => handleRenameCount(selected.id, rtId, metricId, name)}
                     onDeactivateCount={(rtId, metricId) => handleDeactivateCount(selected.id, rtId, metricId)}
-                    onReorder={(rtId, fromIdx, dir) => handleReorder(selected.id, rtId, fromIdx, dir)}
                   />
                 )}
               </div>
@@ -608,7 +589,7 @@ function MinistryTreeNode({
 function DetailPanel({
   ministry, write, countsByMinistry, reportingTags,
   onRename, onRoleChange, onDeactivate,
-  onAddCount, onRenameCount, onDeactivateCount, onReorder,
+  onAddCount, onRenameCount, onDeactivateCount,
 }: {
   ministry: Ministry
   write: boolean
@@ -620,7 +601,6 @@ function DetailPanel({
   onAddCount: (rtCode: string, name: string) => Promise<void>
   onRenameCount: (rtId: string, metricId: string, name: string) => Promise<void>
   onDeactivateCount: (rtId: string, metricId: string) => Promise<void>
-  onReorder: (rtId: string, fromIdx: number, dir: -1 | 1) => Promise<void>
 }) {
   return (
     <div className="space-y-4">
@@ -696,7 +676,6 @@ function DetailPanel({
             onAddCount={name => onAddCount(kindCode, name)}
             onRenameCount={(metricId, name) => onRenameCount(rt.id, metricId, name)}
             onDeactivateCount={metricId => onDeactivateCount(rt.id, metricId)}
-            onReorder={(fromIdx, dir) => onReorder(rt.id, fromIdx, dir)}
           />
         )
       })}
@@ -710,7 +689,7 @@ function DetailPanel({
 
 function KindSection({
   kindCode, kindLabel, counts, write,
-  onAddCount, onRenameCount, onDeactivateCount, onReorder,
+  onAddCount, onRenameCount, onDeactivateCount,
 }: {
   kindCode: KindCode
   kindLabel: string
@@ -720,7 +699,6 @@ function KindSection({
   onAddCount: (name: string) => Promise<void>
   onRenameCount: (metricId: string, name: string) => Promise<void>
   onDeactivateCount: (metricId: string) => Promise<void>
-  onReorder: (fromIdx: number, dir: -1 | 1) => Promise<void>
 }) {
   const [addingCount, setAddingCount] = useState(false)
   const [countName, setCountName] = useState('')
@@ -762,17 +740,13 @@ function KindSection({
         </div>
       ) : (
         <ul className="divide-y divide-slate-50">
-          {counts.map((metric, i) => (
+          {counts.map((metric) => (
             <CountRow
               key={metric.id}
               metric={metric}
-              index={i}
-              total={counts.length}
               write={write}
               onRename={name => onRenameCount(metric.id, name)}
               onDeactivate={() => onDeactivateCount(metric.id)}
-              onMoveUp={() => onReorder(i, -1)}
-              onMoveDown={() => onReorder(i, 1)}
             />
           ))}
         </ul>
@@ -831,17 +805,13 @@ function KindSection({
 // ─────────────────────────────────────────────────────────────────────────
 
 function CountRow({
-  metric, index, total, write,
-  onRename, onDeactivate, onMoveUp, onMoveDown,
+  metric, write,
+  onRename, onDeactivate,
 }: {
   metric: MetricRow
-  index: number
-  total: number
   write: boolean
   onRename: (name: string) => Promise<void>
   onDeactivate: () => void
-  onMoveUp: () => void
-  onMoveDown: () => void
 }) {
   const [confirmRemove, setConfirmRemove] = useState(false)
 
@@ -866,24 +836,6 @@ function CountRow({
 
       {write && (
         <div className="flex shrink-0 items-center gap-1">
-          {/* E-8 ▴▾ reorder */}
-          <button
-            onClick={onMoveUp}
-            disabled={index === 0}
-            aria-label="Move up"
-            className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-300 transition-colors hover:bg-slate-100 hover:text-slate-600 disabled:cursor-not-allowed disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/40"
-          >
-            <Ico.up className="h-4 w-4" />
-          </button>
-          <button
-            onClick={onMoveDown}
-            disabled={index === total - 1}
-            aria-label="Move down"
-            className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-300 transition-colors hover:bg-slate-100 hover:text-slate-600 disabled:cursor-not-allowed disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/40"
-          >
-            <Ico.down className="h-4 w-4" />
-          </button>
-
           {/* E-8 Remove — amber confirm, no red (DS-2) */}
           {confirmRemove ? (
             <span className="flex items-center gap-1">

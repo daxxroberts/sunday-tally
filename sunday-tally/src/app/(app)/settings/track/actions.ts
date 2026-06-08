@@ -201,7 +201,6 @@ export interface MetricRow {
   reporting_tag_id: string
   is_canonical: boolean
   is_active: boolean
-  display_order: number | null
 }
 
 export async function addCount(params: {
@@ -260,16 +259,6 @@ export async function addCount(params: {
     let s = 1
     while (haveCodes.has(metricCode)) { metricCode = `${tagCode}_${baseSuffix}_${s}`; s++ }
 
-    // display_order: append within this ministry+kind
-    const { count: orderCount } = await supabase
-      .from('metrics')
-      .select('id', { count: 'exact', head: true })
-      .eq('church_id', churchId)
-      .eq('ministry_tag_id', params.ministryId)
-      .eq('reporting_tag_id', reportingTagId)
-      .eq('is_active', true)
-    const display_order = (orderCount ?? 0)
-
     const { data, error } = await supabase
       .from('metrics')
       .insert({
@@ -281,9 +270,8 @@ export async function addCount(params: {
         name,
         is_canonical: isCanonical,
         is_active: true,
-        display_order,
       })
-      .select('id, code, name, reporting_tag_id, is_canonical, is_active, display_order')
+      .select('id, code, name, reporting_tag_id, is_canonical, is_active')
       .single()
 
     if (error || !data) return { ok: false, error: error?.message ?? 'Insert failed' }
@@ -338,30 +326,3 @@ export async function deactivateCount(metricId: string): Promise<ActionResult> {
   }
 }
 
-// ── reorderCounts ─────────────────────────────────────────────────────────
-// E-8 ▴▾: rewrite display_order for an ordered list of metric ids
-// ids[] must be all metrics in the same kind section (caller responsibility)
-
-export async function reorderCounts(ids: string[]): Promise<ActionResult> {
-  try {
-    const supabase = await createClient()
-    const churchId = await requireOwnerAdmin(supabase)
-
-    if (ids.length === 0) return { ok: true }
-
-    const results = await Promise.all(
-      ids.map((id, i) =>
-        supabase
-          .from('metrics')
-          .update({ display_order: i })
-          .eq('id', id)
-          .eq('church_id', churchId)
-      )
-    )
-    const failed = results.find(r => r.error)
-    if (failed?.error) return { ok: false, error: failed.error.message }
-    return { ok: true }
-  } catch (e) {
-    return { ok: false, error: (e as Error).message }
-  }
-}
