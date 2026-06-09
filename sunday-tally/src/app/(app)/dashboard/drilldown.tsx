@@ -31,9 +31,6 @@ function fmtWeek(sunday: string): string {
 function fmtWeekFull(sunday: string): string {
   return new Date(sunday + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
-function fmtDay(d: string): string {
-  return new Date(d + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
-}
 
 // ── hand-rolled two-line SVG chart (current vs prior YTD) ─────────────────────
 function YtdChart({ series, prefix, suffix }: { series: MetricSeries; prefix?: string; suffix?: string }) {
@@ -177,40 +174,6 @@ export function DrillDownDrawer({
                 <StatPill label="Curr YTD" value={series.ytdAvg} prefix={prefix} suffix={suffix} strong={triggerWindow === 'ytd'} />
                 <StatPill label="Prior YTD" value={series.priorYtdAvg} prefix={prefix} suffix={suffix} strong={triggerWindow === 'priorYtd'} />
               </div>
-
-              {/* ── 4-week grid (sittings) ── */}
-              <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-                <div className="flex items-center justify-between border-b border-slate-100 px-4 py-2.5">
-                  <h3 className="text-[12px] font-bold tracking-tight text-slate-900">Last 4 weeks</h3>
-                  <span className="font-num text-[11px] text-slate-400">avg <span className="font-semibold text-slate-700">{fmtVal(series.fourWeekAvg, prefix, suffix)}</span></span>
-                </div>
-                <div>
-                  {series.weeks.map(wk => (
-                    <div key={wk.weekStart} className="border-b border-slate-50 px-4 py-2 last:border-b-0">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[12px] font-semibold text-slate-700">
-                          Wk of {fmtWeek(wk.weekStart)}
-                          {wk.inProgress && <span className="ml-1.5 rounded-full bg-slate-100 px-1.5 py-0.5 text-[9px] font-semibold text-slate-400">in progress</span>}
-                        </span>
-                        <span className="font-num text-[13px] font-bold text-slate-900">{fmtVal(wk.weekTotal, prefix, suffix)}</span>
-                      </div>
-                      {series.hasSittings && wk.sittings.length > 0 && (
-                        <div className="mt-1 space-y-0.5 pl-3">
-                          {wk.sittings.map((sv, i) => (
-                            <div key={sv.occurrenceId + i} className="flex items-center justify-between text-[11px] text-slate-500">
-                              <span className="truncate">{sv.label} · {fmtDay(sv.serviceDate)}</span>
-                              <span className="font-num text-slate-600">{fmtVal(sv.value, prefix, suffix)}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                      {series.hasSittings && wk.sittings.length === 0 && !wk.inProgress && (
-                        <p className="mt-0.5 pl-3 text-[11px] text-slate-300">No data this week</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </section>
 
               {/* ── YTD chart + weekly grid ── */}
               <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
