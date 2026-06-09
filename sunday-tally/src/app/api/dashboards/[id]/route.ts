@@ -111,13 +111,21 @@ export async function GET(
   //    D-088). ?campus=<uuid> overrides it; ?campus=all shows every campus. A
   //    one-campus church (or a user with no default) → all campuses (undefined).
   //    Giving is church-wide and ignores this scope (handled in the compiler).
-  const campusParam = new URL(req.url).searchParams.get('campus')
+  const url = new URL(req.url)
+  const campusParam = url.searchParams.get('campus')
   const defaultLoc = (membership as { default_location_id?: string | null }).default_location_id ?? null
   const locationIds: string[] | undefined =
     campusParam === 'all' ? undefined
     : campusParam ? [campusParam]
     : defaultLoc ? [defaultLoc]
     : undefined
+
+  // Global date filter (dashboard-level): ?from=YYYY-MM-DD&to=YYYY-MM-DD overrides
+  // every widget's own window so the whole board reports the same range.
+  const fromParam = url.searchParams.get('from')
+  const toParam = url.searchParams.get('to')
+  const windowOverride =
+    fromParam && toParam ? ({ window: 'custom' as const, start: fromParam, end: toParam }) : undefined
 
   // ── Load the dashboard (RLS-scoped; church_id pinned as defense in depth). RLS
   //    already filters to dashboards the caller may see — church-scope rows for any
@@ -217,7 +225,7 @@ export async function GET(
       }
       const spec: WidgetSpec = validation.spec
 
-      const result = await compileAndRun({ supabase, churchId, spec, now, locationIds })
+      const result = await compileAndRun({ supabase, churchId, spec, now, locationIds, windowOverride })
       if (result.error) {
         // Unsupported plan / runtime guard tripped — still return the resolved
         // window + facts so the flip-to-explain panel works, but flag the error.

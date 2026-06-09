@@ -754,13 +754,19 @@ export async function compileAndRun(args: {
    * campuses. Requires migration 0035 (location_id on the views).
    */
   locationIds?: string[]
+  /**
+   * Dashboard-level date override (the global date filter). When set, it replaces
+   * the widget's own window for this run — every widget on the dashboard reports
+   * the same range. Omit to use each widget's stored (relative) window.
+   */
+  windowOverride?: DateWindow
 }): Promise<{
   rows: Record<string, unknown>[]
   resolved: { start: string; end: string }
   shape: string
   error?: string
 }> {
-  const { supabase, churchId, spec, now, locationIds } = args
+  const { supabase, churchId, spec, now, locationIds, windowOverride } = args
 
   // 0. Prior-year comparison — re-run the SAME relative window against now − 1 year,
   //    then merge. One level of recursion (inner runs clear `compare`).
@@ -769,14 +775,16 @@ export async function compileAndRun(args: {
     const priorNow = new Date(now)
     priorNow.setFullYear(priorNow.getFullYear() - 1)
     const [cur, prior] = await Promise.all([
-      compileAndRun({ supabase, churchId, spec: base, now, locationIds }),
-      compileAndRun({ supabase, churchId, spec: base, now: priorNow, locationIds }),
+      compileAndRun({ supabase, churchId, spec: base, now, locationIds, windowOverride }),
+      compileAndRun({ supabase, churchId, spec: base, now: priorNow, locationIds, windowOverride }),
     ])
     return mergeCompare(cur, prior)
   }
 
-  // 1. Resolve the window (relative → absolute, against the server's now).
-  const window = spec.filters?.date ?? { window: 'trailing' as const, count: 12, unit: 'month' as const }
+  // 1. Resolve the window (relative → absolute, against the server's now). A
+  //    dashboard-level windowOverride (the global date filter) wins over the
+  //    widget's stored window so every widget reports the same range.
+  const window = windowOverride ?? spec.filters?.date ?? { window: 'trailing' as const, count: 12, unit: 'month' as const }
   const resolved = resolveWindow(window, now)
 
   // 2. Choose the source plan + reject unsupported categorical dims for this view.
