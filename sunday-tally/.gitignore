@@ -40,3 +40,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# throwaway widget mockups — service-role + demo data, never ship
+/mockup-widgets.png
+/screenshot-mockup.mjs
+src/app/mockup/widgets/
+src/app/mockup/tremor/
