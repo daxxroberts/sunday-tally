@@ -90,6 +90,10 @@ HARD RULES:
   - If a request can't be expressed (see CAPABILITY LIMITS), say so plainly in final_answer — don't build a wrong-but-plausible widget.
   - church_id is added automatically on the server — never ask for it or put it in a spec.`
 
+// Appended to the system prompt ONLY when the request carries an open dashboard,
+// so the model knows saves auto-place and need not ask which dashboard to use.
+const PLACEMENT_NOTE = `A dashboard is currently OPEN in front of the user. When you call save_widget, the server automatically adds the saved widget to that open dashboard — you do NOT need to ask which dashboard to use, request a dashboard_id, or set dashboard_id yourself. Save once the user is happy, then tell them it's been added to their dashboard.`
+
 // Roles allowed to build widgets; viewers are forbidden (mirror analytics).
 // Manager-tier roles save into the shared church library; others save private.
 const MANAGER_ROLES = new Set(['owner', 'admin', 'editor'])
@@ -110,9 +114,20 @@ export async function POST(req: Request) {
   if (!membership) return new Response('no_church', { status: 403 })
   if (membership.role === 'viewer') return new Response('forbidden', { status: 403 })
 
-  const body = await req.json() as { message?: string; history?: { role: 'user' | 'assistant'; content: string }[] }
+  const body = await req.json() as {
+    message?: string
+    history?: { role: 'user' | 'assistant'; content: string }[]
+    dashboard_id?: string
+  }
   const userMessage = String(body.message ?? '').trim()
   if (!userMessage) return new Response('empty_message', { status: 400 })
+
+  // The dashboard the UI has open — pinned from the body ONLY as a placement hint
+  // (UUID-shape gate; a malformed value is ignored → library-only save). church_id,
+  // scope and owner are NEVER taken from the body; they come from the session below.
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  const placementDashboardId =
+    typeof body.dashboard_id === 'string' && UUID_RE.test(body.dashboard_id) ? body.dashboard_id : null
 
   const history = (body.history ?? [])
     .filter(m => m.role === 'user' || m.role === 'assistant')
@@ -139,6 +154,7 @@ export async function POST(req: Request) {
         userId: user!.id,
         defaultScope,
         send,
+        placementDashboardId,
       })
 
       try {
@@ -150,7 +166,11 @@ export async function POST(req: Request) {
           // this file scope) — see report.
           kind:    'analytics_chat',
           model:   'claude-sonnet-4-6',
-          system:  [{ type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } }],
+          system:  [{
+            type: 'text',
+            text: placementDashboardId ? `${SYSTEM_PROMPT}\n\n${PLACEMENT_NOTE}` : SYSTEM_PROMPT,
+            cache_control: { type: 'ephemeral' },
+          }],
           tools:   WIDGET_BUILDER_TOOLS,
           handlers,
           terminateOn: ['final_answer'],

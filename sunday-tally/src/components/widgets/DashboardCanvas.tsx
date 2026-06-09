@@ -24,10 +24,9 @@
  * DESIGN_SYSTEM: brand #4F6EF7, rounded-2xl, SVG icons, amber (not red) for
  * destructive/attention, Fira numerals via tabular-nums on values.
  */
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Responsive as ResponsiveGridLayout,
-  useContainerWidth,
   type Layout,
   type LayoutItem,
 } from 'react-grid-layout'
@@ -113,7 +112,22 @@ export function DashboardCanvas() {
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
 
-  const { width, containerRef, mounted } = useContainerWidth({ measureBeforeMount: true })
+  // Width measure that survives the grid container mounting AFTER data loads (it's
+  // conditional on widgets.length). A callback ref measures on attach; a resize
+  // listener keeps it responsive. (react-grid-layout v2's useContainerWidth does
+  // not re-attach to a container that appears post-mount → blank grid on first load.)
+  const nodeRef = useRef<HTMLDivElement | null>(null)
+  const [width, setWidth] = useState(0)
+  const mounted = width > 0
+  const setContainer = useCallback((node: HTMLDivElement | null) => {
+    nodeRef.current = node
+    if (node) setWidth(node.offsetWidth)
+  }, [])
+  useEffect(() => {
+    const onResize = () => nodeRef.current && setWidth(nodeRef.current.offsetWidth)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
 
   // ── boot: dashboards (+ default), library, campuses ──
   useEffect(() => {
@@ -431,7 +445,7 @@ export function DashboardCanvas() {
           ) : widgets.length === 0 ? (
             <EmptyBoard onAdd={() => setLibOpen(true)} onBuild={() => setChatOpen(true)} hasLibrary={library.length > 0} />
           ) : (
-            <div ref={containerRef}>
+            <div ref={setContainer}>
               {mounted && (
                 <ResponsiveGridLayout
                   width={width}

@@ -125,7 +125,7 @@ export const SAVE_WIDGET_TOOL: Anthropic.Messages.Tool = {
       title:       { type: 'string', description: 'Short human title for the widget, e.g. "Attendance — last 12 months".' },
       query_spec:  { type: 'object', description: 'The same validated WidgetSpec JSON used in build_widget.' },
       viz_config:  { type: 'object', description: 'The viz config to store ({ kind, xKey?, yKeys?, title }).' },
-      dashboard_id:{ type: 'string', description: 'Optional dashboard UUID to also place this widget on. Omit to only add it to the library.' },
+      dashboard_id:{ type: 'string', description: 'Optional. Usually OMIT this — when a dashboard is open the server automatically places the saved widget on it. Only set it to a dashboard UUID if you need to target a DIFFERENT dashboard than the one the user has open.' },
     },
     required: ['title', 'query_spec'],
   },
@@ -236,6 +236,13 @@ export interface WidgetToolDeps {
   defaultScope: 'church' | 'user'
   /** SSE emitter from the route. */
   send:         SendEvent
+  /**
+   * The dashboard currently OPEN in the UI, pinned by the route from the request
+   * body (UUID-validated there). When save_widget runs and the model did NOT name
+   * a dashboard_id itself, we fall back to this so the saved widget auto-lands on
+   * the open board. null/undefined = no open dashboard → library-only save.
+   */
+  placementDashboardId?: string | null
 }
 
 /**
@@ -245,7 +252,7 @@ export interface WidgetToolDeps {
  * via the closure since runToolLoop's ctx carries only churchId + supabase.
  */
 export function makeWidgetHandlers(deps: WidgetToolDeps) {
-  const { userId, defaultScope, send } = deps
+  const { userId, defaultScope, send, placementDashboardId } = deps
 
   return {
     probe_data: async (input: Record<string, unknown>, ctx: { supabase: SupabaseClient; churchId: string }) => {
@@ -323,7 +330,12 @@ export function makeWidgetHandlers(deps: WidgetToolDeps) {
     save_widget: async (input: Record<string, unknown>, ctx: { supabase: SupabaseClient; churchId: string }) => {
       const title       = String(input.title ?? '').trim()
       const rawSpec     = (input.query_spec ?? {}) as Record<string, unknown>
-      const dashboardId = input.dashboard_id ? String(input.dashboard_id) : null
+      // The model MAY name a dashboard_id; if it doesn't, fall back to the open
+      // dashboard the route pinned from the request body so the widget still
+      // auto-places on the board the user is looking at. church_id/scope/owner
+      // stay server-injected below — only the placement target is hinted.
+      const aiDashboardId = input.dashboard_id ? String(input.dashboard_id) : null
+      const dashboardId   = aiDashboardId ?? placementDashboardId ?? null
 
       // Re-validate before persisting — never store an unvalidated spec.
       const parsed = validateSpec(rawSpec)
