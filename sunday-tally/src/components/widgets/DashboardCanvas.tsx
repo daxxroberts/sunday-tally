@@ -276,6 +276,25 @@ export function DashboardCanvas() {
     [activeId, replay],
   )
 
+  // ── persist the grid arrangement (drag/resize) back to dashboard_widgets.layout
+  //    so it survives a reload. Fires on drag/resize STOP only — never on mount or
+  //    mid-drag. Best-effort: the grid already shows the new positions locally. ──
+  const persistLayout = useCallback(
+    (items: LayoutItem[]) => {
+      if (!activeId) return
+      void Promise.allSettled(
+        items.map((it) =>
+          fetch(`/api/dashboards/${activeId}/widgets`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ widget_id: it.i, layout: { x: it.x, y: it.y, w: it.w, h: it.h } }),
+          }),
+        ),
+      )
+    },
+    [activeId],
+  )
+
   // ── ✎ edit a widget → open the chat seeded ──
   const editWidget = useCallback((w: ReplayWidget) => {
     setChatOpen(true)
@@ -458,6 +477,8 @@ export function DashboardCanvas() {
                   dragConfig={{ enabled: editMode, cancel: '.no-drag' }}
                   resizeConfig={{ enabled: editMode }}
                   onLayoutChange={(l: Layout) => setLayout([...l])}
+                  onDragStop={(l: Layout) => { const next = [...l]; setLayout(next); persistLayout(next) }}
+                  onResizeStop={(l: Layout) => { const next = [...l]; setLayout(next); persistLayout(next) }}
                 >
                   {widgets.map((w) => (
                     <div key={w.id} className={editMode ? 'cursor-move rounded-2xl ring-2 ring-[#4F6EF7]/30' : ''}>
