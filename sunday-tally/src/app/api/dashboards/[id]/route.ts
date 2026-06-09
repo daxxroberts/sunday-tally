@@ -17,10 +17,8 @@
 // a graceful per-widget { error } object — it never turns the whole load into a
 // 500. One bad widget cannot blank the dashboard.
 //
-// NOTE: the widgets / dashboards / dashboard_widgets tables are introduced by
-// migration 0033 (NEEDS-APPROVAL, not yet applied). This handler type-checks
-// against the '@/lib/widgets/*' contract; it is live-tested by the brain once
-// 0033 is applied.
+// The widgets / dashboards / dashboard_widgets tables were introduced by migration
+// 0033 (live, alongside 0035) — this replay handler runs for real against them.
 
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'

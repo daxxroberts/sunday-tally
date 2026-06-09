@@ -2,8 +2,8 @@
  * Unit tests for the widget spec compiler (foundation logic).
  *
  * Covers the PURE functions only — resolveWindow, validateSpec, describeSpec.
- * compileAndRun is NOT tested here: it needs a live RLS-backed Supabase and is
- * integration-tested by the brain after migration 0033 lands.
+ * compileAndRun is NOT tested here: it needs a live RLS-backed Supabase, so it is
+ * covered by integration testing against the deployed schema (migrations 0033 + 0035).
  *
  * Timezone note: resolveWindow uses local-calendar primitives (matching
  * dashboard.ts weekStartOf). The fixed anchor below is noon-UTC on Mon 2026-06-08,

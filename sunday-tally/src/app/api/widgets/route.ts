@@ -11,9 +11,8 @@
 // This is a read path — visible to all active members, including viewers — so
 // there is no role gate.
 //
-// NOTE: the widgets table is introduced by migration 0033 (NEEDS-APPROVAL, not
-// yet applied). This handler type-checks against the contract; the brain
-// live-tests it once 0033 is applied.
+// The widgets table was introduced by migration 0033 (live, alongside 0035) — this
+// handler runs for real against it under the caller's RLS.
 
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'

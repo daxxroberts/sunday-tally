@@ -10,7 +10,7 @@ import {
   explainQuery,
   isRollingWindow,
 } from '@/lib/widgets/compile'
-import type { WidgetSpec, VizConfig, DateWindow } from '@/lib/widgets/spec'
+import type { VizConfig, DateWindow } from '@/lib/widgets/spec'
 
 /**
  * widgetTools — the AI tool surface for POST /api/ai/widget-builder (CIRCUIT,
@@ -354,12 +354,9 @@ export function makeWidgetHandlers(deps: WidgetToolDeps) {
       const explainer = buildExplainer(title || viz.title, viz, facts)
 
       // INSERT into `widgets`. church_id / scope / owner / created_by are all
-      // server-injected from the session — NEVER from the AI.
-      //
-      // ⚠ FLAG: the `widgets` and `dashboard_widgets` tables do NOT exist yet —
-      // migration 0033 is unapplied. This insert is wired CORRECTLY against the
-      // CONCEPT §6 column shape but is UNTESTABLE until 0033 is applied. It is
-      // intentionally NOT stubbed away.
+      // server-injected from the session — NEVER from the AI. The `widgets` and
+      // `dashboard_widgets` tables are live (migrations 0033 + 0035) and RLS-scoped
+      // to the session church, so this insert runs for real.
       const ownerUserId = defaultScope === 'user' ? userId : null
       const { data: widget, error: widgetErr } = await ctx.supabase
         .from('widgets')
@@ -383,7 +380,6 @@ export function makeWidgetHandlers(deps: WidgetToolDeps) {
         return {
           saved: false,
           error: widgetErr?.message ?? 'widget_insert_failed',
-          note:  'The widgets table (migration 0033) is not applied yet — saving is expected to fail until it is.',
         }
       }
 
