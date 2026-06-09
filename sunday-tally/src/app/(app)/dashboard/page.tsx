@@ -359,32 +359,6 @@ function TagBlock({
   )
 }
 
-// ── Zone G — Volunteer breakout (E-60..E-62), editor+ only ────────────────────
-function VolunteerBreakoutBlock({ breakout, hideComparisons, windows }: {
-  breakout: DashboardData['volunteerBreakout']
-  hideComparisons: boolean
-  windows: DashboardData['windows']
-}) {
-  return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <CardHeader label="Volunteer Breakout" accentStyle={{ background: '#8B5CF6' }} />
-      <ColumnHeaders windows={windows} />
-      <div>
-        <FourColRow label="Total" sub="calculated" values={breakout.total} hideComparisons={hideComparisons} />
-        {breakout.rows.map(r => (
-          <FourColRow
-            key={r.category_id}
-            label={`${r.tag_id !== 'UNASSIGNED' ? 'Assigned' : 'General'} · ${r.category_name}`}
-            values={r.values}
-            indent
-            hideComparisons={hideComparisons}
-          />
-        ))}
-      </div>
-    </div>
-  )
-}
-
 // ── Zone H — Other stats (church-wide remainder, E-70) ────────────────────────
 function OtherStatsBlock({ rows, hideComparisons, windows, onDrill }: {
   rows: DashboardData['otherStats']
@@ -892,10 +866,8 @@ export default function DashboardPage() {
                     />
                   ))}
 
-                  {/* ── Zone G — Volunteer breakout (E-60..E-62) ────────────── */}
-                  {tracks.tracks_volunteers && (
-                    <VolunteerBreakoutBlock breakout={data.volunteerBreakout} hideComparisons={hideComparisons} windows={data.windows} />
-                  )}
+                  {/* Zone G (church-wide Volunteer breakout) removed 2026-06-08 —
+                     per-ministry volunteers + drill-down replace it; nesting comes in Phase B. */}
 
                   {/* ── Zone H — Other stats (E-70) ─────────────────────────── */}
                   {tracks.tracks_responses && (
