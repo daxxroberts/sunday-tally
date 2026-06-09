@@ -271,6 +271,11 @@ export function validateSpec(
     }
   }
 
+  // compare (optional)
+  if (input.compare !== undefined && input.compare !== 'prior_year') {
+    errors.push("compare must be 'prior_year' if set")
+  }
+
   // viz (required)
   if (!isObj(input.viz)) {
     errors.push('viz must be an object')
@@ -489,9 +494,10 @@ export function explainQuery(spec: WidgetSpec, resolved: { start: string; end: s
   let sql = `SELECT ${selectCols.join(', ')}\nFROM ${table}\nWHERE ${where.join('\n  AND ')}`
   if (groupCols.length) sql += `\nGROUP BY ${groupCols.join(', ')}\nORDER BY ${groupCols.join(', ')}`
   const header =
-    win.window !== 'custom'
+    (win.window !== 'custom'
       ? `-- ROLLING window — recalculated on every load · today it resolves to ${resolved.start} → ${resolved.end}\n`
-      : `-- FIXED window — pinned dates, does NOT move as time passes\n`
+      : `-- FIXED window — pinned dates, does NOT move as time passes\n`) +
+    (spec.compare === 'prior_year' ? '-- + the same window one year earlier (prior-year comparison)\n' : '')
   if (spec.ratio) {
     sql =
       `-- ratio = ${spec.ratio.numerator.reporting_tag_code} ÷ ${spec.ratio.denominator.reporting_tag_code}` +
@@ -696,6 +702,31 @@ function roundTidy(n: number | null): number | null {
   return Math.round(n * 100) / 100
 }
 
+type RunResult = { rows: Record<string, unknown>[]; resolved: { start: string; end: string }; shape: string; error?: string }
+
+/**
+ * Merge a current run with its prior-year run:
+ *   - headline number ({ value })  → { value, prior, delta } (delta = % change)
+ *   - time series (rows w/ bucket)  → each row gains a `prior` value (aligned by
+ *                                     relative position: this-year[i] vs last-year[i])
+ *   - any other shape               → returned unchanged (comparison not defined)
+ */
+function mergeCompare(cur: RunResult, prior: RunResult): RunResult {
+  if (cur.error) return cur
+  const first = cur.rows[0] ?? {}
+  if (cur.rows.length === 1 && 'value' in first && !('bucket' in first)) {
+    const c = num(first.value)
+    const p = num((prior.rows[0] as Record<string, unknown> | undefined)?.value)
+    const delta = c !== null && p !== null && p !== 0 ? roundTidy(((c - p) / p) * 100) : null
+    return { rows: [{ value: c, prior: p, delta }], resolved: cur.resolved, shape: 'value: number; prior: number; delta: number (%)' }
+  }
+  if (cur.rows.length > 0 && 'bucket' in first) {
+    const rows = cur.rows.map((r, i) => ({ ...r, prior: num((prior.rows[i] as Record<string, unknown> | undefined)?.value) }))
+    return { rows, resolved: cur.resolved, shape: `${cur.shape}; prior: number` }
+  }
+  return cur
+}
+
 /**
  * Compile + run a spec. Resolves the window against `now`, queries the chosen
  * view under the caller's RLS (paginated past the 1,000-row cap), then buckets
@@ -723,6 +754,19 @@ export async function compileAndRun(args: {
   error?: string
 }> {
   const { supabase, churchId, spec, now } = args
+
+  // 0. Prior-year comparison — re-run the SAME relative window against now − 1 year,
+  //    then merge. One level of recursion (inner runs clear `compare`).
+  if (spec.compare === 'prior_year') {
+    const base: WidgetSpec = { ...spec, compare: undefined }
+    const priorNow = new Date(now)
+    priorNow.setFullYear(priorNow.getFullYear() - 1)
+    const [cur, prior] = await Promise.all([
+      compileAndRun({ supabase, churchId, spec: base, now }),
+      compileAndRun({ supabase, churchId, spec: base, now: priorNow }),
+    ])
+    return mergeCompare(cur, prior)
+  }
 
   // 1. Resolve the window (relative → absolute, against the server's now).
   const window = spec.filters?.date ?? { window: 'trailing' as const, count: 12, unit: 'month' as const }

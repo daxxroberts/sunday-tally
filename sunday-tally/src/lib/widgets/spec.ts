@@ -106,6 +106,13 @@ export interface WidgetSpec {
     metric_names?: string[]
   }
   ratio?: { numerator: Measure; denominator: Measure; scale?: number }
+  /**
+   * Overlay the same window one year earlier (the SundayTally comparison frame).
+   * For a headline number → returns { value, prior, delta }; for a time series →
+   * each row gains a `prior` key aligned by relative position (this year vs last).
+   * Resolved by re-running the SAME relative window against `now − 1 year`.
+   */
+  compare?: 'prior_year'
   viz: VizConfig
 }
 
