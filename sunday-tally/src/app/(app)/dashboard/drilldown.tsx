@@ -32,6 +32,24 @@ function fmtWeekFull(sunday: string): string {
   return new Date(sunday + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
+// percent change of `cur` vs `base` (null-safe; null when no base / divide-by-zero)
+function pct(cur: number | null, base: number | null): number | null {
+  if (cur === null || base === null || base === 0) return null
+  return Math.round(((cur - base) / base) * 100)
+}
+
+// ▲/▼ delta chip — sage up, amber down (DS-2: no red)
+function DeltaBadge({ delta, note }: { delta: number | null; note?: string }) {
+  if (delta === null) return null
+  const up = delta >= 0
+  return (
+    <span className="mt-0.5 flex items-center gap-1">
+      <span className={`font-num text-[10px] font-bold ${up ? 'text-[#059669]' : 'text-[#B45309]'}`}>{up ? '▲' : '▼'} {Math.abs(delta)}%</span>
+      {note && <span className="text-[8px] uppercase tracking-wide text-slate-300">{note}</span>}
+    </span>
+  )
+}
+
 // ── hand-rolled two-line SVG chart (current vs prior YTD) ─────────────────────
 function YtdChart({ series, prefix, suffix }: { series: MetricSeries; prefix?: string; suffix?: string }) {
   const W = 520, H = 200, padL = 8, padR = 8, padT = 16, padB = 22
@@ -122,11 +140,12 @@ function YtdChart({ series, prefix, suffix }: { series: MetricSeries; prefix?: s
   )
 }
 
-function StatPill({ label, value, prefix, suffix, strong }: { label: string; value: number | null; prefix?: string; suffix?: string; strong?: boolean }) {
+function StatPill({ label, value, prefix, suffix, strong, delta, deltaNote }: { label: string; value: number | null; prefix?: string; suffix?: string; strong?: boolean; delta?: number | null; deltaNote?: string }) {
   return (
     <div className="rounded-xl border border-slate-200 bg-white px-3 py-2">
       <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">{label}</p>
       <p className={`font-num ${strong ? 'text-[18px] font-bold text-slate-900' : 'text-[15px] font-semibold text-slate-700'} leading-tight`}>{fmtVal(value, prefix, suffix)}</p>
+      {delta !== undefined && <DeltaBadge delta={delta} note={deltaNote} />}
     </div>
   )
 }
@@ -140,9 +159,18 @@ export function DrillDownDrawer({
   triggerWindow: DrillWindow | null
   onClose: () => void
 }) {
+  const [range, setRange] = useState<'ytd' | '12w'>('ytd')
   if (!open || typeof document === 'undefined') return null
   const prefix = series?.selector.prefix
   const suffix = series?.selector.suffix
+
+  // #4 range — slice the already-fetched weeks (no extra fetch). #5 best/lowest
+  // computed over the full current year regardless of the zoom.
+  const sliced = <T,>(pts: T[]): T[] => (range === '12w' ? pts.slice(-12) : pts)
+  const shownSeries = series ? { ...series, current: sliced(series.current), prior: sliced(series.prior) } : series
+  const nonNull = series ? series.current.filter((p): p is { weekStart: string; value: number } => p.value !== null) : []
+  const best = nonNull.length ? nonNull.reduce((a, b) => (b.value > a.value ? b : a)) : null
+  const low = nonNull.length ? nonNull.reduce((a, b) => (b.value < a.value ? b : a)) : null
 
   return createPortal(
     <div className="fixed inset-0 z-[120] flex justify-end" role="dialog" aria-modal="true" aria-label="Metric detail">
@@ -168,23 +196,33 @@ export function DrillDownDrawer({
             </div>
           ) : (
             <div className="space-y-5">
-              {/* headline stats */}
+              {/* headline stats — with trend deltas (#1) */}
               <div className="grid grid-cols-3 gap-2">
-                <StatPill label="Last 4-Wk" value={series.fourWeekAvg} prefix={prefix} suffix={suffix} strong={triggerWindow === 'm4' || triggerWindow === 'w'} />
-                <StatPill label="Curr YTD" value={series.ytdAvg} prefix={prefix} suffix={suffix} strong={triggerWindow === 'ytd'} />
+                <StatPill label="Last 4-Wk" value={series.fourWeekAvg} prefix={prefix} suffix={suffix} strong={triggerWindow === 'm4' || triggerWindow === 'w'} delta={pct(series.fourWeekAvg, series.ytdAvg)} deltaNote="vs YTD" />
+                <StatPill label="Curr YTD" value={series.ytdAvg} prefix={prefix} suffix={suffix} strong={triggerWindow === 'ytd'} delta={pct(series.ytdAvg, series.priorYtdAvg)} deltaNote="YoY" />
                 <StatPill label="Prior YTD" value={series.priorYtdAvg} prefix={prefix} suffix={suffix} strong={triggerWindow === 'priorYtd'} />
               </div>
 
-              {/* ── YTD chart + weekly grid ── */}
+              {/* ── trend chart + weekly grid (range-toggle #4, best/lowest #5) ── */}
               <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-                <div className="border-b border-slate-100 px-4 py-2.5">
-                  <h3 className="text-[12px] font-bold tracking-tight text-slate-900">Year to date</h3>
+                <div className="flex items-center justify-between border-b border-slate-100 px-4 py-2.5">
+                  <h3 className="text-[12px] font-bold tracking-tight text-slate-900">{range === '12w' ? 'Last 12 weeks' : 'Year to date'}</h3>
+                  <div className="flex overflow-hidden rounded-lg border border-slate-200 text-[10px] font-semibold">
+                    <button onClick={() => setRange('ytd')} className={`px-2 py-1 transition-colors ${range === 'ytd' ? 'bg-[#4F6EF7] text-white' : 'bg-white text-slate-500 hover:bg-slate-50'}`}>Year</button>
+                    <button onClick={() => setRange('12w')} className={`px-2 py-1 transition-colors ${range === '12w' ? 'bg-[#4F6EF7] text-white' : 'bg-white text-slate-500 hover:bg-slate-50'}`}>12 wks</button>
+                  </div>
                 </div>
                 <div className="px-4 py-3">
-                  <YtdChart series={series} prefix={prefix} suffix={suffix} />
+                  {shownSeries && <YtdChart series={shownSeries} prefix={prefix} suffix={suffix} />}
                 </div>
+                {(best || low) && (
+                  <div className="flex flex-wrap gap-2 px-4 pb-3 text-[10px] font-semibold">
+                    {best && <span className="rounded-md bg-[#059669]/10 px-2 py-0.5 text-[#047857]">Best · {fmtWeek(best.weekStart)} · <span className="font-num">{fmtVal(best.value, prefix, suffix)}</span></span>}
+                    {low && <span className="rounded-md bg-slate-100 px-2 py-0.5 text-slate-500">Lowest · {fmtWeek(low.weekStart)} · <span className="font-num">{fmtVal(low.value, prefix, suffix)}</span></span>}
+                  </div>
+                )}
                 <div className="max-h-56 overflow-y-auto border-t border-slate-100">
-                  {[...series.current].reverse().map(p => (
+                  {[...(shownSeries?.current ?? [])].reverse().map(p => (
                     <div key={p.weekStart} className="flex items-center justify-between border-b border-slate-50 px-4 py-1.5 last:border-b-0">
                       <span className="text-[11px] text-slate-500">Wk of {fmtWeekFull(p.weekStart)}</span>
                       <span className="font-num text-[12px] font-semibold text-slate-800">{fmtVal(p.value, prefix, suffix)}</span>
