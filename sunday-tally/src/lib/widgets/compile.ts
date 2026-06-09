@@ -747,13 +747,20 @@ export async function compileAndRun(args: {
   churchId: string
   spec: WidgetSpec
   now: Date
+  /**
+   * Campus scope applied on top of the spec (the dashboard's per-user campus
+   * filter — e.g. the signed-in user's default_location_id). Filters every
+   * source that carries a campus EXCEPT giving (church-wide). Omit / empty = all
+   * campuses. Requires migration 0035 (location_id on the views).
+   */
+  locationIds?: string[]
 }): Promise<{
   rows: Record<string, unknown>[]
   resolved: { start: string; end: string }
   shape: string
   error?: string
 }> {
-  const { supabase, churchId, spec, now } = args
+  const { supabase, churchId, spec, now, locationIds } = args
 
   // 0. Prior-year comparison — re-run the SAME relative window against now − 1 year,
   //    then merge. One level of recursion (inner runs clear `compare`).
@@ -762,8 +769,8 @@ export async function compileAndRun(args: {
     const priorNow = new Date(now)
     priorNow.setFullYear(priorNow.getFullYear() - 1)
     const [cur, prior] = await Promise.all([
-      compileAndRun({ supabase, churchId, spec: base, now }),
-      compileAndRun({ supabase, churchId, spec: base, now: priorNow }),
+      compileAndRun({ supabase, churchId, spec: base, now, locationIds }),
+      compileAndRun({ supabase, churchId, spec: base, now: priorNow, locationIds }),
     ])
     return mergeCompare(cur, prior)
   }
@@ -825,6 +832,13 @@ export async function compileAndRun(args: {
       shape: 'value: number',
       error: `Filtering by service_template code isn't supported yet (the views key service by UUID, not code). Use a ministry filter on metric_entries_readable instead.`,
     }
+  }
+
+  // Campus scope (the dashboard's per-user filter) — applies to every source
+  // that carries a campus; giving is church-wide so it's left unfiltered.
+  // (Requires 0035: location_id on the views.)
+  if (locationIds && locationIds.length > 0 && spec.source !== 'giving_per_week') {
+    colFilters.push({ col: 'location_id', values: locationIds })
   }
 
   // 3. Fetch rows from the view, scoped to church + date range + filters, paginated.

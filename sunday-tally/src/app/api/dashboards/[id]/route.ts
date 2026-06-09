@@ -81,7 +81,7 @@ interface ReplayWidget {
 }
 
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id: dashboardId } = await params
@@ -96,7 +96,7 @@ export async function GET(
   // also pins the tenant (church_id) from the session.
   const { data: membership } = await supabase
     .from('church_memberships')
-    .select('church_id, role')
+    .select('church_id, role, default_location_id')
     .eq('user_id',   user.id)
     .eq('is_active', true)
     .order('created_at', { ascending: true })
@@ -105,6 +105,19 @@ export async function GET(
   if (!membership) return NextResponse.json({ error: 'no_church' }, { status: 403 })
 
   const churchId = membership.church_id as string
+
+  // ── Campus scope (per-user, auto-applied). The dashboard defaults to the
+  //    signed-in user's home campus (church_memberships.default_location_id,
+  //    D-088). ?campus=<uuid> overrides it; ?campus=all shows every campus. A
+  //    one-campus church (or a user with no default) → all campuses (undefined).
+  //    Giving is church-wide and ignores this scope (handled in the compiler).
+  const campusParam = new URL(req.url).searchParams.get('campus')
+  const defaultLoc = (membership as { default_location_id?: string | null }).default_location_id ?? null
+  const locationIds: string[] | undefined =
+    campusParam === 'all' ? undefined
+    : campusParam ? [campusParam]
+    : defaultLoc ? [defaultLoc]
+    : undefined
 
   // ── Load the dashboard (RLS-scoped; church_id pinned as defense in depth). RLS
   //    already filters to dashboards the caller may see — church-scope rows for any
@@ -204,7 +217,7 @@ export async function GET(
       }
       const spec: WidgetSpec = validation.spec
 
-      const result = await compileAndRun({ supabase, churchId, spec, now })
+      const result = await compileAndRun({ supabase, churchId, spec, now, locationIds })
       if (result.error) {
         // Unsupported plan / runtime guard tripped — still return the resolved
         // window + facts so the flip-to-explain panel works, but flag the error.
