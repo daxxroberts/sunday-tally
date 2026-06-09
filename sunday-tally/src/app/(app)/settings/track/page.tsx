@@ -324,8 +324,10 @@ export default function TrackPage() {
   }
   async function handleReparent(id: string, parentId: string | null) {
     setMinistries(prev => prev.map(m => m.id === id ? { ...m, parent_tag_id: parentId } : m))
-    const result = await updateMinistry(id, { parent_tag_id: parentId })
-    if (!result.ok && churchId) await load(churchId)   // revert on failure
+    await updateMinistry(id, { parent_tag_id: parentId })
+    // Always reload: applies the move authoritatively and picks up any roll-up
+    // links the server self-healed (a node dragged out of its roll-up's subtree).
+    if (churchId) await load(churchId)
   }
   async function handleDeactivateMinistry(id: string) {
     if (!confirm('Remove this ministry? This cannot be undone.')) return

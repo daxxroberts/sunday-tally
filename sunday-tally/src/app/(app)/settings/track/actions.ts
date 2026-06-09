@@ -111,6 +111,71 @@ async function validateParentLink(
   return null
 }
 
+/**
+ * Self-heal roll-up links after a node moves. For the moved node and all its
+ * descendants, clear any metric.parent_metric_id that no longer points to a
+ * roll-up living on a (current) ancestor node. Prevents a dragged-out group from
+ * silently keeping a roll-up pointer to a parent it's no longer under (the
+ * integrity guard for Phase B summation). Returns how many links were cleared.
+ */
+async function healRollupLinksForSubtree(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  churchId: string,
+  movedNodeId: string,
+): Promise<number> {
+  const { data: tags } = await supabase
+    .from('service_tags')
+    .select('id, parent_tag_id')
+    .eq('church_id', churchId)
+  const parentOf = new Map<string, string | null>()
+  const childrenOf = new Map<string, string[]>()
+  for (const t of (tags ?? []) as { id: string; parent_tag_id: string | null }[]) {
+    parentOf.set(t.id, t.parent_tag_id)
+    if (t.parent_tag_id) {
+      const a = childrenOf.get(t.parent_tag_id) ?? []
+      a.push(t.id); childrenOf.set(t.parent_tag_id, a)
+    }
+  }
+
+  // Subtree = moved node + all descendants
+  const subtree = new Set<string>([movedNodeId])
+  const stack = [movedNodeId]
+  while (stack.length) {
+    const cur = stack.pop()!
+    for (const c of childrenOf.get(cur) ?? []) {
+      if (!subtree.has(c)) { subtree.add(c); stack.push(c) }
+    }
+  }
+
+  const ancestorsOf = (tagId: string): Set<string> => {
+    const out = new Set<string>()
+    let cur = parentOf.get(tagId) ?? null
+    while (cur && !out.has(cur)) { out.add(cur); cur = parentOf.get(cur) ?? null }
+    return out
+  }
+
+  const { data: metrics } = await supabase
+    .from('metrics')
+    .select('id, ministry_tag_id, parent_metric_id')
+    .eq('church_id', churchId)
+    .eq('is_active', true)
+  const nodeOfMetric = new Map<string, string>()
+  for (const m of (metrics ?? []) as { id: string; ministry_tag_id: string }[]) nodeOfMetric.set(m.id, m.ministry_tag_id)
+
+  const stale: string[] = []
+  for (const m of (metrics ?? []) as { id: string; ministry_tag_id: string; parent_metric_id: string | null }[]) {
+    if (!m.parent_metric_id) continue
+    if (!subtree.has(m.ministry_tag_id)) continue            // only heal the moved subtree
+    const parentNode = nodeOfMetric.get(m.parent_metric_id)
+    if (!parentNode || !ancestorsOf(m.ministry_tag_id).has(parentNode)) stale.push(m.id)
+  }
+
+  if (stale.length > 0) {
+    await supabase.from('metrics').update({ parent_metric_id: null }).in('id', stale).eq('church_id', churchId)
+  }
+  return stale.length
+}
+
 // ── createMinistry ────────────────────────────────────────────────────────
 // E-2 / IRIS contract: inserts a service_tags node then auto-seeds an
 // Attendance metric (canonical guard applied) so the ministry is immediately
@@ -254,6 +319,12 @@ export async function updateMinistry(
       .eq('church_id', churchId)
 
     if (error) return { ok: false, error: error.message }
+
+    // A move can orphan roll-up links (a child dragged out from under a roll-up
+    // it fed). Self-heal: clear any now-invalid parent_metric_id in the subtree.
+    if ('parent_tag_id' in patch) {
+      await healRollupLinksForSubtree(supabase, churchId, id)
+    }
     return { ok: true }
   } catch (e) {
     return { ok: false, error: (e as Error).message }
