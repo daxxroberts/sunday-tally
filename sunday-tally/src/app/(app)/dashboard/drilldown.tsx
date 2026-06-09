@@ -13,6 +13,7 @@
 // everything and escapes the dashboard's scroll container.
 // ─────────────────────────────────────────────────────────────────────────
 
+import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { fmtVal } from './ui'
 import type { MetricSeries, DrillWindow } from '@/lib/dashboardDrilldown'
@@ -55,6 +56,23 @@ function YtdChart({ series, prefix, suffix }: { series: MetricSeries; prefix?: s
   const priPts = pointsOf(series.prior)
   const lastCur = [...series.current].reverse().find(p => p.value !== null)
 
+  // Interactive hover — snap to the nearest week and surface its values.
+  const [hover, setHover] = useState<number | null>(null)
+  const onMove = (e: React.MouseEvent<SVGSVGElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    if (rect.width === 0) return
+    const vbX = ((e.clientX - rect.left) / rect.width) * W
+    const t = maxLen <= 1 ? 0 : (vbX - padL) / (W - padL - padR)
+    setHover(Math.max(0, Math.min(maxLen - 1, Math.round(t * (maxLen - 1)))))
+  }
+  const curAt = hover !== null ? (series.current[hover]?.value ?? null) : null
+  const priAt = hover !== null ? (series.prior[hover]?.value ?? null) : null
+  const hoverX = hover !== null ? xFor(hover) : 0
+  const hoverWeek = hover !== null ? (series.current[hover]?.weekStart ?? series.prior[hover]?.weekStart ?? null) : null
+  const tipW = 116, tipH = 46
+  const tipX = Math.max(padL, Math.min(W - padR - tipW, hoverX - tipW / 2))
+  const showTip = hover !== null && (curAt !== null || priAt !== null)
+
   return (
     <div>
       <div className="mb-2 flex items-center justify-between">
@@ -64,16 +82,40 @@ function YtdChart({ series, prefix, suffix }: { series: MetricSeries; prefix?: s
         </div>
         <span className="font-num text-[11px] text-slate-400">peak {fmtVal(Math.round(maxVal), prefix, suffix)}</span>
       </div>
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="Year-to-date weekly series, current versus prior year">
+      <svg
+        viewBox={`0 0 ${W} ${H}`}
+        className="w-full"
+        role="img"
+        aria-label="Year-to-date weekly series, current versus prior year"
+        onMouseMove={onMove}
+        onMouseLeave={() => setHover(null)}
+        style={{ cursor: 'crosshair' }}
+      >
         {/* baseline */}
         <line x1={padL} y1={H - padB} x2={W - padR} y2={H - padB} stroke="#E2E8F0" strokeWidth={1} />
-        {/* prior first (behind) */}
-        {priPts && <polyline points={priPts} fill="none" stroke={PRIOR} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" opacity={0.8} />}
-        {/* current on top */}
-        {curPts && <polyline points={curPts} fill="none" stroke={BRAND} strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />}
-        {/* last current marker */}
-        {lastCur && lastCur.value !== null && (
-          <circle cx={xFor(series.current.indexOf(lastCur))} cy={yFor(lastCur.value)} r={3.5} fill={BRAND} />
+        {/* hover guide */}
+        {showTip && (
+          <line x1={hoverX} y1={padT} x2={hoverX} y2={H - padB} stroke="#CBD5E1" strokeWidth={1} strokeDasharray="3 3" />
+        )}
+        {/* prior first (behind) — trimmer */}
+        {priPts && <polyline points={priPts} fill="none" stroke={PRIOR} strokeWidth={1.5} strokeLinejoin="round" strokeLinecap="round" opacity={0.8} />}
+        {/* current on top — trimmer */}
+        {curPts && <polyline points={curPts} fill="none" stroke={BRAND} strokeWidth={1.75} strokeLinejoin="round" strokeLinecap="round" />}
+        {/* last current marker (hidden while hovering) */}
+        {lastCur && lastCur.value !== null && hover === null && (
+          <circle cx={xFor(series.current.indexOf(lastCur))} cy={yFor(lastCur.value)} r={3} fill={BRAND} />
+        )}
+        {/* hover dots */}
+        {hover !== null && priAt !== null && <circle cx={hoverX} cy={yFor(priAt)} r={3} fill={PRIOR} stroke="#fff" strokeWidth={1.5} />}
+        {hover !== null && curAt !== null && <circle cx={hoverX} cy={yFor(curAt)} r={3.5} fill={BRAND} stroke="#fff" strokeWidth={1.5} />}
+        {/* hover tooltip */}
+        {showTip && (
+          <g transform={`translate(${tipX.toFixed(1)}, ${padT})`} pointerEvents="none">
+            <rect width={tipW} height={tipH} rx={6} fill="#0F172A" opacity={0.95} />
+            {hoverWeek && <text x={8} y={14} fill="#CBD5E1" fontSize={9} fontWeight={600}>{fmtWeek(hoverWeek).toUpperCase()}</text>}
+            <text x={8} y={28} fill="#FFFFFF" fontSize={11} fontWeight={700} className="font-num">{curAt !== null ? fmtVal(curAt, prefix, suffix) : '—'}<tspan fill="#94A3B8" fontSize={9} fontWeight={500}>  cur</tspan></text>
+            <text x={8} y={40} fill="#CBD5E1" fontSize={10} fontWeight={600} className="font-num">{priAt !== null ? fmtVal(priAt, prefix, suffix) : '—'}<tspan fill="#94A3B8" fontSize={9} fontWeight={500}>  prior</tspan></text>
+          </g>
         )}
       </svg>
       <div className="mt-1 flex justify-between font-num text-[9px] text-slate-400">
