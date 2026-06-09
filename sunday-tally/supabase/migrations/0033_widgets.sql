@@ -415,7 +415,7 @@ BEGIN
      'Volunteers by ministry', 'pivot', 'spec',
      jsonb_build_object(
        'version', 1,
-       'source',  'volunteers_per_occurrence',
+       'source',  'metric_entries_readable',
        'measure', jsonb_build_object('reporting_tag_code', 'VOLUNTEERS', 'agg', 'sum'),
        'dimensions', jsonb_build_array(
          jsonb_build_object('field', 'time', 'bucket', 'month'),
@@ -439,7 +439,7 @@ BEGIN
      jsonb_build_object(
        'version', 1,
        'source',  'attendance_per_occurrence',
-       'measure', jsonb_build_object('reporting_tag_code', 'ATTENDANCE', 'agg', 'avg'),
+       'measure', jsonb_build_object('reporting_tag_code', 'ATTENDANCE', 'agg', 'weekly_avg'),
        'dimensions', jsonb_build_array(),
        'filters', jsonb_build_object(
          'date', jsonb_build_object('window', 'ytd', 'anchor', 'today')
@@ -456,7 +456,7 @@ BEGIN
      'Volunteers to attendance', 'metric_card', 'spec',
      jsonb_build_object(
        'version', 1,
-       'source',  'volunteers_per_occurrence',
+       'source',  'metric_entries_readable',
        'measure', jsonb_build_object('reporting_tag_code', 'VOLUNTEERS', 'agg', 'sum'),
        'dimensions', jsonb_build_array(),
        'filters', jsonb_build_object(
