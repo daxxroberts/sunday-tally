@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import AppLayout from '@/components/layouts/AppLayout'
 import AiExhaustedBanner from '@/components/AiExhaustedBanner'
+import { DashboardCanvas } from '@/components/widgets/DashboardCanvas'
 import { createClient } from '@/lib/supabase/client'
 import { fetchDashboardData, type DashboardData, type FourWin } from '@/lib/dashboard'
 import {
@@ -309,6 +310,9 @@ export default function AnalyticsChatPage() {
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
   const [exhausted, setExhausted] = useState(false)
+  // Additive: a Chat | Dashboard view toggle. 'chat' is the existing split layout;
+  // 'dashboard' renders the saved-widget grid (DashboardCanvas) in the same shell.
+  const [view, setView] = useState<'chat' | 'dashboard'>('chat')
 
   const bottomRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -471,8 +475,40 @@ export default function AnalyticsChatPage() {
 
   return (
     <AppLayout role={role} fillHeight>
-      {/* Split layout: dashboard left (lg+) | chat right */}
-      <div className="flex flex-col lg:flex-row flex-1 min-h-0 overflow-hidden">
+      <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+
+        {/* ── View toggle: Chat | Dashboard (additive) ── */}
+        <div className="flex-none flex items-center gap-1 border-b border-gray-200 bg-white px-4 py-2">
+          <div className="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-0.5">
+            <button
+              type="button"
+              onClick={() => setView('chat')}
+              className={`rounded-md px-3 py-1 text-xs font-semibold transition-colors ${view === 'chat' ? 'bg-white text-[#4F6EF7] shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                }`}
+            >
+              Chat
+            </button>
+            <button
+              type="button"
+              onClick={() => setView('dashboard')}
+              className={`rounded-md px-3 py-1 text-xs font-semibold transition-colors ${view === 'dashboard' ? 'bg-white text-[#4F6EF7] shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                }`}
+            >
+              Dashboard
+            </button>
+          </div>
+        </div>
+
+        {/* ── Dashboard view: the saved-widget grid ── */}
+        {view === 'dashboard' && (
+          <div className="relative flex flex-1 min-h-0 overflow-hidden">
+            <DashboardCanvas />
+          </div>
+        )}
+
+        {/* ── Chat view: the existing split layout (dashboard left | chat right) ── */}
+        {view === 'chat' && (
+        <div className="flex flex-col lg:flex-row flex-1 min-h-0 overflow-hidden">
 
         {/* ── Left: Mini Dashboard (desktop only) ── */}
         <div className="hidden lg:flex flex-col w-[420px] xl:w-[480px] flex-shrink-0 border-r border-gray-200 bg-gray-50 overflow-hidden">
@@ -620,6 +656,8 @@ export default function AnalyticsChatPage() {
           {/* Spacer so fixed tab bar doesn't overlap the composer */}
           <div className="flex-none h-20 bg-white" aria-hidden="true" />
         </div>
+      </div>
+        )}
       </div>
     </AppLayout>
   )
