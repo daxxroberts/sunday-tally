@@ -147,7 +147,13 @@ export default function HistoryPage() {
       setChurch(ch)
 
       const stored = ch.grid_config ?? null
-      if (stored) {
+      // Use a stored config ONLY if it actually has grid columns. The dashboard
+      // persists its prefs (keyMetrics / excludedTotalMinistries) into the SAME
+      // grid_config column, so a prefs-only object has no columns. In that case
+      // — or when null — derive the grid from the live schema so History always
+      // reflects the current structure and never renders an empty/crashing grid.
+      const storedHasGrid = !!stored && Array.isArray(stored.columns) && stored.columns.length > 0
+      if (storedHasGrid) {
         setConfig(dedupeConfig(stored))
       } else {
         const derived = await deriveGridConfigFromSchema(supabase, ch.id)
