@@ -7,6 +7,7 @@
 // reportingMetrics are new.
 
 import { createClient } from '@/lib/supabase/client'
+import { computeRollups } from '@/lib/rollups'
 
 // ─── Shape helpers ────────────────────────────────────────────────────────────
 
@@ -31,9 +32,11 @@ export interface TagSection {
   tag_id: string | 'UNASSIGNED'
   tag_name: string
   tag_code: string
+  parent_tag_id: string | null   // Phase B — nest child ministry cards under their parent
   attendance: FourWin
   volunteers: FourWin
   stats: OtherStatRow[]
+  groupCount: number             // Phase B — distinct contributing child nodes ("N groups"); 0 when no roll-up
 }
 
 export interface VolunteerBreakoutRow {
@@ -134,6 +137,7 @@ interface MetricRow {
   ministry_tag_id: string | null
   reporting_tag_id: string
   scope: 'instance' | 'period'
+  mode: 'entry' | 'rollup'
 }
 
 // metric_entries joined to service_instances for the service_date (instance scope)
@@ -333,16 +337,45 @@ export async function fetchDashboardData(
   const tagByIdCode = new Map<string, string>()
   for (const t of tags) tagByIdCode.set(t.id, t.code)
 
-  // ── Metrics (definition lookup) — metric_id → {name, ministry tag, reporting}
+  // ── Metrics (definition lookup) — metric_id → {name, ministry tag, reporting, mode}.
+  //    Phase B: include roll-up metrics (mode='rollup') so we can locate a node's
+  //    roll-up by kind and override its card value. Roll-ups carry no entries of
+  //    their own, so they never appear in volEntries/statEntries (harmless here).
   const { data: metricsData, error: metricsErr } = await supabase
     .from('metrics')
-    .select('id, code, name, ministry_tag_id, reporting_tag_id, scope')
+    .select('id, code, name, ministry_tag_id, reporting_tag_id, scope, mode')
     .eq('church_id', churchId)
     .eq('is_active', true)
-    .neq('mode', 'rollup')   // roll-up metrics are computed (Phase B), excluded from aggregation
   if (metricsErr) console.error('[dashboard] metrics fetch failed:', metricsErr)
   const metricById = new Map<string, MetricRow>()
   for (const m of (metricsData ?? []) as MetricRow[]) metricById.set(m.id, m)
+
+  // ── Reporting tags (id → code) so we can classify a roll-up metric by kind
+  //    (ATTENDANCE / VOLUNTEERS / …) for the per-ministry card override (Phase B).
+  const { data: reportingTagsData, error: reportingTagsErr } = await supabase
+    .from('reporting_tags')
+    .select('id, code')
+    .eq('church_id', churchId)
+  if (reportingTagsErr) console.error('[dashboard] reporting_tags fetch failed:', reportingTagsErr)
+  const reportingCodeById = new Map<string, string>()
+  for (const rt of (reportingTagsData ?? []) as { id: string; code: string }[]) reportingCodeById.set(rt.id, rt.code)
+
+  // Roll-up metrics on each ministry tag, indexed by reporting kind. A node may
+  // carry at most one roll-up per kind (Track UI enforces); we take the first.
+  const rollupByTagKind = new Map<string, Map<string, string>>() // ministry_tag_id → (reportingCode → metric_id)
+  for (const m of (metricsData ?? []) as MetricRow[]) {
+    if (m.mode !== 'rollup' || !m.ministry_tag_id) continue
+    const code = reportingCodeById.get(m.reporting_tag_id)
+    if (!code) continue
+    let km = rollupByTagKind.get(m.ministry_tag_id)
+    if (!km) { km = new Map(); rollupByTagKind.set(m.ministry_tag_id, km) }
+    if (!km.has(code)) km.set(code, m.id)
+  }
+
+  // ── Roll-up engine (Phase B) — computed on-read; weekly maps feed the same
+  //    4-window math. Display-only on cards (no double-count: summary/grandTotal
+  //    keep using the church-wide views over underlying entries).
+  const rollups = await computeRollups(supabase, churchId, b.lastYearStart, b.today)
 
   // ── Attendance — view, already pivoted by tag_role into adults/kids/youth/total.
   const { data: attData, error: attErr } = await supabase
@@ -402,7 +435,7 @@ export async function fetchDashboardData(
         .eq('church_id', churchId)
         .eq('is_not_applicable', false)
         .not('value', 'is', null)
-        .in('reporting_tag_code', ['VOLUNTEERS', 'RESPONSE_STAT', 'GIVING'])
+        .in('reporting_tag_code', ['ATTENDANCE', 'VOLUNTEERS', 'RESPONSE_STAT', 'GIVING'])
         .in('service_instance_id', inRangeOccIds)
         .order('id', { ascending: true })
         .range(offset, offset + limit - 1),
@@ -431,6 +464,7 @@ export async function fetchDashboardData(
     return si.service_date
   }
 
+  const attEntries = instanceEntries.filter(e => e.reporting_tag_code === 'ATTENDANCE')
   const volEntries = instanceEntries.filter(e => e.reporting_tag_code === 'VOLUNTEERS')
   const statEntries = instanceEntries.filter(e => e.reporting_tag_code === 'RESPONSE_STAT')
   const givingInstanceEntries = instanceEntries.filter(e => e.reporting_tag_code === 'GIVING')
@@ -544,6 +578,21 @@ export async function fetchDashboardData(
     mm.set(wk, (mm.get(wk) ?? 0) + Number(e.value))
   }
 
+  // Attendance weekly map per ministry tag (Phase B) — from each tag's OWN
+  // ATTENDANCE entries, so two same-role ministries show distinct card values
+  // (the role pivot is church-wide-per-role and would show them identical).
+  const attWeeklyByTag = new Map<string, Map<string, number>>()
+  for (const e of attEntries) {
+    const metric = metricById.get(e.metric_id)
+    const d = entryDate(e)
+    if (!metric || d === null || e.value === null) continue
+    const wk = weekOf(d)
+    const tagKey = metric.ministry_tag_id ?? 'UNASSIGNED'
+    let tm = attWeeklyByTag.get(tagKey)
+    if (!tm) { tm = new Map(); attWeeklyByTag.set(tagKey, tm) }
+    tm.set(wk, (tm.get(wk) ?? 0) + Number(e.value))
+  }
+
   // RESPONSE_STAT weekly maps per metric (excluding first-time-decision, shown in summary).
   type StatMeta = { name: string; tagId: string | 'UNASSIGNED'; tagCode: string | null; weekly: Map<string, number> }
   const statByMetric = new Map<string, StatMeta>()
@@ -565,14 +614,10 @@ export async function fetchDashboardData(
     }
   }
 
-  // ── Tag Sections — group by ministry tag (tag_role drives audience attendance) ──
-  function attendanceForRole(role: TagRole): Map<string, number> {
-    if (role === 'ADULT_SERVICE') return attAdultsWeekly
-    if (role === 'KIDS_MINISTRY') return attKidsWeekly
-    if (role === 'YOUTH_MINISTRY') return attYouthWeekly
-    return buildWeeklyFrom(attRows, r => r.service_date, r => r.other_attendance)
-  }
-
+  // ── Tag Sections — per-ministry CARD values come from each tag's OWN entries
+  //    (attWeeklyByTag / volWeeklyByTag), not the church-wide role pivot, so two
+  //    same-role ministries show distinct numbers (Phase B). The role pivot stays
+  //    on the summary audience rows + grand total (which must not be re-summed).
   function buildTagSection(tag: TagRow): TagSection {
     const tagId = tag.id
     const stats: OtherStatRow[] = Array.from(statByMetric.entries())
@@ -586,15 +631,43 @@ export async function fetchDashboardData(
       }))
       .sort((a, c) => a.category_name.localeCompare(c.category_name))
 
+    // ── Phase B roll-up override. A container ministry (parent) carries a
+    //    roll-up metric per kind; when present we OVERRIDE the card value with the
+    //    rolled-up weekly map (sum of child contributions), since the role pivot
+    //    (attendanceForRole) is the church-wide-per-role aggregate — wrong for a
+    //    container that nests several child ministries. groupCount = distinct
+    //    contributing child nodes ("N groups"). No roll-up → values stay as today.
+    const kindMap = rollupByTagKind.get(tagId)
+    const attRollupId = kindMap?.get('ATTENDANCE')
+    const volRollupId = kindMap?.get('VOLUNTEERS')
+    const attRollup = attRollupId ? rollups.byRollupId.get(attRollupId) : undefined
+    const volRollup = volRollupId ? rollups.byRollupId.get(volRollupId) : undefined
+
+    const attendance = attRollup
+      ? fourWinFromWeekly(attRollup.weekly, b)
+      : fourWinFromWeekly(attWeeklyByTag.get(tagId) ?? new Map(), b)
+
+    const volunteers = !tracks.tracks_volunteers
+      ? emptyFourWin()
+      : volRollup
+        ? fourWinFromWeekly(volRollup.weekly, b)
+        : fourWinFromWeekly(volWeeklyByTag.get(tagId) ?? new Map(), b)
+
+    // groupCount: prefer the attendance roll-up's count, else the max across the
+    // node's roll-ups. 0 when this node has no roll-up.
+    const groupCount = attRollup
+      ? attRollup.groupCount
+      : (volRollup?.groupCount ?? 0)
+
     return {
       tag_id: tagId,
       tag_name: tag.name,
       tag_code: tag.code,
-      attendance: fourWinFromWeekly(attendanceForRole(tag.tag_role), b),
-      volunteers: tracks.tracks_volunteers
-        ? fourWinFromWeekly(volWeeklyByTag.get(tagId) ?? new Map(), b)
-        : emptyFourWin(),
+      parent_tag_id: tag.parent_tag_id,
+      attendance,
+      volunteers,
       stats,
+      groupCount,
     }
   }
 
@@ -617,9 +690,11 @@ export async function fetchDashboardData(
       tag_id: 'UNASSIGNED',
       tag_name: 'General (No Tag)',
       tag_code: 'UNASSIGNED',
+      parent_tag_id: null,
       attendance: emptyFourWin(),
       volunteers: tracks.tracks_volunteers ? fourWinFromWeekly(unassignedVol ?? new Map(), b) : emptyFourWin(),
       stats: unassignedStats,
+      groupCount: 0,
     })
   }
 

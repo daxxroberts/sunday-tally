@@ -303,8 +303,12 @@ function SummaryCard({
 // cards bind their accent lane / role label deterministically (E-50, D-074/081/082).
 
 // ── Zone F — per-ministry breakdown card (E-50..E-54) ─────────────────────────
+// Phase B: a container (parent) ministry can nest its children. When it has
+// children, the header shows an expand chevron + a "N groups" label, and the
+// expanded child cards render indented underneath (handled by the page).
 function TagBlock({
   section, role, excluded, tracks, hideComparisons, windows, onDrill,
+  showExpandToggle, expanded, onToggleExpand,
 }: {
   section: TagSection
   role: string | null
@@ -313,6 +317,9 @@ function TagBlock({
   hideComparisons: boolean
   windows: DashboardData['windows']
   onDrill?: (selector: MetricSelector, window: DrillWindow) => void
+  showExpandToggle?: boolean
+  expanded?: boolean
+  onToggleExpand?: () => void
 }) {
   const isUnassigned = section.tag_id === 'UNASSIGNED'
   // #69 — per-ministry attendance drillable via audience column.
@@ -324,13 +331,37 @@ function TagBlock({
   const volSelector: MetricSelector | null = !isUnassigned
     ? { label: `${section.tag_name} · Volunteers`, source: { kind: 'volunteers-ministry', ministryTagId: section.tag_id } }
     : null
+  const hasGroups = section.groupCount > 0
   return (
     <div className={`overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-opacity duration-200 ${excluded ? 'opacity-60' : ''}`}>
       <CardHeader
         label={section.tag_name}
         role={isUnassigned ? undefined : role}
         accentClass={isUnassigned ? 'bg-slate-300' : accentForRole(role)}
-        suffix={excluded ? <NotInTotalTag /> : undefined}
+        suffix={
+          <>
+            {excluded ? <NotInTotalTag /> : undefined}
+            {hasGroups && (
+              <span
+                title="Number of ministries rolling up into this card"
+                className="shrink-0 rounded-full bg-[#06B6D4]/10 px-2 py-0.5 text-[10px] font-semibold text-[#0E7490]"
+              >{section.groupCount} group{section.groupCount === 1 ? '' : 's'}</span>
+            )}
+          </>
+        }
+        trailing={
+          showExpandToggle && onToggleExpand ? (
+            <button
+              onClick={onToggleExpand}
+              title={expanded ? 'Collapse roll-up groups' : 'Expand roll-up groups'}
+              aria-label={expanded ? 'Collapse roll-up groups' : 'Expand roll-up groups'}
+              aria-expanded={expanded}
+              className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full text-slate-400 transition-colors duration-200 hover:bg-slate-100 hover:text-slate-700 focus-visible:ring-2 focus-visible:ring-[#06B6D4]/40"
+            >
+              <Ico.chevron className={`h-4 w-4 transition-transform duration-200 ${expanded ? '' : '-rotate-90'}`} />
+            </button>
+          ) : undefined
+        }
       />
       <ColumnHeaders windows={windows} />
       <div>
@@ -571,6 +602,32 @@ export default function DashboardPage() {
 
   const hideComparisons = !!data && data.weeksWithData < 2
   const excluded = useMemo(() => new Set(gridPrefs.excludedTotalMinistries ?? []), [gridPrefs])
+
+  // ── Phase B nesting — build parent→child tree from tagSections. Roots are
+  //    sections with no parent (or whose parent isn't a rendered section, so an
+  //    orphan never disappears). UNASSIGNED is always a root. ─────────────────
+  const { roots, childrenByParent } = useMemo(() => {
+    const sections = data?.tagSections ?? []
+    const ids = new Set(sections.map(s => s.tag_id))
+    const childrenByParent = new Map<string, TagSection[]>()
+    const roots: TagSection[] = []
+    for (const s of sections) {
+      const p = s.tag_id === 'UNASSIGNED' ? null : s.parent_tag_id
+      if (p && ids.has(p)) {
+        const arr = childrenByParent.get(p) ?? []
+        arr.push(s)
+        childrenByParent.set(p, arr)
+      } else {
+        roots.push(s)
+      }
+    }
+    return { roots, childrenByParent }
+  }, [data])
+
+  // Parents expanded by default so roll-up children are visible on first paint.
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
+  const toggleExpand = (tagId: string) =>
+    setCollapsed(c => { const n = new Set(c); if (n.has(tagId)) n.delete(tagId); else n.add(tagId); return n })
 
   // E-54 — recompute the headline grandTotal honouring exclusions, at the ROLE
   // level (never by summing per-section pivots — those share a role aggregate and
@@ -852,19 +909,46 @@ export default function DashboardPage() {
                     onDrill={handleDrill}
                   />
 
-                  {/* ── Zone F — per-ministry breakdown (E-50..E-55) ────────── */}
-                  {data.tagSections.map(section => (
-                    <TagBlock
-                      key={section.tag_id}
-                      section={section}
-                      role={roleByTag.get(section.tag_id) ?? null}
-                      excluded={excluded.has(section.tag_id)}
-                      tracks={{ tracks_volunteers: tracks.tracks_volunteers, tracks_responses: tracks.tracks_responses }}
-                      hideComparisons={hideComparisons}
-                      windows={data.windows}
-                      onDrill={handleDrill}
-                    />
-                  ))}
+                  {/* ── Zone F — per-ministry breakdown (E-50..E-55). Phase B:
+                       parent (container) cards nest their roll-up children, which
+                       render indented underneath when the parent is expanded. ── */}
+                  {roots.map(section => {
+                    const children = childrenByParent.get(section.tag_id) ?? []
+                    const hasChildren = children.length > 0
+                    const expanded = !collapsed.has(section.tag_id)
+                    return (
+                      <div key={section.tag_id} className="space-y-3">
+                        <TagBlock
+                          section={section}
+                          role={roleByTag.get(section.tag_id) ?? null}
+                          excluded={excluded.has(section.tag_id)}
+                          tracks={{ tracks_volunteers: tracks.tracks_volunteers, tracks_responses: tracks.tracks_responses }}
+                          hideComparisons={hideComparisons}
+                          windows={data.windows}
+                          onDrill={handleDrill}
+                          showExpandToggle={hasChildren}
+                          expanded={expanded}
+                          onToggleExpand={() => toggleExpand(section.tag_id)}
+                        />
+                        {hasChildren && expanded && (
+                          <div className="ml-4 space-y-3 border-l-2 border-slate-100 pl-3">
+                            {children.map(child => (
+                              <TagBlock
+                                key={child.tag_id}
+                                section={child}
+                                role={roleByTag.get(child.tag_id) ?? null}
+                                excluded={excluded.has(child.tag_id)}
+                                tracks={{ tracks_volunteers: tracks.tracks_volunteers, tracks_responses: tracks.tracks_responses }}
+                                hideComparisons={hideComparisons}
+                                windows={data.windows}
+                                onDrill={handleDrill}
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
 
                   {/* Zone G (church-wide Volunteer breakout) removed 2026-06-08 —
                      per-ministry volunteers + drill-down replace it; nesting comes in Phase B. */}
