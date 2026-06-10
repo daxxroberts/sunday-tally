@@ -303,11 +303,13 @@
   padding-left: 20px;
   font-weight: 400;
 }
-/* Cancel the component's depth-based inner padding and ↳ arrow —
-   CSS on the td is the sole source of indentation for entry rows. */
+/* Entry rows: cancel depth-based indent and push label text to the right
+   edge of the cell — occurrence tree structure stays left, entries right. */
 .row-wk td.col-label .row-label,
 .row-sv td.col-label .row-label {
   padding-left: 0 !important;
+  justify-content: flex-end;
+  padding-right: 6px;
 }
 .row-wk td.col-label .select-none,
 .row-sv td.col-label .select-none {
