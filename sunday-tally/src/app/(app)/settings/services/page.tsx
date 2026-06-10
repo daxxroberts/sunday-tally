@@ -524,58 +524,75 @@ function ServiceCardView({ card, allTags, write, busy, showLocation, onAdd, onRe
         </div>
       </div>
 
-      {/* ministry child rows (E-22) — equal-peer accent bars, no "primary" badge */}
+      {/* ministry child rows (E-22) — COMPACT: one line each, two per row
+          (Builder 2026-06-10: "unnecessarily tall — single line, two cards").
+          A ministry with no metrics shows faint red + "Add metrics now" that
+          jumps straight to its node in What we track. */}
       {card.ministries.length === 0 ? (
-        <div className="flex flex-col items-center gap-1 px-4 py-6 text-center">
+        <div className="flex flex-col items-center gap-1 px-4 py-5 text-center">
           <span className="text-[13px] font-semibold text-slate-600">No ministries yet</span>
           <span className="text-[12px] text-slate-400">Add a ministry so this service appears in Entries.</span>
         </div>
       ) : (
-        <ul className="divide-y divide-slate-50">
+        <ul className="grid grid-cols-1 gap-2 px-3 py-2.5 sm:grid-cols-2">
           {card.ministries.map((m, i) => (
-            <li key={m.link_id} className="group flex items-center justify-between gap-3 px-4 py-3 transition-colors duration-200 hover:bg-slate-50">
-              <div className="flex min-w-0 items-center gap-3">
-                <span className={`h-7 w-1.5 shrink-0 rounded-full ${accentForRole(m.tag_role)}`} aria-hidden />
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="truncate text-[15px] font-semibold text-slate-800">{m.name}</span>
-                    <span className="text-[12px] font-medium text-slate-400">· {roleLabel(m.tag_role)}</span>
-                  </div>
-                  <span className="font-num text-[11px] text-slate-400">{m.metricCount} {m.metricCount === 1 ? 'metric' : 'metrics'}</span>
-                </div>
-              </div>
+            <li
+              key={m.link_id}
+              className={`group flex items-center gap-2 rounded-xl border px-2.5 py-1.5 transition-colors duration-200 ${
+                m.metricCount === 0
+                  ? 'border-red-200/70 bg-red-50/50'
+                  : 'border-slate-100 bg-white hover:bg-slate-50'
+              }`}
+            >
+              <span className={`h-5 w-1.5 shrink-0 rounded-full ${accentForRole(m.tag_role)}`} aria-hidden />
+              <span className="min-w-0 truncate text-[14px] font-semibold text-slate-800">{m.name}</span>
+              <span className="shrink-0 text-[11px] font-medium text-slate-400">· {roleLabel(m.tag_role)}</span>
 
-              {write && (
-                <div className="flex items-center gap-1">
-                  {/* E-24 reorder ↑/↓ (O-3) */}
-                  <button onClick={() => onMove(i, -1)} disabled={i === 0 || busy === card.id} aria-label={`Move ${m.name} up`}
-                    className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-300 transition-colors duration-200 hover:bg-slate-100 hover:text-slate-600 disabled:cursor-not-allowed disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/40">
-                    <Ico.up className="h-4 w-4" />
-                  </button>
-                  <button onClick={() => onMove(i, 1)} disabled={i === card.ministries.length - 1 || busy === card.id} aria-label={`Move ${m.name} down`}
-                    className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-300 transition-colors duration-200 hover:bg-slate-100 hover:text-slate-600 disabled:cursor-not-allowed disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/40">
-                    <Ico.down className="h-4 w-4" />
-                  </button>
-                  {/* E-25 remove — slate "Remove", amber confirm, no red */}
-                  {confirmRemove === m.link_id ? (
-                    <span className="flex items-center gap-1">
-                      <button onClick={() => { onRemove(m); setConfirmRemove(null) }} disabled={busy === m.link_id}
-                        className="rounded-lg px-2 py-1 text-[12px] font-semibold text-[#B45309] transition-colors duration-200 hover:bg-[#F59E0B]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F59E0B]/40">
-                        Confirm
-                      </button>
-                      <button onClick={() => setConfirmRemove(null)}
-                        className="rounded-lg px-2 py-1 text-[12px] font-medium text-slate-400 transition-colors duration-200 hover:bg-slate-100 hover:text-slate-600">
-                        Cancel
-                      </button>
-                    </span>
-                  ) : (
-                    <button onClick={() => setConfirmRemove(m.link_id)} aria-label={`Remove ${m.name}`}
-                      className="ml-1 flex h-7 items-center gap-1 rounded-lg px-2 text-[12px] font-medium text-slate-400 opacity-0 transition-all duration-200 hover:bg-slate-100 hover:text-slate-700 focus-visible:opacity-100 group-hover:opacity-100">
-                      <Ico.trash className="h-3.5 w-3.5" />Remove
+              <span className="ml-auto flex shrink-0 items-center gap-1">
+                {m.metricCount === 0 ? (
+                  <Link
+                    href={`/settings/track?select=${m.tag_id}`}
+                    className="rounded text-[12px] font-semibold text-red-500/90 hover:text-red-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300"
+                    title={`${m.name} has no metrics — nothing to enter yet`}
+                  >
+                    Add metrics now →
+                  </Link>
+                ) : (
+                  <span className="font-num text-[11px] text-slate-400">{m.metricCount}</span>
+                )}
+
+                {write && (
+                  <>
+                    {/* E-24 reorder ↑/↓ (O-3) — compact, hover-revealed */}
+                    <button onClick={() => onMove(i, -1)} disabled={i === 0 || busy === card.id} aria-label={`Move ${m.name} up`}
+                      className="flex h-6 w-6 items-center justify-center rounded-md text-slate-300 opacity-0 transition-all duration-200 hover:bg-slate-100 hover:text-slate-600 disabled:cursor-not-allowed disabled:opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/40">
+                      <Ico.up className="h-3.5 w-3.5" />
                     </button>
-                  )}
-                </div>
-              )}
+                    <button onClick={() => onMove(i, 1)} disabled={i === card.ministries.length - 1 || busy === card.id} aria-label={`Move ${m.name} down`}
+                      className="flex h-6 w-6 items-center justify-center rounded-md text-slate-300 opacity-0 transition-all duration-200 hover:bg-slate-100 hover:text-slate-600 disabled:cursor-not-allowed disabled:opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/40">
+                      <Ico.down className="h-3.5 w-3.5" />
+                    </button>
+                    {/* E-25 remove — compact; amber confirm */}
+                    {confirmRemove === m.link_id ? (
+                      <span className="flex items-center gap-0.5">
+                        <button onClick={() => { onRemove(m); setConfirmRemove(null) }} disabled={busy === m.link_id}
+                          className="rounded-md px-1.5 py-0.5 text-[11px] font-semibold text-[#B45309] transition-colors duration-200 hover:bg-[#F59E0B]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F59E0B]/40">
+                          Confirm
+                        </button>
+                        <button onClick={() => setConfirmRemove(null)}
+                          className="rounded-md px-1.5 py-0.5 text-[11px] font-medium text-slate-400 transition-colors duration-200 hover:bg-slate-100 hover:text-slate-600">
+                          Cancel
+                        </button>
+                      </span>
+                    ) : (
+                      <button onClick={() => setConfirmRemove(m.link_id)} aria-label={`Remove ${m.name}`} title={`Remove ${m.name}`}
+                        className="flex h-6 w-6 items-center justify-center rounded-md text-slate-300 opacity-0 transition-all duration-200 hover:bg-slate-100 hover:text-slate-600 group-hover:opacity-100 focus-visible:opacity-100">
+                        <Ico.trash className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </>
+                )}
+              </span>
             </li>
           ))}
         </ul>

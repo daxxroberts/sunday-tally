@@ -216,10 +216,15 @@ export default function TrackPage() {
       await refreshOrphans(membership.church_id)
       if (!cancelled) {
         setLoading(false)
-        // ?fix=<tagId> deep-link (S2 banner on Services) → open the picker.
-        // window.location instead of useSearchParams: no Suspense requirement.
-        const fix = new URLSearchParams(window.location.search).get('fix')
+        // Deep-links (window.location instead of useSearchParams: no Suspense
+        // requirement). ?fix=<tagId> → open the "Where is this counted?" picker
+        // (S2 banner on Services). ?select=<tagId> → just select that node —
+        // the "Add metrics now" jump from a metric-less ministry on Services.
+        const params = new URLSearchParams(window.location.search)
+        const fix = params.get('fix')
         if (fix) setFixTagId(fix)
+        const select = params.get('select')
+        if (select) setSelectedId(select)
       }
     })()
     return () => { cancelled = true }
