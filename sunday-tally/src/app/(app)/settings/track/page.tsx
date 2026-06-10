@@ -44,6 +44,7 @@ import {
   setRollupOp,
   linkMinistryToServices,
   convertMinistryToWeekly,
+  updateMetricCadence,
 } from './actions'
 import type { TagRole, MetricRow, MetricMode, RollupOp } from './actions'
 
@@ -441,6 +442,14 @@ export default function TrackPage() {
       alert(result.error)
     }
   }
+  async function handleSetCadence(metricId: string, cadence: 'week' | 'month') {
+    const result = await updateMetricCadence(metricId, cadence)
+    if (result.ok) {
+      setMetrics(prev => prev.map(m => m.id === metricId ? { ...m, cadence } : m))
+    } else if (result.error) {
+      alert(result.error)
+    }
+  }
 
   // ── DnD ───────────────────────────────────────────────────────────────────
   const [activeDragId, setActiveDragId] = useState<string | null>(null)
@@ -595,6 +604,7 @@ export default function TrackPage() {
                       onSetMode={handleSetMode}
                       onSetParent={handleSetParent}
                       onSetOp={handleSetOp}
+                      onSetCadence={handleSetCadence}
                     />
                   )}
                 </div>
@@ -1030,7 +1040,7 @@ function DetailPanel({
   eligibleParentsFor, parentLabel, unreferencedRollupIds, childCountFor,
   onSelectChild, onAddGroupHere,
   onRename, onRoleChange, onColorChange, onDeactivate,
-  onAddMetric, onRenameMetric, onRemoveMetric, onSetMode, onSetParent, onSetOp,
+  onAddMetric, onRenameMetric, onRemoveMetric, onSetMode, onSetParent, onSetOp, onSetCadence,
 }: {
   ministry: Ministry
   write: boolean
@@ -1055,6 +1065,7 @@ function DetailPanel({
   onSetMode: (metricId: string, mode: MetricMode, op?: RollupOp) => Promise<void>
   onSetParent: (metricId: string, parentId: string | null) => Promise<void>
   onSetOp: (metricId: string, op: RollupOp) => Promise<void>
+  onSetCadence: (metricId: string, cadence: 'week' | 'month') => Promise<void>
 }) {
   const [addingGroup, setAddingGroup] = useState(false)
   const [gName, setGName] = useState('')
@@ -1218,6 +1229,7 @@ function DetailPanel({
             onSetMode={onSetMode}
             onSetParent={onSetParent}
             onSetOp={onSetOp}
+            onSetCadence={onSetCadence}
           />
         )
       })}
@@ -1289,7 +1301,7 @@ function AddMetricControl({
 function KindSection({
   kindCode, kindLabel, metrics, write,
   eligibleParentsFor, parentLabel, unreferencedRollupIds, childCountFor,
-  onRenameMetric, onRemoveMetric, onSetMode, onSetParent, onSetOp,
+  onRenameMetric, onRemoveMetric, onSetMode, onSetParent, onSetOp, onSetCadence,
 }: {
   /** Phase-1 kind code OR any other reporting kind (GIVING / custom) — only
    *  drives the accent tint, so a plain string is safe. */
@@ -1306,6 +1318,7 @@ function KindSection({
   onSetMode: (metricId: string, mode: MetricMode, op?: RollupOp) => Promise<void>
   onSetParent: (metricId: string, parentId: string | null) => Promise<void>
   onSetOp: (metricId: string, op: RollupOp) => Promise<void>
+  onSetCadence: (metricId: string, cadence: 'week' | 'month') => Promise<void>
 }) {
   const [expanded, setExpanded] = useState(true)
 
@@ -1353,6 +1366,7 @@ function KindSection({
             onSetMode={(mode, op) => onSetMode(m.id, mode, op)}
             onSetParent={pid => onSetParent(m.id, pid)}
             onSetOp={op => onSetOp(m.id, op)}
+            onSetCadence={cadence => onSetCadence(m.id, cadence)}
           />
         ))}
       </ul>
@@ -1366,7 +1380,7 @@ function KindSection({
 // ─────────────────────────────────────────────────────────────────────────
 function MetricRowItem({
   metric, write, eligibleParents, parentLabel, unreferenced, childCount,
-  onRename, onRemove, onSetMode, onSetParent, onSetOp,
+  onRename, onRemove, onSetMode, onSetParent, onSetOp, onSetCadence,
 }: {
   metric: Metric
   write: boolean
@@ -1379,6 +1393,7 @@ function MetricRowItem({
   onSetMode: (mode: MetricMode, op?: RollupOp) => void
   onSetParent: (parentId: string | null) => void
   onSetOp: (op: RollupOp) => void
+  onSetCadence: (cadence: 'week' | 'month') => void
 }) {
   const [confirmRemove, setConfirmRemove] = useState(false)
   const isRollup = metric.mode === 'rollup'
@@ -1396,9 +1411,24 @@ function MetricRowItem({
             <span className="text-[14px] font-medium text-slate-800">{metric.name}</span>
           )}
           {isPeriod && (
-            <span className="shrink-0 rounded-md bg-[#4F6EF7]/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#3D5BD4]" title="Entered once per period in the Stat Entries tab. No service needed.">
-              {metric.cadence === 'month' ? 'Monthly' : 'Weekly'} · church-wide
-            </span>
+            write ? (
+              <span className="shrink-0 flex items-center gap-1">
+                <select
+                  value={metric.cadence ?? 'week'}
+                  onChange={e => onSetCadence(e.target.value as 'week' | 'month')}
+                  aria-label="How often this is counted"
+                  className="rounded-md border border-[#4F6EF7]/30 bg-[#4F6EF7]/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#3D5BD4] outline-none cursor-pointer focus:border-[#4F6EF7]"
+                >
+                  <option value="week">Every week</option>
+                  <option value="month">Every month</option>
+                </select>
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-[#3D5BD4]">· church-wide</span>
+              </span>
+            ) : (
+              <span className="shrink-0 rounded-md bg-[#4F6EF7]/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#3D5BD4]" title="Shows up in Stat Entries. No service needed.">
+                {metric.cadence === 'month' ? 'Monthly' : 'Weekly'} · church-wide
+              </span>
+            )
           )}
         </div>
 
@@ -1435,7 +1465,7 @@ function MetricRowItem({
       <div className="mt-1.5 flex flex-wrap items-center gap-2 pl-0 text-[12px] text-slate-500">
         {isPeriod ? (
           <span className="text-slate-400">
-            Entered once per {metric.cadence === 'month' ? 'month' : 'week'} on the Stat Entries tab. Not tied to any service.
+            Shows up every {metric.cadence === 'month' ? 'month' : 'week'} in Stat Entries. No service needed.
           </span>
         ) : isRollup ? (
           <>

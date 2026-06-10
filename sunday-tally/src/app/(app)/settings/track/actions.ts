@@ -843,3 +843,29 @@ export async function convertMinistryToWeekly(params: {
     return { ok: false, error: (e as Error).message }
   }
 }
+
+// ── updateMetricCadence ───────────────────────────────────────────────────────
+// Change a period metric's cadence (week ↔ month). Only applies to
+// scope='period' rows — the .eq('scope','period') guard prevents accidental
+// mutation of service-bound metrics.
+export async function updateMetricCadence(
+  metricId: string,
+  cadence: 'week' | 'month',
+): Promise<ActionResult> {
+  try {
+    const supabase = await createClient()
+    const churchId = await requireOwnerAdmin(supabase)
+
+    const { error } = await supabase
+      .from('metrics')
+      .update({ cadence })
+      .eq('id', metricId)
+      .eq('church_id', churchId)
+      .eq('scope', 'period')
+
+    if (error) return { ok: false, error: error.message }
+    return { ok: true }
+  } catch (e) {
+    return { ok: false, error: (e as Error).message }
+  }
+}
