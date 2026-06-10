@@ -158,7 +158,10 @@ export async function getServiceEditData(templateId: string): Promise<{
     show_in_entries: boolean
   }
   instanceCount: number
-  tags: { id: string; name: string; tag_role: string }[]
+  tags: { id: string; name: string; tag_role: string; parent_tag_id: string | null }[]
+  /** Active campuses — lets the page offer a campus change when the service
+   *  has no recorded weeks (history pins a campus; an empty service moves freely). */
+  locations: { id: string; name: string }[]
   /** null = 0037 not applied (hide the group picker). */
   groups: { id: string; name: string; code: string }[] | null
   /** false = 0036 not applied (hide the show-in-entries toggle). */
@@ -215,17 +218,25 @@ export async function getServiceEditData(templateId: string): Promise<{
   const locEmbed = (tmpl as { church_locations?: { name: string } | { name: string }[] | null }).church_locations
   const locationName = (Array.isArray(locEmbed) ? locEmbed[0]?.name : locEmbed?.name) ?? null
 
-  const [{ count: instanceCount }, tagRes] = await Promise.all([
+  const [{ count: instanceCount }, tagRes, locRes] = await Promise.all([
     supabase
       .from('service_instances')
       .select('id', { count: 'exact', head: true })
       .eq('service_template_id', templateId),
+    // parent_tag_id included so the page offers TOP-LEVEL ministries only as
+    // the main ministry (a child group like Tabors isn't a sensible primary).
     supabase
       .from('service_tags')
-      .select('id, name, tag_role')
+      .select('id, name, tag_role, parent_tag_id')
       .eq('church_id', churchId)
       .eq('is_active', true)
       .order('display_order', { ascending: true }),
+    supabase
+      .from('church_locations')
+      .select('id, name')
+      .eq('church_id', churchId)
+      .eq('is_active', true)
+      .order('sort_order', { ascending: true }),
   ])
 
   return {
@@ -240,7 +251,8 @@ export async function getServiceEditData(templateId: string): Promise<{
       show_in_entries: tmpl.show_in_entries === undefined ? true : !!tmpl.show_in_entries,
     },
     instanceCount: instanceCount ?? 0,
-    tags: (tagRes.data ?? []) as { id: string; name: string; tag_role: string }[],
+    tags: (tagRes.data ?? []) as { id: string; name: string; tag_role: string; parent_tag_id: string | null }[],
+    locations: (locRes.data ?? []) as { id: string; name: string }[],
     groups,
     extrasSupported,
   }
@@ -305,6 +317,10 @@ export interface UpdateServiceInput {
   reporting_group_id?: string | null
   /** SE6 (0036) — undefined = leave unchanged. */
   show_in_entries?: boolean
+  /** SE3 — campus change. ONLY allowed while the service has zero recorded
+   *  weeks (history pins a campus); re-checked server-side. null = church-wide
+   *  (0036). undefined = leave unchanged. */
+  location_id?: string | null
 }
 
 /** Rename / change primary ministry. Changing the primary ALSO upserts the
@@ -348,6 +364,30 @@ export async function updateServiceAction(
   // support via getServiceEditData.extrasSupported/groups) provides them.
   if (input.reporting_group_id !== undefined) patch.reporting_group_id = input.reporting_group_id
   if (input.show_in_entries !== undefined) patch.show_in_entries = input.show_in_entries
+
+  // SE3 campus change — only while the service has NO recorded weeks. History
+  // pins a campus: past numbers belong where they happened, so a service with
+  // instances never moves (create a new service at the other campus instead).
+  if (input.location_id !== undefined) {
+    const { count: instCount } = await supabase
+      .from('service_instances')
+      .select('id', { count: 'exact', head: true })
+      .eq('service_template_id', input.template_id)
+    if ((instCount ?? 0) > 0) {
+      return { error: `This service has ${instCount} recorded ${instCount === 1 ? 'week' : 'weeks'} at its campus — it can't move. Create a new service at the other campus instead.` }
+    }
+    if (input.location_id !== null) {
+      const { data: loc } = await supabase
+        .from('church_locations')
+        .select('id')
+        .eq('id', input.location_id)
+        .eq('church_id', churchId)
+        .eq('is_active', true)
+        .maybeSingle()
+      if (!loc) return { error: 'That campus is not valid for this church.' }
+    }
+    patch.location_id = input.location_id
+  }
 
   const { data: updated, error: updErr } = await supabase
     .from('service_templates')

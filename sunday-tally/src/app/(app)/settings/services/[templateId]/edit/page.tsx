@@ -35,6 +35,7 @@ export default function ServiceEditPage() {
   // form state
   const [name, setName] = useState('')
   const [primaryTag, setPrimaryTag] = useState('')
+  const [locationId, setLocationId] = useState<string>('CHURCH_WIDE') // SE3 ('CHURCH_WIDE' = no campus)
   const [groupId, setGroupId] = useState<string>('')            // SE5 ('' = none)
   const [groups, setGroups] = useState<{ id: string; name: string; code: string }[]>([])
   const [newGroupName, setNewGroupName] = useState<string | null>(null) // null = input hidden
@@ -64,6 +65,7 @@ export default function ServiceEditPage() {
       setData(d)
       setName(d.template.display_name)
       setPrimaryTag(d.template.primary_tag_id ?? '')
+      setLocationId(d.template.location_id ?? 'CHURCH_WIDE')
       setGroupId(d.template.reporting_group_id ?? '')
       setGroups(d.groups ?? [])
       setShowInEntries(d.template.show_in_entries)
@@ -83,6 +85,10 @@ export default function ServiceEditPage() {
       // post-migration fields — only sent when the DB supports them
       ...(data.groups !== null ? { reporting_group_id: groupId || null } : {}),
       ...(data.extrasSupported ? { show_in_entries: showInEntries } : {}),
+      // campus — editable only while the service has no recorded weeks
+      ...(data.instanceCount === 0 && data.extrasSupported
+        ? { location_id: locationId === 'CHURCH_WIDE' ? null : locationId }
+        : {}),
     })
     setSaving(false)
     if (res.error) { setError(res.error); return }
@@ -142,45 +148,68 @@ export default function ServiceEditPage() {
                   />
                 </label>
 
-                {/* SE3 location — read-only with the instance guard */}
+                {/* SE3 campus — editable while the service has no recorded weeks;
+                    locked (with the WHY) once history exists */}
                 <div className="mt-4">
                   <span className="text-[12px] font-semibold uppercase tracking-wider text-slate-400">Campus</span>
-                  <div className="mt-1.5 flex items-center gap-2 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2">
-                    <span className="text-[14px] font-medium text-slate-700">
-                      {data.template.locationName ?? 'Church-wide'}
-                    </span>
-                    {data.instanceCount > 0 && (
-                      <span className="font-num text-[11px] text-slate-400">
-                        · {data.instanceCount} recorded {data.instanceCount === 1 ? 'week' : 'weeks'}
-                      </span>
-                    )}
-                  </div>
-                  {data.instanceCount > 0 ? (
-                    <p className="mt-1 text-[12px] leading-relaxed text-slate-400">
-                      This service has history at this campus, so its campus can&apos;t change — create a new service at the other campus instead.
-                    </p>
+                  {data.instanceCount === 0 && data.extrasSupported ? (
+                    <>
+                      <select
+                        value={locationId}
+                        onChange={(e) => setLocationId(e.target.value)}
+                        className="mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-[15px] text-slate-900 focus-visible:border-[#4F6EF7] focus-visible:outline-none"
+                      >
+                        {data.locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                        <option value="CHURCH_WIDE">Church-wide — one shared count, no campus</option>
+                      </select>
+                      <p className="mt-1 text-[12px] leading-relaxed text-slate-400">
+                        Movable because nothing has been logged here yet — once weeks are recorded, the campus locks.
+                      </p>
+                    </>
                   ) : (
-                    <p className="mt-1 text-[12px] leading-relaxed text-slate-400">
-                      Campus changes for services without history are coming with church-wide services.
-                    </p>
+                    <>
+                      <div className="mt-1.5 flex items-center gap-2 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2">
+                        <span className="text-[14px] font-medium text-slate-700">
+                          {data.template.locationName ?? 'Church-wide'}
+                        </span>
+                        <span className="font-num text-[11px] text-slate-400">
+                          · {data.instanceCount} recorded {data.instanceCount === 1 ? 'week' : 'weeks'}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-[12px] leading-relaxed text-slate-400">
+                        Locked because those weeks <span className="font-medium text-slate-500">happened here</span> — moving the
+                        service would rewrite where past numbers belong. Need it at another campus? Create a new service there
+                        and retire this one; all its history stays put.
+                      </p>
+                    </>
                   )}
                 </div>
 
-                {/* SE4 primary ministry */}
+                {/* SE4 main ministry — TOP-LEVEL ministries only (a child group
+                    like Tabors is never a sensible "main" for a service); the
+                    current value stays listed even if it's a child, marked so */}
                 <label className="mt-4 block">
-                  <span className="text-[12px] font-semibold uppercase tracking-wider text-slate-400">Primary ministry</span>
+                  <span className="text-[12px] font-semibold uppercase tracking-wider text-slate-400">Main ministry</span>
                   <select
                     value={primaryTag}
                     onChange={(e) => setPrimaryTag(e.target.value)}
                     className="mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-[15px] text-slate-900 focus-visible:border-[#4F6EF7] focus-visible:outline-none"
                   >
-                    {data.tags.map(t => (
-                      <option key={t.id} value={t.id}>{t.name} · {roleLabel(t.tag_role)}</option>
+                    {data.tags.filter(t => t.parent_tag_id === null).map(t => (
+                      <option key={t.id} value={t.id}>{t.name}</option>
                     ))}
+                    {/* keep a child current value selectable rather than breaking the form */}
+                    {(() => {
+                      const cur = data.tags.find(t => t.id === primaryTag)
+                      return cur && cur.parent_tag_id !== null
+                        ? <option value={cur.id}>{cur.name} (group)</option>
+                        : null
+                    })()}
                   </select>
-                  <span className="mt-1 flex items-center gap-1.5 text-[12px] text-slate-400">
-                    <span className={`h-3 w-1.5 rounded-full ${accentForRole(data.tags.find(t => t.id === primaryTag)?.tag_role ?? null)}`} aria-hidden />
-                    Drives the audience bucket in History; it always stays in this service&apos;s ministry list.
+                  <span className="mt-1 flex items-center gap-1.5 text-[12px] leading-relaxed text-slate-400">
+                    <span className={`h-3 w-1.5 shrink-0 rounded-full ${accentForRole(data.tags.find(t => t.id === primaryTag)?.tag_role ?? null)}`} aria-hidden />
+                    What this service is mainly about. The full list of ministries counted here is managed on the Services page —
+                    this is just the fallback home if none are linked.
                   </span>
                 </label>
 
@@ -234,7 +263,9 @@ export default function ServiceEditPage() {
                       </div>
                     )}
                     <p className="mt-1 text-[12px] leading-relaxed text-slate-400">
-                      Purely for reporting — e.g. group all morning services (any campus) so the AI can compare Morning vs Evening.
+                      Different from ministry groups: ministries (in What we track) group <span className="font-medium text-slate-500">what you count</span> —
+                      a reporting group bundles <span className="font-medium text-slate-500">whole services</span> for reports, e.g. put the 9am and 11am
+                      (any campus) in &quot;Morning&quot; to compare Morning vs Evening. Optional — leave it on None if you don&apos;t need it.
                     </p>
                   </div>
                 )}
