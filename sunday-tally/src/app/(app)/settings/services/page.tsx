@@ -389,19 +389,22 @@ export default function ServicesSettingsPage() {
                   <div key={key} className="space-y-4">
                     {showHeaders && (
                       /* S3 — full-width color bars (Builder 2026-06-10): Church-wide
-                         pops (brand bar + GOLD headline); campuses recede on a
-                         desaturated slate-blue bar with white text. */
-                      <div className={`flex items-center gap-2.5 rounded-xl px-4 py-2.5 shadow-sm ${
-                        key === '__churchwide' ? 'bg-[#4F6EF7]' : 'bg-[#64748B]'
+                         pops (brand bar + GOLD headline); campuses recede on a soft
+                         slate bar. When church-wide services exist, each campus bar
+                         carries a pointer note so nobody hunts for those counts here. */
+                      <div className={`flex flex-wrap items-center gap-x-2.5 gap-y-0.5 rounded-xl px-4 py-2.5 shadow-sm ${
+                        key === '__churchwide' ? 'bg-[#4F6EF7]' : 'bg-[#94A3B8]'
                       }`}>
                         <h2 className={`text-[14px] font-extrabold tracking-tight ${
                           key === '__churchwide' ? 'text-[#FBBF24]' : 'text-white'
                         }`}>
                           {key === '__churchwide' ? 'Church-wide' : key}
                         </h2>
-                        {key === '__churchwide' && (
+                        {key === '__churchwide' ? (
                           <p className="text-[11px] font-medium text-[#FDE68A]/90">counted once for the whole church — visible at every campus</p>
-                        )}
+                        ) : groups.has('__churchwide') ? (
+                          <p className="text-[11px] font-medium text-white/90">some counts are tracked church-wide — see the section above</p>
+                        ) : null}
                       </div>
                     )}
                     {list.map(card => (
