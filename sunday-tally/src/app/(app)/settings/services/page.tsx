@@ -21,6 +21,7 @@ import Link from 'next/link'
 import AppLayout from '@/components/layouts/AppLayout'
 import { createClient } from '@/lib/supabase/client'
 import { Dot, Ico, accentForRole, roleLabel } from '@/app/(app)/entries/ui'
+import { getOrphanMinistries, type OrphanMinistry } from '@/lib/ministryLinks'
 import type { UserRole } from '@/types'
 
 const PAGE = 1000 // PostgREST cap (N-9)
@@ -79,6 +80,8 @@ export default function ServicesSettingsPage() {
   const [allTags, setAllTags] = useState<TagOption[]>([])
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState<string | null>(null) // link_id or card id being mutated
+  // S2 — ministries whose counts have no service to render on (deep-links to track's fixer)
+  const [orphans, setOrphans] = useState<OrphanMinistry[]>([])
 
   const write = canWrite(role)
 
@@ -189,6 +192,9 @@ export default function ServicesSettingsPage() {
       .range(0, PAGE - 1)
     type TagRow = { id: string; name: string; tag_role: string | null }
     setAllTags(((tagRows ?? []) as TagRow[]).map((t) => ({ id: t.id, name: t.name, tag_role: t.tag_role ?? null })))
+
+    // S2 — orphan detection (same helper the track page uses)
+    setOrphans(await getOrphanMinistries(supabase, cid))
   }, [supabase])
 
   useEffect(() => {
@@ -305,6 +311,26 @@ export default function ServicesSettingsPage() {
             When and where you gather — each service creates the weekly occurrences you log in Entries, and lists the ministries counted there.{' '}
             {write ? 'Add, remove, or reorder ministries — the change applies to every future week.' : 'This is read-only for your role.'}
           </p>
+
+          {/* S2 — orphan banner: counts with nowhere to render (editors+ see it) */}
+          {!loading && orphans.length > 0 && (
+            <div className="mb-4 flex flex-wrap items-center gap-2 rounded-2xl border border-[#F59E0B]/40 bg-[#F59E0B]/5 px-4 py-3">
+              <span className="text-[13px] font-semibold text-[#B45309]">
+                {orphans.length === 1
+                  ? `${orphans[0].name} isn't counted anywhere yet`
+                  : `${orphans.length} ministries aren't counted anywhere yet`}
+              </span>
+              <span className="text-[12px] text-[#B45309]/80">
+                {orphans.length > 1 && `(${orphans.map(o => o.name).join(', ')}) `}— their counts won&apos;t appear in Entries.
+              </span>
+              <Link
+                href={`/settings/track?fix=${orphans[0].tag_id}`}
+                className="ml-auto shrink-0 rounded-lg border border-[#F59E0B]/40 bg-white px-2.5 py-1 text-[12px] font-semibold text-[#B45309] transition-colors hover:bg-[#F59E0B]/10"
+              >
+                Fix →
+              </Link>
+            </div>
+          )}
 
           {loading ? (
             <div className="space-y-4">{[1, 2].map(i => <div key={i} className="h-40 animate-pulse rounded-2xl bg-slate-100" />)}</div>

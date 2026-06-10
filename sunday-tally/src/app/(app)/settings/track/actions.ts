@@ -191,6 +191,56 @@ export interface MinistryNode {
   is_active: boolean
 }
 
+/**
+ * Copy the NEAREST linked ancestor's service links onto a new child node
+ * (links to ACTIVE templates only; idempotent on UNIQUE(template, tag)).
+ * Walks parent_tag_id upward, cycle-guarded; first ancestor with links wins.
+ */
+async function autoLinkToNearestAncestorServices(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  churchId: string,
+  newTagId: string,
+  parentTagId: string,
+): Promise<void> {
+  const { data: tagRows } = await supabase
+    .from('service_tags').select('id, parent_tag_id').eq('church_id', churchId)
+  const parentOf = new Map<string, string | null>()
+  for (const t of (tagRows ?? []) as { id: string; parent_tag_id: string | null }[]) parentOf.set(t.id, t.parent_tag_id)
+
+  const seen = new Set<string>()
+  let cur: string | null = parentTagId
+  while (cur && !seen.has(cur)) {
+    seen.add(cur)
+    const { data: links } = await supabase
+      .from('service_template_tags')
+      .select('service_template_id, service_templates!inner(is_active)')
+      .eq('church_id', churchId)
+      .eq('ministry_tag_id', cur)
+      .eq('service_templates.is_active', true)
+    const templateIds = Array.from(new Set(((links ?? []) as { service_template_id: string }[]).map(l => l.service_template_id)))
+    if (templateIds.length > 0) {
+      for (const tmplId of templateIds) {
+        const { data: maxRow } = await supabase
+          .from('service_template_tags')
+          .select('sort_order')
+          .eq('service_template_id', tmplId)
+          .order('sort_order', { ascending: false })
+          .limit(1)
+        const nextSort = ((maxRow?.[0] as { sort_order?: number | null } | undefined)?.sort_order ?? -1) + 1
+        // UNIQUE violation = already linked (race) — fine, ignore.
+        await supabase.from('service_template_tags').insert({
+          church_id: churchId,
+          service_template_id: tmplId,
+          ministry_tag_id: newTagId,
+          sort_order: nextSort,
+        })
+      }
+      return
+    }
+    cur = parentOf.get(cur) ?? null
+  }
+}
+
 export async function createMinistry(params: {
   name: string
   tag_role: TagRole
@@ -239,6 +289,15 @@ export async function createMinistry(params: {
 
     if (error || !data) return { ok: false, error: error?.message ?? 'Insert failed' }
     const node = data as MinistryNode
+
+    // AUTO-LINK (TK3 Door A default): a child created under a parent that is
+    // counted at services inherits those service links, so its metrics render
+    // in Entries immediately — the Roberts trap ("new group, no entry tab")
+    // can't recur for children. Nearest linked ancestor wins; top-level nodes
+    // inherit nothing (the wizard/orphan chip handles them).
+    if (node.parent_tag_id) {
+      await autoLinkToNearestAncestorServices(supabase, churchId, node.id, node.parent_tag_id)
+    }
 
     // If an ancestor already has an active ATTENDANCE roll-up, auto-wire the
     // new node's seeded Attendance into it (the common case needs no manual
@@ -663,3 +722,112 @@ export async function deactivateCount(metricId: string): Promise<ActionResult> {
   }
 }
 
+
+// ─────────────────────────────────────────────────────────────────────────
+// "Where is this counted?" — the two doors (TK5,
+// IRIS_SERVICES_RESTRUCTURE_ELEMENT_MAP.md §3). Door A links a ministry to
+// services (its instance metrics render there in Entries). Door B converts
+// its entry metrics to weekly/monthly church-wide (Stat Entries tab — no
+// service; the Giving model: "convert, never link").
+// ─────────────────────────────────────────────────────────────────────────
+
+/** Door A — count this ministry at the given services (idempotent). */
+export async function linkMinistryToServices(params: {
+  tagId: string
+  templateIds: string[]
+}): Promise<ActionResult> {
+  try {
+    const supabase = await createClient()
+    const churchId = await requireOwnerAdmin(supabase)
+    if (params.templateIds.length === 0) return { ok: false, error: 'Pick at least one service.' }
+
+    // Validate ownership: tag + templates must belong to this church + be active.
+    const { data: tag } = await supabase
+      .from('service_tags').select('id')
+      .eq('id', params.tagId).eq('church_id', churchId).eq('is_active', true).maybeSingle()
+    if (!tag) return { ok: false, error: 'Ministry not found.' }
+
+    const { data: tmpls } = await supabase
+      .from('service_templates').select('id')
+      .eq('church_id', churchId).eq('is_active', true)
+      .in('id', params.templateIds)
+    const validIds = new Set(((tmpls ?? []) as { id: string }[]).map(t => t.id))
+    if (validIds.size === 0) return { ok: false, error: 'No valid services selected.' }
+
+    for (const tmplId of validIds) {
+      const { data: existing } = await supabase
+        .from('service_template_tags').select('id')
+        .eq('service_template_id', tmplId).eq('ministry_tag_id', params.tagId).maybeSingle()
+      if (existing) continue
+      const { data: maxRow } = await supabase
+        .from('service_template_tags')
+        .select('sort_order')
+        .eq('service_template_id', tmplId)
+        .order('sort_order', { ascending: false })
+        .limit(1)
+      const nextSort = ((maxRow?.[0] as { sort_order?: number | null } | undefined)?.sort_order ?? -1) + 1
+      const { error } = await supabase.from('service_template_tags').insert({
+        church_id: churchId,
+        service_template_id: tmplId,
+        ministry_tag_id: params.tagId,
+        sort_order: nextSort,
+      })
+      // UNIQUE violation = raced an identical link — idempotent, ignore.
+      if (error && !/duplicate|unique/i.test(error.message)) return { ok: false, error: error.message }
+    }
+    return { ok: true }
+  } catch (e) {
+    return { ok: false, error: (e as Error).message }
+  }
+}
+
+/**
+ * Door B — convert a ministry's active instance-scoped ENTRY metrics to
+ * period-scoped (weekly/monthly church-wide; renders in Stat Entries).
+ * GUARD: blocked when any of those metrics already has instance-bound
+ * entries — converting them is a data migration (see
+ * scripts/data-fixes/giving_to_weekly.sql for the pattern), not a click.
+ */
+export async function convertMinistryToWeekly(params: {
+  tagId: string
+  cadence: 'week' | 'month'
+}): Promise<ActionResult<{ converted: number }>> {
+  try {
+    const supabase = await createClient()
+    const churchId = await requireOwnerAdmin(supabase)
+
+    const { data: metricRows } = await supabase
+      .from('metrics')
+      .select('id')
+      .eq('church_id', churchId)
+      .eq('ministry_tag_id', params.tagId)
+      .eq('is_active', true)
+      .eq('mode', 'entry')
+      .eq('scope', 'instance')
+    const metricIds = ((metricRows ?? []) as { id: string }[]).map(m => m.id)
+    if (metricIds.length === 0) return { ok: false, error: 'Nothing to convert — no instance-scoped entry metrics on this ministry.' }
+
+    // Guard: any instance-bound data already logged?
+    const { count } = await supabase
+      .from('metric_entries')
+      .select('id', { count: 'exact', head: true })
+      .in('metric_id', metricIds)
+      .not('service_instance_id', 'is', null)
+    if ((count ?? 0) > 0) {
+      return {
+        ok: false,
+        error: `This ministry already has ${count} logged ${count === 1 ? 'entry' : 'entries'} at services — converting it needs a data fix (ask your admin), not a toggle.`,
+      }
+    }
+
+    const { error } = await supabase
+      .from('metrics')
+      .update({ scope: 'period', cadence: params.cadence })
+      .eq('church_id', churchId)
+      .in('id', metricIds)
+    if (error) return { ok: false, error: error.message }
+    return { ok: true, data: { converted: metricIds.length } }
+  } catch (e) {
+    return { ok: false, error: (e as Error).message }
+  }
+}
