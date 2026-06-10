@@ -14,8 +14,12 @@ import { revalidatePath } from 'next/cache'
 
 export interface CreateServiceInput {
   display_name: string        // required, trimmed
-  location_id?: string        // one campus — required unless all_locations
-  all_locations?: boolean     // create the service at EVERY active campus
+  location_id?: string        // one campus — required unless all_locations/church_wide
+  all_locations?: boolean     // create the service at EVERY active campus (one template each)
+  /** ONE template with location_id NULL (0036): a single shared count for the
+   *  whole church, visible at every campus. Distinct from all_locations (which
+   *  duplicates per campus, each with its own counts). Requires 0036 applied. */
+  church_wide?: boolean
   primary_tag_id: string      // required — service_tags.id
   subtag_ids: string[]        // optional — service_tags ids for service_template_tags
 }
@@ -57,8 +61,11 @@ export async function createServiceAction(
     .eq('church_id', churchId)
     .eq('is_active', true)
   const activeLocIds = (activeLocs ?? []).map(l => l.id as string)
-  let locationIds: string[]
-  if (input.all_locations) {
+  let locationIds: (string | null)[]
+  if (input.church_wide) {
+    // One shared, campus-less template (0036). NULL flows through the insert.
+    locationIds = [null]
+  } else if (input.all_locations) {
     locationIds = activeLocIds
     if (locationIds.length === 0) return { error: 'No active locations to add the service to.' }
   } else {

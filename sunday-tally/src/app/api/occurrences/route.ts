@@ -22,7 +22,10 @@ export async function POST(req: Request) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { service_template_id, service_date, location_id, church_id } = await req.json()
-  if (!service_template_id || !service_date || !location_id || !church_id) {
+  // location_id MAY be null — but ONLY for a church-wide template (0036:
+  // service_templates.location_id IS NULL). Verified against the template row
+  // below, never trusted from the client.
+  if (!service_template_id || !service_date || location_id === undefined || !church_id) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
   }
 
@@ -41,16 +44,35 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
+  // Church-wide guard: a NULL location is accepted ONLY when the template row
+  // itself is church-wide; a campus template must carry a real location. Also
+  // pins the template to the caller's church.
+  const { data: tmpl } = await supabase
+    .from('service_templates')
+    .select('id, location_id')
+    .eq('id', service_template_id)
+    .eq('church_id', church_id)
+    .maybeSingle()
+  if (!tmpl) return NextResponse.json({ error: 'Unknown service' }, { status: 400 })
+  const tmplLocation = (tmpl as { location_id: string | null }).location_id
+  if (location_id === null && tmplLocation !== null) {
+    return NextResponse.json({ error: 'This service belongs to a campus — location required' }, { status: 400 })
+  }
+  if (location_id !== null && tmplLocation === null) {
+    return NextResponse.json({ error: 'This service is church-wide — location must be empty' }, { status: 400 })
+  }
+
   // 1. Get — return the existing active occurrence if one is already there.
-  const { data: existing } = await supabase
+  //    (.eq never matches NULL — church-wide needs .is)
+  let getQuery = supabase
     .from('service_instances')
     .select('id')
     .eq('church_id', church_id)
     .eq('service_template_id', service_template_id)
-    .eq('location_id', location_id)
     .eq('service_date', service_date)
     .eq('status', 'active')
-    .maybeSingle()
+  getQuery = location_id === null ? getQuery.is('location_id', null) : getQuery.eq('location_id', location_id)
+  const { data: existing } = await getQuery.maybeSingle()
 
   if (existing) return NextResponse.json({ occurrence_id: existing.id })
 
@@ -70,15 +92,16 @@ export async function POST(req: Request) {
 
   if (occError || !created) {
     // Race: another request created it between our SELECT and INSERT. Re-read.
-    const { data: raceExisting } = await supabase
+    // (Church-wide races converge via the 0036 partial unique index.)
+    let raceQuery = supabase
       .from('service_instances')
       .select('id')
       .eq('church_id', church_id)
       .eq('service_template_id', service_template_id)
-      .eq('location_id', location_id)
       .eq('service_date', service_date)
       .eq('status', 'active')
-      .maybeSingle()
+    raceQuery = location_id === null ? raceQuery.is('location_id', null) : raceQuery.eq('location_id', location_id)
+    const { data: raceExisting } = await raceQuery.maybeSingle()
     if (raceExisting) return NextResponse.json({ occurrence_id: raceExisting.id })
     return NextResponse.json({ error: 'Failed to create occurrence' }, { status: 500 })
   }

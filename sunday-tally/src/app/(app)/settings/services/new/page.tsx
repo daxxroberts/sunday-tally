@@ -121,8 +121,9 @@ export default function NewServicePage() {
       // 1. Create service template
       const createResult = await createServiceAction({
         display_name: displayName.trim(),
-        location_id: locationId === 'ALL' ? undefined : locationId,
+        location_id: locationId === 'ALL' || locationId === 'CHURCH_WIDE' ? undefined : locationId,
         all_locations: locationId === 'ALL',
+        church_wide: locationId === 'CHURCH_WIDE',   // one campus-less template (0036)
         primary_tag_id: primaryTagId,
         subtag_ids: subtagIds,
       })
@@ -252,11 +253,17 @@ export default function NewServicePage() {
                     className={inputCls}
                   >
                     <option value="">Select a location</option>
-                    <option value="ALL">All locations</option>
+                    <option value="ALL">All locations — one service at each campus</option>
+                    <option value="CHURCH_WIDE">Church-wide — one shared count for the whole church</option>
                     {locations.map(l => (
                       <option key={l.id} value={l.id}>{l.name}</option>
                     ))}
                   </select>
+                  {locationId === 'CHURCH_WIDE' && (
+                    <p className="mt-1 text-[12px] leading-relaxed text-slate-400">
+                      No campus — everyone sees and edits the same weekly count (good for groups tracked church-wide).
+                    </p>
+                  )}
                 </div>
               )}
 
