@@ -35,6 +35,7 @@ import {
   type SummaryMetricFlags,
   type SummaryMetricKey,
 } from '@/lib/dashboardPrefs'
+import { readChurchPrefs, saveChurchPrefs } from '@/lib/churchPrefs'
 import type { UserRole, Church } from '@/types'
 import {
   buildKeyMetricCatalog, resolveKeyMetricKeys, resolveKeyMetricTargets, featuredEntries,
@@ -458,7 +459,8 @@ export default function DashboardPage() {
       setChurch(ch)
       setChurchId(membership.church_id)
       setFlags(loadSummaryMetrics(user.id, membership.church_id))
-      setGridPrefs(((ch as unknown as { grid_config?: GridPrefs })?.grid_config as GridPrefs) ?? {})
+      // 0039 split: prefs from dashboard_prefs (legacy grid_config keys pre-apply).
+      setGridPrefs(readChurchPrefs(ch) as GridPrefs)
 
       // active campus (N-2 / D-088): default_location_id → fallback first active by sort_order
       let campusRow: { id: string; name: string } | null = null
@@ -499,13 +501,12 @@ export default function DashboardPage() {
     if (userId && church) saveSummaryMetrics(userId, church.id, next)
   }
 
-  // E-22 / N-6 — persist church-wide prefs to churches.grid_config. The argument
-  // is a PATCH merged over the current gridPrefs (which holds the full grid_config
-  // loaded at mount), so saving one section (e.g. include-in-total) never drops
-  // another section saved earlier this session (e.g. keyMetrics). #70.
-  // Transient save status for church-wide grid_config writes (Key Metrics
-  // selection, per-metric targets, include-in-total). Surfaces "Saved ✓" /
-  // "Couldn't save" and rolls back the optimistic update on failure. #70.
+  // E-22 / N-6 — persist church-wide prefs (0039 split: churches.dashboard_prefs,
+  // legacy grid_config fallback handled inside saveChurchPrefs). The argument is
+  // a PATCH merged over the current gridPrefs, so saving one section (e.g.
+  // include-in-total) never drops another saved earlier this session. #70.
+  // Transient save status surfaces "Saved ✓" / "Couldn't save" and rolls back
+  // the optimistic update on failure (incl. silent RLS zero-row writes). #70.
   const [prefsStatus, setPrefsStatus] = useState<null | 'saving' | 'saved' | 'error'>(null)
   const prefsStatusTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   async function handleSavePrefs(patch: GridPrefs) {
@@ -514,19 +515,11 @@ export default function DashboardPage() {
     const next = { ...gridPrefs, ...patch }
     setGridPrefs(next)                 // optimistic
     setPrefsStatus('saving')
-    // .select() so we can tell a real write from a silent RLS no-op: an UPDATE
-    // that matches zero rows (e.g. caller isn't owner/admin) returns NO error
-    // but writes nothing — the exact failure that made saves "vanish on refresh".
-    const { data, error } = await supabase
-      .from('churches')
-      .update({ grid_config: next })
-      .eq('id', churchId)
-      .select('id')
-    if (error || !data || data.length === 0) {
+    const res = await saveChurchPrefs(supabase, churchId, next as Record<string, unknown>)
+    if (!res.ok) {
       setGridPrefs(prev)               // roll back — never leave a false "saved" state on screen
       setPrefsStatus('error')
-      if (error) console.error('grid_config save failed:', error.message)
-      else console.error('grid_config save wrote 0 rows (blocked by RLS or no matching church).')
+      console.error('dashboard prefs save failed:', res.message)
     } else {
       setPrefsStatus('saved')
     }

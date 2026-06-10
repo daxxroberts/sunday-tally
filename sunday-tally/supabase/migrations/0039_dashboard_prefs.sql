@@ -18,18 +18,21 @@
 
 ALTER TABLE churches ADD COLUMN IF NOT EXISTS dashboard_prefs JSONB;
 
--- Backfill: lift the two pref keys out of grid_config (only where present).
+-- Backfill: lift the three pref keys out of grid_config (only where present).
+-- (keyMetrics + keyMetricTargets from the Key Metrics lane #70,
+--  excludedTotalMinistries from include-in-total E-12/E-22.)
 UPDATE churches
 SET dashboard_prefs = jsonb_strip_nulls(jsonb_build_object(
       'keyMetrics',               grid_config->'keyMetrics',
+      'keyMetricTargets',         grid_config->'keyMetricTargets',
       'excludedTotalMinistries',  grid_config->'excludedTotalMinistries'))
-WHERE grid_config ?| ARRAY['keyMetrics','excludedTotalMinistries']
+WHERE grid_config ?| ARRAY['keyMetrics','keyMetricTargets','excludedTotalMinistries']
   AND dashboard_prefs IS NULL;
 
 -- Strip the pref keys from grid_config so it is columns-only again.
 UPDATE churches
-SET grid_config = grid_config - 'keyMetrics' - 'excludedTotalMinistries'
-WHERE grid_config ?| ARRAY['keyMetrics','excludedTotalMinistries'];
+SET grid_config = grid_config - 'keyMetrics' - 'keyMetricTargets' - 'excludedTotalMinistries'
+WHERE grid_config ?| ARRAY['keyMetrics','keyMetricTargets','excludedTotalMinistries'];
 
 -- Normalize: a grid_config left as '{}' means "nothing stored" → NULL,
 -- so History's storedHasGrid guard re-derives cleanly.

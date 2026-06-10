@@ -12,10 +12,15 @@ export interface Church {
   tracks_volunteers: boolean
   tracks_responses: boolean
   tracks_giving: boolean
-  // churches.grid_config (nullable jsonb): persisted Entries/Dashboard/History
-  // customize state — grid layout (GridConfig) merged with include-in-total prefs.
-  // Read via narrowed casts at each call site; kept permissive here on purpose.
+  // churches.grid_config (nullable jsonb): the History grid column structure
+  // (GridConfig). Pre-0039 it ALSO carried the dashboard prefs — readChurchPrefs
+  // (src/lib/churchPrefs.ts) handles both states. Read via narrowed casts at
+  // each call site; kept permissive here on purpose.
   grid_config?: Record<string, unknown> | null
+  // churches.dashboard_prefs (nullable jsonb, 0039): church-wide dashboard prefs
+  // (keyMetrics / keyMetricTargets / excludedTotalMinistries) — split out of
+  // grid_config so prefs saves can never corrupt the History grid.
+  dashboard_prefs?: Record<string, unknown> | null
 }
 
 // ─── Church Membership ─────────────────────────────────────────────────────────

@@ -15,6 +15,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import AppLayout from '@/components/layouts/AppLayout'
 import { createClient } from '@/lib/supabase/client'
+import { readChurchPrefs, saveChurchPrefs } from '@/lib/churchPrefs'
 import type { Church, UserRole } from '@/types'
 import { Dot, Field, Ico, accentForRole, fmt, roleLabel, type Stat } from './ui'
 
@@ -139,7 +140,8 @@ export default function EntriesPage() {
       setRole(membership.role as UserRole)
       setChurch(churchData)
       setChurchId(membership.church_id)
-      setGridPrefs(((churchData as { grid_config?: GridPrefs })?.grid_config as GridPrefs) ?? {})
+      // 0039 split: prefs from dashboard_prefs (legacy grid_config keys pre-apply).
+      setGridPrefs(readChurchPrefs(churchData) as GridPrefs)
 
       // active campus (N-5): default_location_id, else first active location by sort_order
       let campusRow: { id: string; name: string } | null = null
@@ -462,8 +464,11 @@ export default function EntriesPage() {
   const saveGridPrefs = useCallback(async (next: GridPrefs) => {
     if (!churchId) return
     setGridPrefs(next)
-    const existing = ((church as { grid_config?: object } | null)?.grid_config as object) ?? {}
-    await supabase.from('churches').update({ grid_config: { ...existing, ...next } }).eq('id', churchId)
+    // 0039 split: merge the patch over the CURRENT prefs (dashboard_prefs, or
+    // the legacy grid_config keys pre-apply) so an entries save never drops the
+    // dashboard's keyMetrics/targets — then write via the shared helper.
+    const existing = readChurchPrefs(church)
+    await saveChurchPrefs(supabase, churchId, { ...existing, ...next })
   }, [supabase, churchId, church])
 
   // ── derived: all ministries across the week (deduped by tag) for Totals ──
