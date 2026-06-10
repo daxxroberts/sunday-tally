@@ -300,8 +300,19 @@
   background: #dcfce7;
   color: #14532d;
   border-left: 3px solid #22c55e;
-  padding-left: 14px;
-  font-weight: 600;
+  padding-left: 28px;
+  font-weight: 400;
+}
+/* Tree connector matching SV rows — green tint to stay on-palette */
+.row-wk td.col-label::before {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 10px;
+  height: 1px;
+  background: #86efac;
 }
 
 /* ── SERVICE DATE HEADER — sky blue band ── */
