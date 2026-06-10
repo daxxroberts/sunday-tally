@@ -358,7 +358,7 @@ export async function createMinistry(params: {
 
 export async function updateMinistry(
   id: string,
-  patch: { name?: string; tag_role?: TagRole; parent_tag_id?: string | null }
+  patch: { name?: string; tag_role?: TagRole; parent_tag_id?: string | null; color?: string | null }
 ): Promise<ActionResult> {
   try {
     const supabase = await createClient()
@@ -368,6 +368,14 @@ export async function updateMinistry(
     if (patch.name !== undefined) update.name = patch.name.trim()
     if (patch.tag_role !== undefined) update.tag_role = patch.tag_role
     if ('parent_tag_id' in patch) update.parent_tag_id = patch.parent_tag_id ?? null
+    // Ministry color (0040). Server-validated hex or null (= back to the palette).
+    if ('color' in patch) {
+      const c = patch.color
+      if (c !== null && c !== undefined && !/^#[0-9a-fA-F]{6}$/.test(c)) {
+        return { ok: false, error: 'Color must be a hex value like #4F6EF7.' }
+      }
+      update.color = c ?? null
+    }
 
     if (Object.keys(update).length === 0) return { ok: true }
 
@@ -437,6 +445,10 @@ export interface MetricRow {
   mode: MetricMode
   rollup_op: RollupOp | null
   parent_metric_id: string | null
+  /** 'instance' = per gathering (needs a service); 'period' = weekly/monthly
+   *  church-wide (Stat Entries — e.g. Giving). Optional: defaults to instance. */
+  scope?: 'instance' | 'period'
+  cadence?: 'week' | 'month' | 'day' | null
 }
 
 const METRIC_SELECT = 'id, code, name, reporting_tag_id, is_canonical, is_active, mode, rollup_op, parent_metric_id'

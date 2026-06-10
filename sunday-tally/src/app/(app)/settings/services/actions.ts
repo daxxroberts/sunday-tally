@@ -270,6 +270,22 @@ export async function createServiceGroupAction(
   if (!trimmed) return { error: 'Group name is required.' }
   const code = trimmed.toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_+|_+$/g, '').substring(0, 24) || 'GROUP'
 
+  // IDEMPOTENT: typing the name of a group that already exists just hands it
+  // back (the picker selects it) — never a "duplicate" scolding. Reactivates a
+  // soft-deleted group of the same code rather than colliding with it.
+  const { data: existing } = await supabase
+    .from('service_groups')
+    .select('id, name, code, is_active')
+    .eq('church_id', churchId)
+    .eq('code', code)
+    .maybeSingle()
+  if (existing) {
+    if (!(existing as { is_active: boolean }).is_active) {
+      await supabase.from('service_groups').update({ is_active: true }).eq('id', existing.id)
+    }
+    return { group: { id: existing.id as string, name: existing.name as string, code: existing.code as string } }
+  }
+
   const { count } = await supabase
     .from('service_groups').select('id', { count: 'exact', head: true }).eq('church_id', churchId)
   const { data, error } = await supabase

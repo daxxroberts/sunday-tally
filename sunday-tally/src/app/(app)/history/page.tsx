@@ -101,9 +101,11 @@ export default function HistoryPage() {
       .map(c => ({ id: c.id, label: c.label }))
   }, [config])
 
+  // Church-chosen ministry colors (0040) — loaded in boot; palette fills the rest.
+  const [colorOverrides, setColorOverrides] = useState<Map<string, string>>(new Map())
   const groupColorMap = useMemo(
-    () => buildGroupColorMap(filterOptions.map(o => o.id)),
-    [filterOptions],
+    () => buildGroupColorMap(filterOptions.map(o => o.id), colorOverrides),
+    [filterOptions, colorOverrides],
   )
 
   const filteredConfig = useMemo<GridConfig | null>(() => {
@@ -161,6 +163,25 @@ export default function HistoryPage() {
           setEmptyReason('No active services with a primary tag yet. Set up your services first.')
         }
         setConfig(derived ? dedupeConfig(derived) : null)
+      }
+
+      // Ministry colors (0040): root tags with a chosen color override the
+      // positional palette — same color here as everywhere that ministry shows.
+      // Key matches extractRootKey on group_<code-sans-underscores> ids.
+      // Pre-0040 the column doesn't exist → select errors → palette only.
+      const { data: colorRows, error: colorErr } = await supabase
+        .from('service_tags')
+        .select('code, parent_tag_id, color')
+        .eq('church_id', ch.id)
+        .eq('is_active', true)
+      if (!colorErr && colorRows) {
+        const overrides = new Map<string, string>()
+        for (const t of colorRows as { code: string; parent_tag_id: string | null; color?: string | null }[]) {
+          if (t.parent_tag_id === null && t.color) {
+            overrides.set(t.code.toLowerCase().replace(/_/g, ''), t.color)
+          }
+        }
+        setColorOverrides(overrides)
       }
     })
   }, [router])
