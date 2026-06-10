@@ -160,7 +160,7 @@ const SOURCES: WidgetSource[] = [
 const REPORTING_TAGS = ['ATTENDANCE', 'VOLUNTEERS', 'GIVING', 'RESPONSE_STAT']
 const AGGS = ['sum', 'avg', 'weekly_avg']
 const TIME_BUCKETS = ['week', 'month', 'year']
-const DIM_FIELDS = ['ministry_tag', 'service_template', 'location', 'metric']
+const DIM_FIELDS = ['ministry_tag', 'service_template', 'location', 'metric', 'service_group']
 const VIZ_KINDS = ['line', 'bar', 'area', 'grid', 'pivot', 'metric_card']
 const WINDOW_KINDS = ['trailing', 'current', 'ytd', 'prior_year', 'custom']
 const WINDOW_UNITS = ['week', 'month', 'year']
@@ -254,6 +254,9 @@ export function validateSpec(
       }
       if (f.metric_names !== undefined && !isStringArray(f.metric_names)) {
         errors.push('filters.metric_names must be an array of strings')
+      }
+      if (f.service_group_codes !== undefined && !isStringArray(f.service_group_codes)) {
+        errors.push('filters.service_group_codes must be an array of strings')
       }
     }
   }
@@ -419,14 +422,16 @@ export function describeSpec(
     ? `${rangeLabel}, ${BUCKET_ADJ[bucket]}`
     : rangeLabel
 
-  // included — ministries/services/locations scoped, or "all".
+  // included — ministries/services/groups scoped, or "all".
   const parts: string[] = []
   const mt = spec.filters?.ministry_tag_codes
   const st = spec.filters?.service_template_codes
   const mn = spec.filters?.metric_names
+  const sg = spec.filters?.service_group_codes
   if (mn && mn.length > 0) parts.push(`metrics: ${mn.join(', ')}`)
   if (mt && mt.length > 0) parts.push(`ministries: ${mt.join(', ')}`)
   if (st && st.length > 0) parts.push(`services: ${st.join(', ')}`)
+  if (sg && sg.length > 0) parts.push(`service groups: ${sg.join(', ')}`)
   const included = parts.length > 0 ? parts.join('; ') : 'All ministries and services.'
 
   return { summing, refresh, currentlyShowing, included }
@@ -469,6 +474,7 @@ export function explainQuery(spec: WidgetSpec, resolved: { start: string; end: s
       d.field === 'ministry_tag' ? 'ministry_tag_code'
       : d.field === 'metric' ? 'metric_name'
       : d.field === 'service_template' ? 'service_template_id'
+      : d.field === 'service_group' ? 'service_group_code'
       : 'location'
     selectCols.push(col)
     groupCols.push(col)
@@ -488,8 +494,10 @@ export function explainQuery(spec: WidgetSpec, resolved: { start: string; end: s
   }
   const mn = spec.filters?.metric_names
   const mt = spec.filters?.ministry_tag_codes
+  const sg = spec.filters?.service_group_codes
   if (mn && mn.length) where.push(`metric_name IN (${mn.map((v) => `'${v}'`).join(', ')})`)
   if (mt && mt.length) where.push(`ministry_tag_code IN (${mt.map((v) => `'${v}'`).join(', ')})`)
+  if (sg && sg.length) where.push(`service_group_code IN (${sg.map((v) => `'${v}'`).join(', ')})`)
 
   let sql = `SELECT ${selectCols.join(', ')}\nFROM ${table}\nWHERE ${where.join('\n  AND ')}`
   if (groupCols.length) sql += `\nGROUP BY ${groupCols.join(', ')}\nORDER BY ${groupCols.join(', ')}`
@@ -571,12 +579,14 @@ function planFor(spec: WidgetSpec): { plan: SourcePlan; error?: string } {
         plan: {
           table: 'attendance_per_occurrence',
           dateCol: 'service_date',
-          select: 'service_date, service_template_id, total_attendance',
+          select: 'service_date, service_template_id, total_attendance, service_group_code',
           valueOf: (r) => num(r.total_attendance),
           dateOf: (r) => str(r.service_date),
           codeOf: (r, f) =>
-            f === 'service_template' ? str(r.service_template_id) : null,
-          supportedDims: ['service_template'],
+            f === 'service_template' ? str(r.service_template_id)
+            : f === 'service_group' ? str(r.service_group_code)
+            : null,
+          supportedDims: ['service_template', 'service_group'],
         },
       }
 
@@ -585,12 +595,14 @@ function planFor(spec: WidgetSpec): { plan: SourcePlan; error?: string } {
         plan: {
           table: 'volunteers_per_occurrence',
           dateCol: 'service_date',
-          select: 'service_date, service_template_id, total_volunteers',
+          select: 'service_date, service_template_id, total_volunteers, service_group_code',
           valueOf: (r) => num(r.total_volunteers),
           dateOf: (r) => str(r.service_date),
           codeOf: (r, f) =>
-            f === 'service_template' ? str(r.service_template_id) : null,
-          supportedDims: ['service_template'],
+            f === 'service_template' ? str(r.service_template_id)
+            : f === 'service_group' ? str(r.service_group_code)
+            : null,
+          supportedDims: ['service_template', 'service_group'],
         },
       }
 
@@ -613,7 +625,7 @@ function planFor(spec: WidgetSpec): { plan: SourcePlan; error?: string } {
           table: 'metric_entries_readable',
           dateCol: 'effective_date',
           select:
-            'effective_date, value, is_not_applicable, instance_status, reporting_tag_code, ministry_tag_code, metric_name, service_instance_id',
+            'effective_date, value, is_not_applicable, instance_status, reporting_tag_code, ministry_tag_code, metric_name, service_instance_id, service_group_code',
           valueOf: (r) => {
             // firehose: honor N/A + active-only (rule 1 + 4); filter to the measure's tag.
             if (r.is_not_applicable === true) return null
@@ -626,9 +638,10 @@ function planFor(spec: WidgetSpec): { plan: SourcePlan; error?: string } {
           codeOf: (r, f) => {
             if (f === 'ministry_tag') return str(r.ministry_tag_code)
             if (f === 'metric') return str(r.metric_name)
+            if (f === 'service_group') return str(r.service_group_code)
             return null
           },
-          supportedDims: ['ministry_tag', 'metric'],
+          supportedDims: ['ministry_tag', 'metric', 'service_group'],
         },
       }
   }
@@ -840,6 +853,17 @@ export async function compileAndRun(args: {
       shape: 'value: number',
       error: `Filtering by service_template code isn't supported yet (the views key service by UUID, not code). Use a ministry filter on metric_entries_readable instead.`,
     }
+  }
+  if (ff?.service_group_codes && ff.service_group_codes.length > 0) {
+    if (spec.source === 'giving_per_week') {
+      return {
+        rows: [],
+        resolved,
+        shape: 'value: number',
+        error: `Giving is church-wide weekly — it can't be filtered by service group.`,
+      }
+    }
+    colFilters.push({ col: 'service_group_code', values: ff.service_group_codes })
   }
 
   // Campus scope (the dashboard's per-user filter) — applies to every source

@@ -143,7 +143,9 @@ export async function createServiceAction(
 // read-only with the instance count.
 // ─────────────────────────────────────────────────────────────────────────
 
-/** Everything the edit page needs, role-gated (owner/admin → null otherwise). */
+/** Everything the edit page needs, role-gated (owner/admin → null otherwise).
+ *  reporting_group_id / show_in_entries / groups are 0036/0037 features —
+ *  selected with a fallback so the page works (minus those rows) pre-apply. */
 export async function getServiceEditData(templateId: string): Promise<{
   template: {
     id: string
@@ -152,9 +154,15 @@ export async function getServiceEditData(templateId: string): Promise<{
     locationName: string | null
     primary_tag_id: string | null
     is_active: boolean
+    reporting_group_id: string | null
+    show_in_entries: boolean
   }
   instanceCount: number
   tags: { id: string; name: string; tag_role: string }[]
+  /** null = 0037 not applied (hide the group picker). */
+  groups: { id: string; name: string; code: string }[] | null
+  /** false = 0036 not applied (hide the show-in-entries toggle). */
+  extrasSupported: boolean
 } | null> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -170,13 +178,39 @@ export async function getServiceEditData(templateId: string): Promise<{
   if (membership.role !== 'owner' && membership.role !== 'admin') return null
   const churchId: string = membership.church_id
 
-  const { data: tmpl } = await supabase
-    .from('service_templates')
-    .select('id, display_name, location_id, primary_tag_id, is_active, church_locations(name)')
-    .eq('id', templateId)
-    .eq('church_id', churchId)
-    .maybeSingle()
+  // Try the post-migration shape first; fall back to the base columns.
+  let tmpl: Record<string, unknown> | null = null
+  let extrasSupported = true
+  {
+    const withExtras = await supabase
+      .from('service_templates')
+      .select('id, display_name, location_id, primary_tag_id, is_active, reporting_group_id, show_in_entries, church_locations(name)')
+      .eq('id', templateId)
+      .eq('church_id', churchId)
+      .maybeSingle()
+    if (!withExtras.error) {
+      tmpl = withExtras.data as Record<string, unknown> | null
+    } else {
+      extrasSupported = false
+      const base = await supabase
+        .from('service_templates')
+        .select('id, display_name, location_id, primary_tag_id, is_active, church_locations(name)')
+        .eq('id', templateId)
+        .eq('church_id', churchId)
+        .maybeSingle()
+      tmpl = base.data as Record<string, unknown> | null
+    }
+  }
   if (!tmpl) return null
+
+  // Reporting groups (0037) — table missing pre-apply → null (picker hidden).
+  const groupsRes = await supabase
+    .from('service_groups')
+    .select('id, name, code')
+    .eq('church_id', churchId)
+    .eq('is_active', true)
+    .order('sort_order', { ascending: true })
+  const groups = groupsRes.error ? null : ((groupsRes.data ?? []) as { id: string; name: string; code: string }[])
 
   const locEmbed = (tmpl as { church_locations?: { name: string } | { name: string }[] | null }).church_locations
   const locationName = (Array.isArray(locEmbed) ? locEmbed[0]?.name : locEmbed?.name) ?? null
@@ -202,16 +236,59 @@ export async function getServiceEditData(templateId: string): Promise<{
       locationName,
       primary_tag_id: (tmpl.primary_tag_id as string | null) ?? null,
       is_active: !!tmpl.is_active,
+      reporting_group_id: (tmpl.reporting_group_id as string | null) ?? null,
+      show_in_entries: tmpl.show_in_entries === undefined ? true : !!tmpl.show_in_entries,
     },
     instanceCount: instanceCount ?? 0,
     tags: (tagRes.data ?? []) as { id: string; name: string; tag_role: string }[],
+    groups,
+    extrasSupported,
   }
+}
+
+/** Create a reporting group inline (SE5 "+ New group"). Requires 0037. */
+export async function createServiceGroupAction(
+  name: string,
+): Promise<{ group?: { id: string; name: string; code: string }; error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Not authenticated' }
+
+  const { data: membership } = await supabase
+    .from('church_memberships')
+    .select('church_id, role')
+    .eq('user_id', user.id)
+    .eq('is_active', true)
+    .single()
+  if (!membership) return { error: 'No active church membership found.' }
+  if (membership.role !== 'owner' && membership.role !== 'admin') {
+    return { error: 'Only owners and admins can manage reporting groups.' }
+  }
+  const churchId: string = membership.church_id
+
+  const trimmed = name.trim()
+  if (!trimmed) return { error: 'Group name is required.' }
+  const code = trimmed.toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_+|_+$/g, '').substring(0, 24) || 'GROUP'
+
+  const { count } = await supabase
+    .from('service_groups').select('id', { count: 'exact', head: true }).eq('church_id', churchId)
+  const { data, error } = await supabase
+    .from('service_groups')
+    .insert({ church_id: churchId, name: trimmed, code, sort_order: count ?? 0 })
+    .select('id, name, code')
+    .single()
+  if (error || !data) return { error: error?.message ?? 'Could not create the group (is migration 0037 applied?).' }
+  return { group: data as { id: string; name: string; code: string } }
 }
 
 export interface UpdateServiceInput {
   template_id: string
   display_name: string
   primary_tag_id: string
+  /** SE5 (0037) — null clears the group; undefined = leave unchanged. */
+  reporting_group_id?: string | null
+  /** SE6 (0036) — undefined = leave unchanged. */
+  show_in_entries?: boolean
 }
 
 /** Rename / change primary ministry. Changing the primary ALSO upserts the
@@ -250,9 +327,15 @@ export async function updateServiceAction(
     .maybeSingle()
   if (!tag) return { error: 'That ministry is not valid for this church.' }
 
+  const patch: Record<string, unknown> = { display_name: displayName, primary_tag_id: input.primary_tag_id }
+  // 0036/0037 fields — included only when the caller (which knows column
+  // support via getServiceEditData.extrasSupported/groups) provides them.
+  if (input.reporting_group_id !== undefined) patch.reporting_group_id = input.reporting_group_id
+  if (input.show_in_entries !== undefined) patch.show_in_entries = input.show_in_entries
+
   const { data: updated, error: updErr } = await supabase
     .from('service_templates')
-    .update({ display_name: displayName, primary_tag_id: input.primary_tag_id })
+    .update(patch)
     .eq('id', input.template_id)
     .eq('church_id', churchId)
     .select('id')

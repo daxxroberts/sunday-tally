@@ -17,7 +17,7 @@ import AppLayout from '@/components/layouts/AppLayout'
 import { createClient } from '@/lib/supabase/client'
 import { Ico, accentForRole, roleLabel } from '@/app/(app)/entries/ui'
 import type { UserRole } from '@/types'
-import { getServiceEditData, updateServiceAction, deactivateServiceAction } from '../../actions'
+import { getServiceEditData, updateServiceAction, deactivateServiceAction, createServiceGroupAction } from '../../actions'
 
 type EditData = NonNullable<Awaited<ReturnType<typeof getServiceEditData>>>
 
@@ -35,6 +35,10 @@ export default function ServiceEditPage() {
   // form state
   const [name, setName] = useState('')
   const [primaryTag, setPrimaryTag] = useState('')
+  const [groupId, setGroupId] = useState<string>('')            // SE5 ('' = none)
+  const [groups, setGroups] = useState<{ id: string; name: string; code: string }[]>([])
+  const [newGroupName, setNewGroupName] = useState<string | null>(null) // null = input hidden
+  const [showInEntries, setShowInEntries] = useState(true)      // SE6
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -60,6 +64,9 @@ export default function ServiceEditPage() {
       setData(d)
       setName(d.template.display_name)
       setPrimaryTag(d.template.primary_tag_id ?? '')
+      setGroupId(d.template.reporting_group_id ?? '')
+      setGroups(d.groups ?? [])
+      setShowInEntries(d.template.show_in_entries)
       setLoading(false)
     })()
     return () => { cancelled = true }
@@ -73,6 +80,9 @@ export default function ServiceEditPage() {
       template_id: data.template.id,
       display_name: name,
       primary_tag_id: primaryTag,
+      // post-migration fields — only sent when the DB supports them
+      ...(data.groups !== null ? { reporting_group_id: groupId || null } : {}),
+      ...(data.extrasSupported ? { show_in_entries: showInEntries } : {}),
     })
     setSaving(false)
     if (res.error) { setError(res.error); return }
@@ -173,6 +183,79 @@ export default function ServiceEditPage() {
                     Drives the audience bucket in History; it always stays in this service&apos;s ministry list.
                   </span>
                 </label>
+
+                {/* SE5 reporting group (0037) — hidden until the migration applies */}
+                {data.groups !== null && (
+                  <div className="mt-4">
+                    <span className="text-[12px] font-semibold uppercase tracking-wider text-slate-400">Reporting group</span>
+                    <div className="mt-1.5 flex items-center gap-2">
+                      <select
+                        value={groupId}
+                        onChange={(e) => setGroupId(e.target.value)}
+                        className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-[15px] text-slate-900 focus-visible:border-[#4F6EF7] focus-visible:outline-none"
+                      >
+                        <option value="">None</option>
+                        {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+                      </select>
+                      <button
+                        type="button"
+                        onClick={() => setNewGroupName(newGroupName === null ? '' : null)}
+                        className="shrink-0 rounded-lg border border-slate-200 px-2.5 py-2 text-[13px] font-semibold text-[#3D5BD4] transition-colors hover:bg-[#4F6EF7]/5"
+                      >
+                        + New group
+                      </button>
+                    </div>
+                    {newGroupName !== null && (
+                      <div className="mt-2 flex items-center gap-2">
+                        <input
+                          value={newGroupName}
+                          onChange={(e) => setNewGroupName(e.target.value)}
+                          placeholder="e.g. Morning"
+                          className="flex-1 rounded-lg border border-slate-200 px-3 py-1.5 text-[14px] text-slate-900 placeholder:text-slate-300 focus-visible:border-[#4F6EF7] focus-visible:outline-none"
+                          onKeyDown={async (e) => {
+                            if (e.key !== 'Enter') return
+                            e.preventDefault()
+                            const res = await createServiceGroupAction(newGroupName)
+                            if (res.group) { setGroups(g => [...g, res.group!]); setGroupId(res.group.id); setNewGroupName(null) }
+                            else setError(res.error ?? 'Could not create the group.')
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            const res = await createServiceGroupAction(newGroupName)
+                            if (res.group) { setGroups(g => [...g, res.group!]); setGroupId(res.group.id); setNewGroupName(null) }
+                            else setError(res.error ?? 'Could not create the group.')
+                          }}
+                          className="rounded-lg bg-[#4F6EF7] px-3 py-1.5 text-[13px] font-semibold text-white hover:bg-[#3D5BD4]"
+                        >
+                          Create
+                        </button>
+                      </div>
+                    )}
+                    <p className="mt-1 text-[12px] leading-relaxed text-slate-400">
+                      Purely for reporting — e.g. group all morning services (any campus) so the AI can compare Morning vs Evening.
+                    </p>
+                  </div>
+                )}
+
+                {/* SE6 show in Entries (0036) — hidden until the migration applies */}
+                {data.extrasSupported && (
+                  <label className="mt-4 flex cursor-pointer items-start gap-2.5">
+                    <input
+                      type="checkbox"
+                      checked={showInEntries}
+                      onChange={(e) => setShowInEntries(e.target.checked)}
+                      className="mt-0.5 h-4 w-4 rounded border-slate-300 text-[#4F6EF7] focus:ring-[#4F6EF7]/40"
+                    />
+                    <span>
+                      <span className="block text-[14px] font-semibold text-slate-800">Show in Entries</span>
+                      <span className="block text-[12px] leading-relaxed text-slate-400">
+                        Off = entry screens skip this service. History and dashboards keep all its data.
+                      </span>
+                    </span>
+                  </label>
+                )}
 
                 {error && (
                   <p className="mt-3 rounded-lg border border-[#F59E0B]/40 bg-[#F59E0B]/5 px-3 py-2 text-[12px] font-medium text-[#B45309]">{error}</p>

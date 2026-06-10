@@ -159,12 +159,14 @@ export const WIDGET_BUILDER_TOOLS: Anthropic.Messages.Tool[] = [
  * reporting_tags.code; giving has no per-source breakdown.
  */
 async function listDimensions(supabase: SupabaseClient, churchId: string) {
-  const [templates, locations, volMetrics, respMetrics, tags] = await Promise.all([
+  const [templates, locations, volMetrics, respMetrics, tags, groups] = await Promise.all([
     supabase.from('service_templates').select('id, display_name, service_code').eq('church_id', churchId).eq('is_active', true),
     supabase.from('church_locations').select('id, name, code').eq('church_id', churchId).eq('is_active', true),
     supabase.from('metrics').select('id, code, name, ministry_tag_id, reporting_tags!inner(code)').eq('church_id', churchId).eq('is_active', true).eq('reporting_tags.code', 'VOLUNTEERS'),
     supabase.from('metrics').select('id, code, name, ministry_tag_id, reporting_tags!inner(code)').eq('church_id', churchId).eq('is_active', true).eq('reporting_tags.code', 'RESPONSE_STAT'),
     supabase.from('service_tags').select('id, code, name, tag_role').eq('church_id', churchId).eq('is_active', true).order('display_order', { ascending: true }),
+    // Reporting groups (0037) — pre-apply the table doesn't exist; error → [].
+    supabase.from('service_groups').select('id, code, name').eq('church_id', churchId).eq('is_active', true).order('sort_order', { ascending: true }),
   ])
   return {
     service_templates:    templates.data   ?? [],
@@ -173,6 +175,7 @@ async function listDimensions(supabase: SupabaseClient, churchId: string) {
     response_categories:  respMetrics.data ?? [],
     giving_sources:       [],
     service_tags:         tags.data        ?? [],
+    service_groups:       groups.error ? [] : (groups.data ?? []),
   }
 }
 
