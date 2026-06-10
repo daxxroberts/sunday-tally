@@ -113,12 +113,25 @@ export default function HistoryPage() {
     if (hiddenGroups.size === 0) return config
     return {
       ...config,
-      columns:        config.columns.filter(col => !hiddenGroups.has(col.id)),
-      weeklyMetrics:  config.weeklyMetrics.filter(m  => !hiddenGroups.has(m.columnId  ?? '')),
-      monthlyMetrics: config.monthlyMetrics.filter(m => !hiddenGroups.has(m.columnId  ?? '')),
-      serviceMetrics: config.serviceMetrics.filter(m => !hiddenGroups.has(m.columnId  ?? '')),
+      columns:          config.columns.filter(col => !hiddenGroups.has(col.id)),
+      weeklyMetrics:    config.weeklyMetrics.filter(m  => !hiddenGroups.has(m.columnId  ?? '')),
+      monthlyMetrics:   config.monthlyMetrics.filter(m => !hiddenGroups.has(m.columnId  ?? '')),
+      serviceMetrics:   config.serviceMetrics.filter(m => !hiddenGroups.has(m.columnId  ?? '')),
+      // Strip service templates whose every group is hidden — otherwise their
+      // SV rows stay in the grid as blank-cell rows even when all columns are gone.
+      serviceTemplates: (config.serviceTemplates ?? []).filter(st =>
+        st.populatesColumnGroups.some(g => !hiddenGroups.has(g))
+      ),
     }
   }, [config, hiddenGroups])
+
+  // Service occurrences scoped to the visible service templates.
+  // Filters in sync with filteredConfig so row count matches column visibility.
+  const filteredOccurrences = useMemo(() => {
+    if (hiddenGroups.size === 0) return occurrences
+    const visibleCodes = new Set((filteredConfig?.serviceTemplates ?? []).map(st => st.id))
+    return occurrences.filter(o => visibleCodes.has(o.serviceTemplateId))
+  }, [filteredConfig, occurrences, hiddenGroups])
 
   const today = new Date()
   const yearAgo = new Date(today)
@@ -483,7 +496,7 @@ export default function HistoryPage() {
               <HistoryGrid
                 config={filteredConfig ?? config}
                 dateRange={{ startDate: rangeStart, endDate: rangeEnd }}
-                serviceInstances={occurrences.map(o => ({
+                serviceInstances={filteredOccurrences.map(o => ({
                   id:                o.id,
                   serviceTemplateId: o.serviceTemplateId,
                   serviceDate:       o.serviceDate,

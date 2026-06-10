@@ -368,6 +368,7 @@
 .history-grid-table td.editable input {
   width: 100%;
   border: none;
+  border-bottom: 1px dashed #cbd5e1;
   background: transparent;
   text-align: center;
   font-size: 11.5px;
