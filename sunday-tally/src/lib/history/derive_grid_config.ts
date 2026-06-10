@@ -1,25 +1,27 @@
 /**
  * derive_grid_config.ts — synthesize a GridConfig from existing church state.
  *
- * Rewritten for the unified tag-first ("metric-centric") schema (IMPORT_IR_V2.md,
- * decisions D-062…D-068). The grid is now built entirely from `service_templates`,
- * `service_tags`, `reporting_tags` and `metrics` — the old per-kind category/entry
- * tables (response_categories, volunteer_categories, giving_sources,
- * tag_relationships, attendance_entries) are GONE and are not queried.
+ * v3.1-roots (2026-06-10): top-level column groups are the ROOT MINISTRY NODES
+ * of the What-we-track tree (Experience, LifeKids, Switch, Life Groups, …) —
+ * NOT tag_role audience buckets. A metric lands under the root ancestor of its
+ * ministry tag, so a child group (Tabors under Life Groups) shows inside the
+ * "Life Groups" group, never inside "Experience" just because both are
+ * adult-role. This makes History mirror Settings → What we track verbatim
+ * (Builder 2026-06-10: "Tabors attendance falls under Experience — not correct").
  *
- * Key changes vs. the v2 (`2.0-pivot`) builder:
- *   - Audience bucketing derives from `service_tags.tag_role`
- *     (ADULT_SERVICE → adults, KIDS_MINISTRY → kids, YOUTH_MINISTRY → youth,
- *      OTHER → a misc/"Stats" group) — NOT from root-tag display order.
- *   - Every data column is a metric. Column leaf IDs use the new grammar
- *     `metric.<METRIC_CODE>` (the metric's `code`).
- *   - A metric's bucket = its ministry_tag's tag_role.
- *   - The reporting dimension (ATTENDANCE / VOLUNTEERS / GIVING / RESPONSE_STAT)
- *     is read from the metric's reporting_tag; tracking flags gate which
- *     reporting dimensions appear (ATTENDANCE always on).
+ * Carried over from v3.0-metrics:
+ *   - Every data column is a metric; leaf IDs use `metric.<METRIC_CODE>`.
+ *   - The reporting dimension (ATTENDANCE / VOLUNTEERS / RESPONSE_STAT) sub-groups
+ *     within each root group; tracking flags gate dimensions (ATTENDANCE always on).
+ *   - GIVING metrics render as their own weekly (WK) top-level group.
+ *   - Roll-up metrics are computed (Phase B), never grid columns.
  *
- * Output `GridConfig` shape is unchanged (see grid-config-schema.ts); only the
- * source queries and column-ID construction differ. `version` is `'3.0-metrics'`.
+ * Group IDs are `group_<root_code>` — exactly the shape group-colors.ts was
+ * designed around (it derives the color key from the segment after `group_`),
+ * so History group colors now key off the SAME roots as the track tree.
+ *
+ * Service templates populate the groups of the ministries actually LINKED to
+ * them (service_template_tags), falling back to the primary tag's root.
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type {
@@ -77,33 +79,21 @@ interface MetricRow {
   is_active:         boolean
 }
 
-// ── Bucket configuration ─────────────────────────────────────────────────────
-// Four buckets keyed by tag_role. Each renders one top-level column group whose
-// children are sub-grouped by reporting dimension. OTHER → the misc/"Stats" group.
-type Bucket = 'adults' | 'kids' | 'youth' | 'other'
-
-const BUCKET_ORDER: Bucket[] = ['adults', 'kids', 'youth', 'other']
-
-const ROLE_TO_BUCKET: Record<TagRole, Bucket> = {
-  ADULT_SERVICE:  'adults',
-  KIDS_MINISTRY:  'kids',
-  YOUTH_MINISTRY: 'youth',
-  OTHER:          'other',
-}
-
-const BUCKET_META: Record<Bucket, { groupId: string; defaultLabel: string }> = {
-  adults: { groupId: 'group_adults', defaultLabel: 'Experience' },
-  kids:   { groupId: 'group_kids',   defaultLabel: 'Kids'       },
-  youth:  { groupId: 'group_youth',  defaultLabel: 'Youth'      },
-  other:  { groupId: 'group_stats',  defaultLabel: 'Stats'      },
+interface LinkRow {
+  service_template_id: string
+  ministry_tag_id:     string
 }
 
 // Reporting dimensions we sub-group by, in display order. GIVING is rendered as
-// its own weekly (WK) top-level group, not inside an audience bucket.
+// its own weekly (WK) top-level group, not inside a ministry group.
 const ATTENDANCE = 'ATTENDANCE'
 const VOLUNTEERS = 'VOLUNTEERS'
 const RESPONSE_STAT = 'RESPONSE_STAT'
 const GIVING = 'GIVING'
+
+// Metrics whose tag is missing/unknown still need a home.
+const FALLBACK_GROUP_ID = 'group_stats'
+const FALLBACK_GROUP_LABEL = 'Stats'
 
 // ── Main export ────────────────────────────────────────────────────────────────
 
@@ -111,7 +101,7 @@ export async function deriveGridConfigFromSchema(
   supabase: SupabaseClient,
   churchId: string,
 ): Promise<GridConfig | null> {
-  const [churchRes, tmplRes, tagsRes, repRes, metricsRes] = await Promise.all([
+  const [churchRes, tmplRes, tagsRes, repRes, metricsRes, linksRes] = await Promise.all([
     supabase
       .from('churches')
       .select('id, tracks_volunteers, tracks_responses, tracks_giving')
@@ -139,6 +129,10 @@ export async function deriveGridConfigFromSchema(
       .eq('church_id', churchId)
       .eq('is_active', true)
       .neq('mode', 'rollup'),   // roll-up metrics are computed (Phase B), not grid columns
+    supabase
+      .from('service_template_tags')
+      .select('service_template_id, ministry_tag_id')
+      .eq('church_id', churchId),
   ])
 
   const church    = churchRes.data as ChurchRow | null
@@ -146,6 +140,7 @@ export async function deriveGridConfigFromSchema(
   const tags      = (tagsRes.data    ?? []) as ServiceTagRow[]
   const repTags   = (repRes.data     ?? []) as ReportingTagRow[]
   const metrics   = (metricsRes.data ?? []) as MetricRow[]
+  const links     = (linksRes.data   ?? []) as LinkRow[]
 
   if (!church || templates.length === 0) return null
 
@@ -156,13 +151,25 @@ export async function deriveGridConfigFromSchema(
   const repTagById = new Map<string, ReportingTagRow>()
   for (const r of repTags) repTagById.set(r.id, r)
 
-  // tag_role of a ministry tag → bucket. Default OTHER if role missing.
-  const tagIdToBucket = (tagId: string | null): Bucket => {
-    if (!tagId) return 'other'
-    const tag = tagById.get(tagId)
-    const role = tag?.tag_role ?? 'OTHER'
-    return ROLE_TO_BUCKET[role] ?? 'other'
+  // Root ancestor of a ministry tag (walk parent_tag_id; cycle-guarded).
+  // The track tree's top level IS the History grouping — same roots, same order.
+  const rootOf = (tagId: string | null): ServiceTagRow | null => {
+    if (!tagId) return null
+    const seen = new Set<string>()
+    let cur = tagById.get(tagId) ?? null
+    while (cur && cur.parent_tag_id && !seen.has(cur.id)) {
+      seen.add(cur.id)
+      cur = tagById.get(cur.parent_tag_id) ?? cur
+      if (seen.has(cur.id)) break
+    }
+    return cur
   }
+
+  // Inner underscores stripped: extractRootKey (group-colors.ts) takes the
+  // segment between `group_` and the next `_`, so LIFE_GROUPS must become
+  // `group_lifegroups`, never `group_life_groups` (which would key as "life").
+  const groupIdForRoot = (root: ServiceTagRow): string =>
+    `group_${root.code.toLowerCase().replace(/_/g, '')}`
 
   // ── Tracking-flag gate per reporting dimension ───────────────────────────────
   // ATTENDANCE always on. The others gate on their church flag. Unknown/custom
@@ -177,39 +184,19 @@ export async function deriveGridConfigFromSchema(
     }
   }
 
-  // ── Dynamic bucket labels from a representative ministry tag per bucket ───────
-  // Pick the lowest-display_order active tag of each role for the group label.
-  const bucketLabel: Record<Bucket, string> = {
-    adults: BUCKET_META.adults.defaultLabel,
-    kids:   BUCKET_META.kids.defaultLabel,
-    youth:  BUCKET_META.youth.defaultLabel,
-    other:  BUCKET_META.other.defaultLabel,
-  }
-  const labelClaimed: Record<Bucket, boolean> = { adults: false, kids: false, youth: false, other: false }
-  for (const t of tags) {
-    const bucket = tagIdToBucket(t.id)
-    if (bucket === 'other') continue // 'other' keeps the static "Stats" label
-    if (!labelClaimed[bucket]) {
-      bucketLabel[bucket] = t.name
-      labelClaimed[bucket] = true
-    }
-  }
-
-  // ── Classify metrics ─────────────────────────────────────────────────────────
-  // GIVING metrics → weekly top-level group. All other metrics → audience bucket
-  // sub-grouped by reporting dimension.
+  // ── Classify metrics by ROOT ministry node ───────────────────────────────────
   interface ClassifiedMetric {
     code:          string
     name:          string
-    bucket:        Bucket
     reportingCode: string
     scope:         'instance' | 'period'
   }
 
   const givingMetrics: ClassifiedMetric[] = []
-  // bucket → reportingCode → metrics[]
-  const byBucketDim = new Map<Bucket, Map<string, ClassifiedMetric[]>>()
-  for (const b of BUCKET_ORDER) byBucketDim.set(b, new Map())
+  // root group id → reportingCode → metrics[]  (insertion order = tags order =
+  // display_order, so groups render in the same order as the track tree)
+  const byGroupDim = new Map<string, Map<string, ClassifiedMetric[]>>()
+  const groupLabelById = new Map<string, string>()
 
   for (const m of metrics) {
     const repCode = m.reporting_tag_id ? (repTagById.get(m.reporting_tag_id)?.code ?? null) : null
@@ -218,7 +205,6 @@ export async function deriveGridConfigFromSchema(
     const classified: ClassifiedMetric = {
       code:          m.code,
       name:          m.name,
-      bucket:        tagIdToBucket(m.ministry_tag_id),
       reportingCode: repCode ?? 'OTHER',
       scope:         m.scope,
     }
@@ -228,10 +214,26 @@ export async function deriveGridConfigFromSchema(
       continue
     }
 
-    const dimMap = byBucketDim.get(classified.bucket)!
+    const root = rootOf(m.ministry_tag_id)
+    const groupId = root ? groupIdForRoot(root) : FALLBACK_GROUP_ID
+    if (!groupLabelById.has(groupId)) groupLabelById.set(groupId, root ? root.name : FALLBACK_GROUP_LABEL)
+
+    const dimMap = byGroupDim.get(groupId) ?? new Map<string, ClassifiedMetric[]>()
     const arr = dimMap.get(classified.reportingCode) ?? []
     arr.push(classified)
     dimMap.set(classified.reportingCode, arr)
+    byGroupDim.set(groupId, dimMap)
+  }
+
+  // Group order: roots in tags (display_order) order, then the fallback group.
+  const orderedGroupIds: string[] = []
+  for (const t of tags) {
+    if (t.parent_tag_id !== null) continue
+    const gid = groupIdForRoot(t)
+    if (byGroupDim.has(gid) && !orderedGroupIds.includes(gid)) orderedGroupIds.push(gid)
+  }
+  for (const gid of byGroupDim.keys()) {
+    if (!orderedGroupIds.includes(gid)) orderedGroupIds.push(gid)
   }
 
   // ── Build columns ─────────────────────────────────────────────────────────────
@@ -255,35 +257,31 @@ export async function deriveGridConfigFromSchema(
     weeklyMetrics.push({ id: 'wk_giving', label: 'Giving', scope: 'WK', columnId: 'group_giving' })
   }
 
-  // Reporting-dimension sub-group display order + labels within an audience bucket.
+  // Reporting-dimension sub-group display order + labels within a ministry group.
   const DIM_ORDER: { code: string; label: string }[] = [
     { code: ATTENDANCE,    label: 'Attendance' },
     { code: VOLUNTEERS,    label: 'Volunteers' },
     { code: RESPONSE_STAT, label: 'Stats'      },
   ]
 
-  // Build the ordered set of reporting dimensions actually present for a bucket,
-  // preferring the known order then any custom dimensions alphabetically.
-  const orderedDimsForBucket = (dimMap: Map<string, ClassifiedMetric[]>): { code: string; label: string }[] => {
+  const orderedDimsForGroup = (dimMap: Map<string, ClassifiedMetric[]>): { code: string; label: string }[] => {
     const present = new Set(dimMap.keys())
     const result: { code: string; label: string }[] = []
     for (const d of DIM_ORDER) {
       if (present.has(d.code)) { result.push(d); present.delete(d.code) }
     }
     for (const code of Array.from(present).sort()) {
-      // label for a custom reporting tag: its display name if known, else code
       result.push({ code, label: code })
     }
     return result
   }
 
-  // AUDIENCE BUCKETS — adults / kids / youth / other(stats)
-  for (const bucket of BUCKET_ORDER) {
-    const dimMap = byBucketDim.get(bucket)!
-    const dims = orderedDimsForBucket(dimMap)
+  // MINISTRY GROUPS — one per root node with metrics, in track-tree order.
+  for (const groupId of orderedGroupIds) {
+    const dimMap = byGroupDim.get(groupId)!
+    const dims = orderedDimsForGroup(dimMap)
     if (dims.length === 0) continue
 
-    const meta = BUCKET_META[bucket]
     const groupChildren: (DataColumn | ColumnGroup)[] = []
 
     for (const dim of dims) {
@@ -291,7 +289,7 @@ export async function deriveGridConfigFromSchema(
       if (dimMetrics.length === 0) continue
 
       if (dim.code === ATTENDANCE) {
-        // Attendance metrics render as flat data columns inside the bucket.
+        // Attendance metrics render as flat data columns inside the group.
         for (const m of dimMetrics) {
           groupChildren.push({
             type: 'data', id: leafColId(m.code), label: m.name,
@@ -301,7 +299,7 @@ export async function deriveGridConfigFromSchema(
       } else {
         // Other dimensions render as a collapsible sub-group of metric columns.
         groupChildren.push({
-          type: 'group', id: `${meta.groupId}__${dim.code.toLowerCase()}`, label: dim.label,
+          type: 'group', id: `${groupId}__${dim.code.toLowerCase()}`, label: dim.label,
           scope: 'SV', collapsible: true, defaultCollapsed: false,
           children: dimMetrics.map<DataColumn>(m => ({
             type: 'data', id: leafColId(m.code), label: m.name,
@@ -313,31 +311,40 @@ export async function deriveGridConfigFromSchema(
 
     if (groupChildren.length > 0) {
       columns.push({
-        type: 'group', id: meta.groupId, label: bucketLabel[bucket],
+        type: 'group', id: groupId, label: groupLabelById.get(groupId) ?? groupId,
         scope: 'SV', children: groupChildren,
       })
-      existingGroups.push(meta.groupId)
+      existingGroups.push(groupId)
     }
   }
 
   // ── Map Service Templates to Column Groups ───────────────────────────────────
+  // A template populates the groups of the ministries actually counted at it
+  // (service_template_tags → root). Fallback: primary tag's root, then the
+  // first available group — a template must never end up group-less.
+  const linksByTemplate = new Map<string, string[]>()
+  for (const l of links) {
+    const arr = linksByTemplate.get(l.service_template_id) ?? []
+    arr.push(l.ministry_tag_id)
+    linksByTemplate.set(l.service_template_id, arr)
+  }
+
   for (const tmpl of templates) {
     const populates: string[] = []
 
-    const bucket = tagIdToBucket(tmpl.primary_tag_id)
-    const primaryGroupId = BUCKET_META[bucket].groupId
-    if (existingGroups.includes(primaryGroupId)) {
-      populates.push(primaryGroupId)
-      // Adult services commonly run alongside kids ministry — populate both.
-      if (bucket === 'adults' && existingGroups.includes(BUCKET_META.kids.groupId)) {
-        populates.push(BUCKET_META.kids.groupId)
-      }
-    } else {
-      // primary bucket not present — fall to first available audience group.
-      for (const b of BUCKET_ORDER) {
-        const gid = BUCKET_META[b].groupId
-        if (existingGroups.includes(gid)) { populates.push(gid); break }
-      }
+    for (const tagId of linksByTemplate.get(tmpl.id) ?? []) {
+      const root = rootOf(tagId)
+      const gid = root ? groupIdForRoot(root) : FALLBACK_GROUP_ID
+      if (existingGroups.includes(gid) && !populates.includes(gid)) populates.push(gid)
+    }
+    if (populates.length === 0 && tmpl.primary_tag_id) {
+      const root = rootOf(tmpl.primary_tag_id)
+      const gid = root ? groupIdForRoot(root) : FALLBACK_GROUP_ID
+      if (existingGroups.includes(gid)) populates.push(gid)
+    }
+    if (populates.length === 0) {
+      const firstSv = existingGroups.find(g => g !== 'group_giving')
+      if (firstSv) populates.push(firstSv)
     }
 
     serviceTemplates.push({
@@ -350,7 +357,7 @@ export async function deriveGridConfigFromSchema(
 
   return {
     churchId:         church.id,
-    version:          '3.0-metrics',
+    version:          '3.1-roots',
     columns,
     serviceTemplates,
     monthlyMetrics:   [],

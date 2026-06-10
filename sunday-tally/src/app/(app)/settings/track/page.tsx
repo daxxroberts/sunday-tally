@@ -59,6 +59,8 @@ interface Ministry {
   parent_tag_id: string | null
   display_order: number | null
   is_active: boolean
+  /** Church-chosen hex (0040); null/undefined = positional palette. */
+  color?: string | null
 }
 
 /** A metric with its owning node id (flat list is the source of truth). */
@@ -131,13 +133,26 @@ export default function TrackPage() {
   // ── Load ────────────────────────────────────────────────────────────────
 
   const load = useCallback(async (cid: string) => {
-    const { data: tagRows } = await supabase
+    // color is 0040 — selecting it pre-apply errors, so fall back without it.
+    let tagRows: Ministry[] | null = null
+    const withColor = await supabase
       .from('service_tags')
-      .select('id, code, name, tag_role, parent_tag_id, display_order, is_active')
+      .select('id, code, name, tag_role, parent_tag_id, display_order, is_active, color')
       .eq('church_id', cid)
       .eq('is_active', true)
       .order('display_order', { ascending: true })
-    const mins = (tagRows ?? []) as Ministry[]
+    if (!withColor.error) {
+      tagRows = (withColor.data ?? []) as Ministry[]
+    } else {
+      const base = await supabase
+        .from('service_tags')
+        .select('id, code, name, tag_role, parent_tag_id, display_order, is_active')
+        .eq('church_id', cid)
+        .eq('is_active', true)
+        .order('display_order', { ascending: true })
+      tagRows = (base.data ?? []) as Ministry[]
+    }
+    const mins = tagRows
     setMinistries(mins)
 
     const { data: rtRows } = await supabase
@@ -149,14 +164,16 @@ export default function TrackPage() {
     const minIds = mins.map(m => m.id)
     if (minIds.length === 0) { setMetrics([]); return }
 
+    // ALL active metrics — instance AND period. Period metrics (weekly/monthly
+    // church-wide, e.g. Giving) are shown with a cadence badge so they're
+    // findable/editable here ("where do I edit Giving" — Builder 2026-06-10).
     // Defensive: select the roll-up columns; if they don't exist yet (migration
     // 0034 not applied), fall back to the base columns and treat all as 'entry'.
     const full = await supabase
       .from('metrics')
-      .select('id, code, name, reporting_tag_id, is_canonical, is_active, ministry_tag_id, mode, rollup_op, parent_metric_id')
+      .select('id, code, name, reporting_tag_id, is_canonical, is_active, ministry_tag_id, mode, rollup_op, parent_metric_id, scope, cadence')
       .eq('church_id', cid)
       .eq('is_active', true)
-      .eq('scope', 'instance')
       .in('ministry_tag_id', minIds)
       .order('is_canonical', { ascending: false })
 
@@ -167,10 +184,9 @@ export default function TrackPage() {
 
     const basic = await supabase
       .from('metrics')
-      .select('id, code, name, reporting_tag_id, is_canonical, is_active, ministry_tag_id')
+      .select('id, code, name, reporting_tag_id, is_canonical, is_active, ministry_tag_id, scope, cadence')
       .eq('church_id', cid)
       .eq('is_active', true)
-      .eq('scope', 'instance')
       .in('ministry_tag_id', minIds)
       .order('is_canonical', { ascending: false })
     setMetrics(((basic.data ?? []) as Array<Omit<Metric, 'mode' | 'rollup_op' | 'parent_metric_id'>>)
@@ -249,7 +265,10 @@ export default function TrackPage() {
 
   const colorMap = useMemo(() => {
     const roots = ministries.filter(m => m.parent_tag_id === null)
-    return buildGroupColorMap(roots.map(m => `group_${m.id}`))
+    // Church-chosen ministry colors (0040) override the positional palette.
+    const overrides = new Map<string, string>()
+    for (const r of roots) if (r.color) overrides.set(r.id.toLowerCase(), r.color)
+    return buildGroupColorMap(roots.map(m => `group_${m.id}`), overrides)
   }, [ministries])
 
   const colorForNode = useCallback((id: string): GroupColor | undefined =>
@@ -349,6 +368,11 @@ export default function TrackPage() {
   async function handleRoleChange(id: string, tag_role: TagRole) {
     await updateMinistry(id, { tag_role })
     setMinistries(prev => prev.map(m => m.id === id ? { ...m, tag_role } : m))
+  }
+  async function handleColorChange(id: string, colorHex: string | null) {
+    const res = await updateMinistry(id, { color: colorHex })
+    if (!res.ok) { alert(res.error ?? 'Could not save the color (is migration 0040 applied?)'); return }
+    setMinistries(prev => prev.map(m => m.id === id ? { ...m, color: colorHex } : m))
   }
   async function handleReparent(id: string, parentId: string | null) {
     setMinistries(prev => prev.map(m => m.id === id ? { ...m, parent_tag_id: parentId } : m))
@@ -558,6 +582,7 @@ export default function TrackPage() {
                       onAddGroupHere={(name, tag_role) => addMinistry(selected.id, name, tag_role)}
                       onRename={name => handleRenameMinistry(selected.id, name)}
                       onRoleChange={r => handleRoleChange(selected.id, r)}
+                      onColorChange={c => handleColorChange(selected.id, c)}
                       onDeactivate={() => handleDeactivateMinistry(selected.id)}
                       onAddMetric={(kind, name) => handleAddMetric(selected.id, kind, name)}
                       onRenameMetric={handleRenameMetric}
@@ -999,7 +1024,7 @@ function DetailPanel({
   ministry, write, metricsForNode, childNodes, reportingTags, color,
   eligibleParentsFor, parentLabel, unreferencedRollupIds, childCountFor,
   onSelectChild, onAddGroupHere,
-  onRename, onRoleChange, onDeactivate,
+  onRename, onRoleChange, onColorChange, onDeactivate,
   onAddMetric, onRenameMetric, onRemoveMetric, onSetMode, onSetParent, onSetOp,
 }: {
   ministry: Ministry
@@ -1016,6 +1041,8 @@ function DetailPanel({
   onAddGroupHere: (name: string, role: TagRole) => void
   onRename: (name: string) => Promise<void>
   onRoleChange: (role: TagRole) => Promise<void>
+  /** Ministry color (0040) — top-level nodes only; null = back to the palette. */
+  onColorChange: (color: string | null) => Promise<void>
   onDeactivate: () => void
   onAddMetric: (kind: KindCode, name: string) => Promise<void>
   onRenameMetric: (metricId: string, name: string) => Promise<void>
@@ -1073,6 +1100,35 @@ function DetailPanel({
               <span className={`rounded-md px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide ${rolePillClasses()}`}>{roleLabel(ministry.tag_role)}</span>
             )}
           </div>
+          {/* Ministry color (0040) — top level only; groups inherit it everywhere */}
+          {ministry.parent_tag_id === null && (
+            <div className="flex items-center gap-2">
+              <label className="text-[12px] font-semibold text-slate-400" htmlFor="ministry-color">Color</label>
+              {write ? (
+                <>
+                  <input
+                    id="ministry-color"
+                    type="color"
+                    value={ministry.color ?? (color?.strong ?? '#4F6EF7')}
+                    onChange={e => void onColorChange(e.target.value)}
+                    title="Pick this ministry's color — used everywhere this ministry appears"
+                    className="h-7 w-9 cursor-pointer rounded-md border border-slate-200 bg-white p-0.5"
+                  />
+                  {ministry.color && (
+                    <button
+                      onClick={() => void onColorChange(null)}
+                      className="rounded text-[11px] font-medium text-slate-400 hover:text-slate-600"
+                      title="Back to the automatic palette"
+                    >
+                      Reset
+                    </button>
+                  )}
+                </>
+              ) : (
+                <span className="h-5 w-5 rounded-md border border-slate-200" style={{ backgroundColor: ministry.color ?? color?.strong ?? '#cbd5e1' }} aria-hidden />
+              )}
+            </div>
+          )}
           {write && (
             <button onClick={onDeactivate} className="ml-auto rounded-lg border border-[#F59E0B]/30 bg-[#F59E0B]/5 px-3 py-1.5 text-[12px] font-semibold text-[#B45309] transition-colors hover:bg-[#F59E0B]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F59E0B]/40">
               Remove ministry
@@ -1127,17 +1183,25 @@ function DetailPanel({
         </div>
       )}
 
-      {/* Metric Kind sections — only Kinds that have ≥1 metric here */}
-      {PHASE1_KINDS.map(kindCode => {
-        const rt = reportingTags.find(r => r.code === kindCode)
+      {/* Metric Kind sections — only Kinds that have ≥1 metric here.
+          Phase-1 kinds first, then ANY other kind with metrics on this node
+          (e.g. GIVING after the weekly conversion, or custom kinds) so no
+          metric is ever invisible here ("where do I edit Giving"). */}
+      {[
+        ...PHASE1_KINDS.map(k => ({ code: k as string, label: KIND_LABEL[k as KindCode] })),
+        ...reportingTags
+          .filter(r => !PHASE1_KINDS.includes(r.code as KindCode) && (byKind.get(r.id) ?? []).length > 0)
+          .map(r => ({ code: r.code, label: r.name })),
+      ].map(kind => {
+        const rt = reportingTags.find(r => r.code === kind.code)
         if (!rt) return null
         const list = byKind.get(rt.id) ?? []
         if (list.length === 0) return null
         return (
           <KindSection
-            key={kindCode}
-            kindCode={kindCode}
-            kindLabel={KIND_LABEL[kindCode]}
+            key={kind.code}
+            kindCode={kind.code}
+            kindLabel={kind.label}
             metrics={list}
             write={write}
             eligibleParentsFor={eligibleParentsFor}
@@ -1222,7 +1286,9 @@ function KindSection({
   eligibleParentsFor, parentLabel, unreferencedRollupIds, childCountFor,
   onRenameMetric, onRemoveMetric, onSetMode, onSetParent, onSetOp,
 }: {
-  kindCode: KindCode
+  /** Phase-1 kind code OR any other reporting kind (GIVING / custom) — only
+   *  drives the accent tint, so a plain string is safe. */
+  kindCode: string
   kindLabel: string
   metrics: Metric[]
   write: boolean
@@ -1311,6 +1377,9 @@ function MetricRowItem({
 }) {
   const [confirmRemove, setConfirmRemove] = useState(false)
   const isRollup = metric.mode === 'rollup'
+  // Period = weekly/monthly church-wide (Stat Entries; e.g. Giving). Shown with
+  // a cadence badge; service-bound controls (mode/rolls-up-into) don't apply.
+  const isPeriod = metric.scope === 'period'
 
   return (
     <li className="group px-5 py-3 transition-colors duration-200 hover:bg-slate-50">
@@ -1321,11 +1390,17 @@ function MetricRowItem({
           ) : (
             <span className="text-[14px] font-medium text-slate-800">{metric.name}</span>
           )}
+          {isPeriod && (
+            <span className="shrink-0 rounded-md bg-[#4F6EF7]/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#3D5BD4]" title="Entered once per period in the Stat Entries tab — no service needed">
+              {metric.cadence === 'month' ? 'Monthly' : 'Weekly'} · church-wide
+            </span>
+          )}
         </div>
 
         {write && (
           <div className="flex shrink-0 items-center gap-1">
-            {/* mode toggle */}
+            {/* mode toggle (service-bound metrics only) */}
+            {!isPeriod && (
             <div className="flex overflow-hidden rounded-lg border border-slate-200 text-[11px] font-semibold">
               <button
                 onClick={() => onSetMode('entry')}
@@ -1336,6 +1411,7 @@ function MetricRowItem({
                 className={`whitespace-nowrap px-2 py-1 transition-colors ${isRollup ? 'bg-[#4F6EF7] text-white' : 'bg-white text-slate-500 hover:bg-slate-50'}`}
               >Roll up sub-entries</button>
             </div>
+            )}
             {confirmRemove ? (
               <span className="flex items-center gap-1">
                 <button onClick={() => { onRemove(); setConfirmRemove(false) }} className="rounded-lg px-2 py-1 text-[12px] font-semibold text-[#B45309] transition-colors hover:bg-[#F59E0B]/10">Confirm</button>
@@ -1350,9 +1426,13 @@ function MetricRowItem({
         )}
       </div>
 
-      {/* second line: entry → rolls up into; rollup → op + child count + warning */}
+      {/* second line: period → plain note; entry → rolls up into; rollup → op + children */}
       <div className="mt-1.5 flex flex-wrap items-center gap-2 pl-0 text-[12px] text-slate-500">
-        {isRollup ? (
+        {isPeriod ? (
+          <span className="text-slate-400">
+            Entered once per {metric.cadence === 'month' ? 'month' : 'week'} on the Stat Entries tab — not tied to any service.
+          </span>
+        ) : isRollup ? (
           <>
             <span className="text-slate-400">Combines its children:</span>
             {write ? (

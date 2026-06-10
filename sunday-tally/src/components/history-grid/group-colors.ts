@@ -62,19 +62,49 @@ export function extractRootKey(groupId: string | undefined): string | null {
   return parts[0] || null
 }
 
+/** Build a full GroupColor from a single chosen hex (ministry color, 0040). */
+export function colorFromHex(hex: string): GroupColor {
+  // Perceived luminance decides the readable text color on `strong`.
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  const lum = 0.299 * r + 0.587 * g + 0.114 * b
+  const text = lum > 160 ? '#1e293b' : '#ffffff'
+  return {
+    strong: hex,
+    light: `${hex}cc`,
+    text,
+    pillActive: hex,
+    pillActiveText: text,
+  }
+}
+
 /**
  * Builds a Map<rootKey, GroupColor> based on the ORDER top-level groups appear
  * in the config. Stable for a given list of group IDs.
  *
+ * `overrides` (optional) maps a rootKey to a church-chosen hex (the ministry
+ * color, migration 0040) — that key gets EXACTLY that color; the positional
+ * palette fills everything else. "Every time we see that color, we know it's
+ * that ministry."
+ *
  * If more groups exist than palette entries, the assignment wraps around the
  * palette (a 9th group would get palette[0]'s color, etc.).
  */
-export function buildGroupColorMap(topLevelGroupIds: string[]): Map<string, GroupColor> {
+export function buildGroupColorMap(
+  topLevelGroupIds: string[],
+  overrides?: Map<string, string>,
+): Map<string, GroupColor> {
   const map = new Map<string, GroupColor>()
   let nextIdx = 0
   for (const groupId of topLevelGroupIds) {
     const key = extractRootKey(groupId)
     if (!key || map.has(key)) continue
+    const chosen = overrides?.get(key)
+    if (chosen) {
+      map.set(key, colorFromHex(chosen))
+      continue // custom colors don't consume a palette slot
+    }
     map.set(key, PALETTE[nextIdx % PALETTE.length])
     nextIdx++
   }

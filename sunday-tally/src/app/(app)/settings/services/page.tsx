@@ -58,6 +58,8 @@ interface ServiceCard {
   sort_order: number
   ministries: Ministry[]
   schedule: ScheduleSummary | null    // G1: active cadence (null = unscheduled)
+  groupName: string | null            // S4b: reporting group chip
+  showInEntries: boolean              // S4c: false → "Hidden from Entries" chip
 }
 interface TagOption {
   id: string
@@ -91,21 +93,35 @@ export default function ServicesSettingsPage() {
     type EmbeddedTag = { id: string; name: string; tag_role: string | null } | { id: string; name: string; tag_role: string | null }[] | null
     const oneOf = <T,>(v: T | T[] | null): T | null => (Array.isArray(v) ? v[0] ?? null : v)
 
-    // E-20 active templates + location name
+    // E-20 active templates + location name + group/visibility (0036/0037)
     const { data: tmplRows } = await supabase
       .from('service_templates')
-      .select('id, display_name, sort_order, location_id, church_locations(name)')
+      .select('id, display_name, sort_order, location_id, show_in_entries, reporting_group_id, church_locations(name)')
       .eq('church_id', cid)
       .eq('is_active', true)
       .order('sort_order', { ascending: true })
       .range(0, PAGE - 1)
 
-    type TmplRow = { id: string; display_name: string | null; sort_order: number | null; church_locations: EmbeddedLoc }
+    // S4b: group names for the chips (table may be empty — fine)
+    const groupNameById = new Map<string, string>()
+    {
+      const { data: groupRows } = await supabase
+        .from('service_groups').select('id, name').eq('church_id', cid).eq('is_active', true)
+      for (const g of ((groupRows ?? []) as { id: string; name: string }[])) groupNameById.set(g.id, g.name)
+    }
+
+    type TmplRow = {
+      id: string; display_name: string | null; sort_order: number | null
+      show_in_entries?: boolean | null; reporting_group_id?: string | null
+      church_locations: EmbeddedLoc
+    }
     const templates = ((tmplRows ?? []) as TmplRow[]).map((t) => ({
       id: t.id,
       name: t.display_name ?? 'Service',
       sort_order: t.sort_order ?? 0,
       locationName: oneOf(t.church_locations)?.name ?? null,
+      groupName: t.reporting_group_id ? (groupNameById.get(t.reporting_group_id) ?? null) : null,
+      showInEntries: t.show_in_entries !== false,
     }))
 
     // E-22 composition links + ministry tags (paginate)
@@ -365,18 +381,20 @@ export default function ServicesSettingsPage() {
                   const key = c.locationName ?? '__churchwide'
                   groups.set(key, [...(groups.get(key) ?? []), c])
                 }
+                // Church-wide FIRST (Builder 2026-06-10), then campuses A→Z.
                 const ordered = [...groups.entries()].sort(([a], [b]) =>
-                  a === '__churchwide' ? 1 : b === '__churchwide' ? -1 : a.localeCompare(b))
+                  a === '__churchwide' ? -1 : b === '__churchwide' ? 1 : a.localeCompare(b))
                 const showHeaders = ordered.length > 1
                 return ordered.map(([key, list]) => (
                   <div key={key} className="space-y-4">
                     {showHeaders && (
-                      <div className="px-1 pt-1">
-                        <h2 className="text-[12px] font-bold uppercase tracking-wider text-slate-400">
+                      <div className="flex items-center gap-2 border-b border-slate-200 px-1 pb-1.5 pt-2">
+                        <span className="h-4 w-1.5 rounded-full bg-[#4F6EF7]" aria-hidden />
+                        <h2 className="text-[14px] font-extrabold tracking-tight text-slate-800">
                           {key === '__churchwide' ? 'Church-wide' : key}
                         </h2>
                         {key === '__churchwide' && (
-                          <p className="text-[11px] text-slate-400">Counted once for the whole church — visible at every campus.</p>
+                          <p className="text-[11px] text-slate-400">counted once for the whole church — visible at every campus</p>
                         )}
                       </div>
                     )}
@@ -453,6 +471,18 @@ function ServiceCardView({ card, allTags, write, busy, showLocation, onAdd, onRe
             ) : (
               <span className="rounded-md border border-[#F59E0B]/40 bg-[#F59E0B]/5 px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-[#B45309]">
                 Unscheduled
+              </span>
+            )}
+            {/* S4b — reporting group chip */}
+            {card.groupName && (
+              <span className="rounded-md bg-[#4F6EF7]/10 px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-[#3D5BD4]" title="Reporting group — used to compare services in reports">
+                {card.groupName}
+              </span>
+            )}
+            {/* S4c — hidden-from-entries chip */}
+            {!card.showInEntries && (
+              <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400" title="Entry screens skip this service; History keeps its data">
+                Hidden from Entries
               </span>
             )}
             {/* G1: schedule link visible to owner/admin */}
