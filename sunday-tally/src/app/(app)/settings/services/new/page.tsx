@@ -226,7 +226,7 @@ export default function NewServicePage() {
               <div>
                 <label htmlFor="display_name" className={labelCls}>
                   What do you call this service?{' '}
-                  <span className="text-slate-400 font-normal">— appears on every Sunday screen.</span>
+                  <span className="text-slate-400 font-normal">It appears on every Sunday screen.</span>
                 </label>
                 <input
                   id="display_name"
@@ -253,8 +253,8 @@ export default function NewServicePage() {
                     className={inputCls}
                   >
                     <option value="">Select a location</option>
-                    <option value="ALL">All locations — one service at each campus</option>
-                    <option value="CHURCH_WIDE">Church-wide — one shared count for the whole church</option>
+                    <option value="ALL">All locations (one service at each campus)</option>
+                    <option value="CHURCH_WIDE">Church-wide (one shared count for the whole church)</option>
                     {locations.map(l => (
                       <option key={l.id} value={l.id}>{l.name}</option>
                     ))}
@@ -271,7 +271,7 @@ export default function NewServicePage() {
               <div>
                 <label htmlFor="primary_tag" className={labelCls}>
                   Which tag best describes this service?{' '}
-                  <span className="text-slate-400 font-normal">— groups it in your dashboard.</span>
+                  <span className="text-slate-400 font-normal">This groups it in your dashboard.</span>
                 </label>
                 {primaryTagOptions.length === 0 ? (
                   <p className="text-[12px] text-[#B45309]">
@@ -306,7 +306,7 @@ export default function NewServicePage() {
                 <div>
                   <label className={labelCls}>
                     Subtags{' '}
-                    <span className="text-slate-400 font-normal">(optional) — for campaigns, series, or special groupings.</span>
+                    <span className="text-slate-400 font-normal">(optional) For campaigns, series, or special groupings.</span>
                   </label>
                   <div className="flex flex-wrap gap-2">
                     {subtagOptions.map(t => {
@@ -408,7 +408,7 @@ export default function NewServicePage() {
               <div>
                 <label htmlFor="effective_date" className={labelCls}>
                   When does this schedule start?{' '}
-                  <span className="text-slate-400 font-normal">— so we know which weeks to expect data.</span>
+                  <span className="text-slate-400 font-normal">This tells us which weeks to expect data.</span>
                 </label>
                 <input
                   id="effective_date"
@@ -433,7 +433,7 @@ export default function NewServicePage() {
                 disabled={isPending || saved}
                 className="w-full rounded-xl bg-slate-900 py-3.5 text-[14px] font-semibold text-white transition-colors duration-150 hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
               >
-                {saved ? '✓ Saved — returning…' : isPending ? 'Saving…' : 'Save service'}
+                {saved ? '✓ Saved. Returning…' : isPending ? 'Saving…' : 'Save service'}
               </button>
             </form>
           )}

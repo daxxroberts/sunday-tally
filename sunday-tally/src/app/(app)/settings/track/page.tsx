@@ -702,7 +702,7 @@ function WhereCountedModal({ tagId, tagName, supabase, onClose, onDone }: {
           {loadingSvcs ? (
             <div className="mt-2 h-8 animate-pulse rounded-lg bg-slate-100" />
           ) : services.length === 0 ? (
-            <p className="mt-2 text-[12px] text-slate-400">No active services yet — create one under Settings → Services.</p>
+            <p className="mt-2 text-[12px] text-slate-400">No active services yet. Create one under Settings → Services.</p>
           ) : (
             <div className="mt-2 max-h-40 space-y-1 overflow-y-auto">
               {services.map(s => (
@@ -735,7 +735,7 @@ function WhereCountedModal({ tagId, tagName, supabase, onClose, onDone }: {
         {/* Door B — weekly/monthly church-wide */}
         <div className="mt-3 rounded-xl border border-slate-200 p-3">
           <p className="text-[13px] font-semibold text-slate-800">Just weekly or monthly, church-wide</p>
-          <p className="text-[11px] text-slate-400">No service — it shows in the Stat Entries tab. (How Giving works.)</p>
+          <p className="text-[11px] text-slate-400">No service needed. It shows in the Stat Entries tab, like Giving.</p>
           <div className="mt-2 flex items-center gap-2">
             <select
               value={cadence}
@@ -918,7 +918,7 @@ function MinistryTreeNode({
             {isOrphan(ministry.id) && (
               <button
                 onClick={e => { e.stopPropagation(); onFixOrphan(ministry.id) }}
-                title="This ministry's counts have no service to appear on — click to fix"
+                title="This ministry's counts have no service to appear on. Click to fix."
                 className="shrink-0 rounded-full border border-[#F59E0B]/40 bg-[#F59E0B]/5 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-[#B45309] transition-colors hover:bg-[#F59E0B]/10"
               >
                 Not counted anywhere
@@ -1116,7 +1116,7 @@ function DetailPanel({
                     type="color"
                     value={ministry.color ?? (color?.strong ?? '#4F6EF7')}
                     onChange={e => void onColorChange(e.target.value)}
-                    title="Pick this ministry's color — used everywhere this ministry appears"
+                    title="Pick this ministry's color. It shows everywhere this ministry appears."
                     className="h-7 w-9 cursor-pointer rounded-md border border-slate-200 bg-white p-0.5"
                   />
                   {ministry.color && (
@@ -1328,7 +1328,7 @@ function KindSection({
           <h3 className="text-[13px] font-bold uppercase tracking-wider text-slate-700">{kindLabel}</h3>
           <span
             className="text-[10px] font-medium text-slate-400 cursor-help"
-            title={`"${kindLabel}" is a reporting type — it tells the dashboard how to handle these numbers. The counts you add here all report as ${kindLabel}.`}
+            title={`"${kindLabel}" is a reporting type. It tells the dashboard how to handle these numbers. The counts you add here all report as ${kindLabel}.`}
           >
             reporting type
           </span>
@@ -1396,7 +1396,7 @@ function MetricRowItem({
             <span className="text-[14px] font-medium text-slate-800">{metric.name}</span>
           )}
           {isPeriod && (
-            <span className="shrink-0 rounded-md bg-[#4F6EF7]/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#3D5BD4]" title="Entered once per period in the Stat Entries tab — no service needed">
+            <span className="shrink-0 rounded-md bg-[#4F6EF7]/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#3D5BD4]" title="Entered once per period in the Stat Entries tab. No service needed.">
               {metric.cadence === 'month' ? 'Monthly' : 'Weekly'} · church-wide
             </span>
           )}
@@ -1435,7 +1435,7 @@ function MetricRowItem({
       <div className="mt-1.5 flex flex-wrap items-center gap-2 pl-0 text-[12px] text-slate-500">
         {isPeriod ? (
           <span className="text-slate-400">
-            Entered once per {metric.cadence === 'month' ? 'month' : 'week'} on the Stat Entries tab — not tied to any service.
+            Entered once per {metric.cadence === 'month' ? 'month' : 'week'} on the Stat Entries tab. Not tied to any service.
           </span>
         ) : isRollup ? (
           <>

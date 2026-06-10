@@ -198,7 +198,12 @@ export default function ServicesSettingsPage() {
       schedule: scheduleByTemplate.get(t.id) ?? null,
     })))
 
-    // E-27 picker source: all active ministry tags for the church
+    // E-27 picker source: active ministry tags that make sense to link here.
+    // Linking controls ENTRY availability, so the picker hides ministries with
+    // nothing to type at a service: rollup-only nodes (computed from children)
+    // and period-only ones like Giving (entered weekly, church-wide). A brand-new
+    // ministry with no metrics at all stays listed; the red "Add metrics now"
+    // chip guides the next step. (Builder 2026-06-10.)
     const { data: tagRows } = await supabase
       .from('service_tags')
       .select('id, name, tag_role')
@@ -206,8 +211,23 @@ export default function ServicesSettingsPage() {
       .eq('is_active', true)
       .order('display_order', { ascending: true })
       .range(0, PAGE - 1)
+    const { data: modeRows } = await supabase
+      .from('metrics')
+      .select('ministry_tag_id, mode, scope')
+      .eq('church_id', cid)
+      .eq('is_active', true)
+      .range(0, PAGE - 1)
+    const hasAnyMetric = new Set<string>()
+    const hasEnterable = new Set<string>()
+    for (const m of ((modeRows ?? []) as { ministry_tag_id: string | null; mode: string | null; scope: string | null }[])) {
+      if (!m.ministry_tag_id) continue
+      hasAnyMetric.add(m.ministry_tag_id)
+      if (m.mode !== 'rollup' && m.scope === 'instance') hasEnterable.add(m.ministry_tag_id)
+    }
     type TagRow = { id: string; name: string; tag_role: string | null }
-    setAllTags(((tagRows ?? []) as TagRow[]).map((t) => ({ id: t.id, name: t.name, tag_role: t.tag_role ?? null })))
+    setAllTags(((tagRows ?? []) as TagRow[])
+      .filter((t) => hasEnterable.has(t.id) || !hasAnyMetric.has(t.id))
+      .map((t) => ({ id: t.id, name: t.name, tag_role: t.tag_role ?? null })))
 
     // S2 — orphan detection (same helper the track page uses)
     setOrphans(await getOrphanMinistries(supabase, cid))
@@ -324,8 +344,8 @@ export default function ServicesSettingsPage() {
 
         <main className="mx-auto max-w-3xl px-4 py-6">
           <p className="mb-5 px-1 text-[13px] leading-relaxed text-slate-500">
-            When and where you gather — each service creates the weekly occurrences you log in Entries, and lists the ministries counted there.{' '}
-            {write ? 'Add, remove, or reorder ministries — the change applies to every future week.' : 'This is read-only for your role.'}
+            When and where you gather. Each service creates the weekly occurrences you log in Entries, and lists the ministries counted there.{' '}
+            {write ? 'Add, remove, or reorder ministries. The change applies to every future week.' : 'This is read-only for your role.'}
           </p>
 
           {/* S2 — orphan banner: counts with nowhere to render (editors+ see it) */}
@@ -337,7 +357,7 @@ export default function ServicesSettingsPage() {
                   : `${orphans.length} ministries aren't counted anywhere yet`}
               </span>
               <span className="text-[12px] text-[#B45309]/80">
-                {orphans.length > 1 && `(${orphans.map(o => o.name).join(', ')}) `}— their counts won&apos;t appear in Entries.
+                {orphans.length > 1 && `(${orphans.map(o => o.name).join(', ')}) `}Their counts won&apos;t appear in Entries.
               </span>
               <Link
                 href={`/settings/track?fix=${orphans[0].tag_id}`}
@@ -401,9 +421,9 @@ export default function ServicesSettingsPage() {
                           {key === '__churchwide' ? 'Church-wide' : key}
                         </h2>
                         {key === '__churchwide' ? (
-                          <p className="text-[11px] font-medium text-[#FDE68A]/90">counted once for the whole church — visible at every campus</p>
+                          <p className="text-[11px] font-medium text-[#FDE68A]/90">counted once for the whole church, visible at every campus</p>
                         ) : groups.has('__churchwide') ? (
-                          <p className="text-[11px] font-medium text-white/90">some metrics are set up church-wide — see the section above</p>
+                          <p className="text-[11px] font-medium text-white/90">some metrics are set up church-wide. See the section above.</p>
                         ) : null}
                       </div>
                     )}
@@ -424,7 +444,7 @@ export default function ServicesSettingsPage() {
                 ))
               })()}
               <p className="px-1 text-[12px] leading-relaxed text-slate-400">
-                Ministries are equal peers — the order here is the order they appear when you enter.
+                Ministries are equal peers. The order here is the order they appear when you enter.
               </p>
             </div>
           )}
@@ -484,7 +504,7 @@ function ServiceCardView({ card, allTags, write, busy, showLocation, onAdd, onRe
             )}
             {/* S4b — reporting group chip */}
             {card.groupName && (
-              <span className="rounded-md bg-[#4F6EF7]/10 px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-[#3D5BD4]" title="Reporting group — used to compare services in reports">
+              <span className="rounded-md bg-[#4F6EF7]/10 px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-[#3D5BD4]" title="Reporting group. Used to compare services in reports.">
                 {card.groupName}
               </span>
             )}
@@ -553,7 +573,7 @@ function ServiceCardView({ card, allTags, write, busy, showLocation, onAdd, onRe
                   <Link
                     href={`/settings/track?select=${m.tag_id}`}
                     className="rounded text-[12px] font-semibold text-red-500/90 hover:text-red-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300"
-                    title={`${m.name} has no metrics — nothing to enter yet`}
+                    title={`${m.name} has no metrics yet, so there is nothing to enter`}
                   >
                     Add metrics now →
                   </Link>

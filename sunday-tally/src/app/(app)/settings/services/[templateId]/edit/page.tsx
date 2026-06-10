@@ -160,10 +160,10 @@ export default function ServiceEditPage() {
                         className="mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-[15px] text-slate-900 focus-visible:border-[#4F6EF7] focus-visible:outline-none"
                       >
                         {data.locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-                        <option value="CHURCH_WIDE">Church-wide — one shared count, no campus</option>
+                        <option value="CHURCH_WIDE">Church-wide (one shared count, no campus)</option>
                       </select>
                       <p className="mt-1 text-[12px] leading-relaxed text-slate-400">
-                        Movable because nothing has been logged here yet — once weeks are recorded, the campus locks.
+                        Movable because nothing has been logged here yet. Once weeks are recorded, the campus locks.
                       </p>
                     </>
                   ) : (
@@ -177,9 +177,9 @@ export default function ServiceEditPage() {
                         </span>
                       </div>
                       <p className="mt-1 text-[12px] leading-relaxed text-slate-400">
-                        Locked because those weeks <span className="font-medium text-slate-500">happened here</span> — moving the
+                        Locked because those weeks <span className="font-medium text-slate-500">happened here</span>. Moving the
                         service would rewrite where past numbers belong. Need it at another campus? Create a new service there
-                        and retire this one; all its history stays put.
+                        and retire this one. All its history stays put.
                       </p>
                     </>
                   )}
@@ -208,8 +208,8 @@ export default function ServiceEditPage() {
                   </select>
                   <span className="mt-1 flex items-center gap-1.5 text-[12px] leading-relaxed text-slate-400">
                     <span className={`h-3 w-1.5 shrink-0 rounded-full ${accentForRole(data.tags.find(t => t.id === primaryTag)?.tag_role ?? null)}`} aria-hidden />
-                    What this service is mainly about. The full list of ministries counted here is managed on the Services page —
-                    this is just the fallback home if none are linked.
+                    What this service is mainly about. The full list of ministries counted here is managed on the Services page.
+                    This is just the fallback home if none are linked.
                   </span>
                 </label>
 
@@ -263,9 +263,9 @@ export default function ServiceEditPage() {
                       </div>
                     )}
                     <p className="mt-1 text-[12px] leading-relaxed text-slate-400">
-                      Different from ministry groups: ministries (in What we track) group <span className="font-medium text-slate-500">what you count</span> —
-                      a reporting group bundles <span className="font-medium text-slate-500">whole services</span> for reports, e.g. put the 9am and 11am
-                      (any campus) in &quot;Morning&quot; to compare Morning vs Evening. Optional — leave it on None if you don&apos;t need it.
+                      Different from ministry groups. Ministries (in What we track) group <span className="font-medium text-slate-500">what you count</span>.
+                      A reporting group bundles <span className="font-medium text-slate-500">whole services</span> for reports. For example, put the 9am and 11am
+                      (any campus) in &quot;Morning&quot; to compare Morning vs Evening. Optional, so leave it on None if you don&apos;t need it.
                     </p>
                   </div>
                 )}
