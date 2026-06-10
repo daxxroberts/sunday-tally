@@ -403,7 +403,7 @@ export default function ServicesSettingsPage() {
                         {key === '__churchwide' ? (
                           <p className="text-[11px] font-medium text-[#FDE68A]/90">counted once for the whole church — visible at every campus</p>
                         ) : groups.has('__churchwide') ? (
-                          <p className="text-[11px] font-medium text-white/90">some counts are tracked church-wide — see the section above</p>
+                          <p className="text-[11px] font-medium text-white/90">some metrics are set up church-wide — see the section above</p>
                         ) : null}
                       </div>
                     )}
