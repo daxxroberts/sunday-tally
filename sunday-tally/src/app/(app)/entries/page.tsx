@@ -15,6 +15,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import AppLayout from '@/components/layouts/AppLayout'
 import { createClient } from '@/lib/supabase/client'
+import { readChurchPrefs, saveChurchPrefs } from '@/lib/churchPrefs'
 import type { Church, UserRole } from '@/types'
 import { Dot, Field, Ico, accentForRole, fmt, roleLabel, type Stat } from './ui'
 
@@ -43,6 +44,9 @@ interface Instance {
   template_name: string
   start_datetime: string | null
   ministries: Ministry[]
+  /** Template has location_id NULL (0036) — one shared occurrence for the whole
+   *  church, shown at every campus after a "Church-wide" divider (EN1). */
+  church_wide: boolean
 }
 // entries keyed by `${metric_id}|${service_instance_id}` (instance) or `${metric_id}|${period_anchor}` (period)
 type EntryMap = Record<string, { value: number | null; is_not_applicable: boolean }>
@@ -110,6 +114,8 @@ export default function EntriesPage() {
 
   const [weekStart, setWeekStart] = useState<Date>(() => sundayOf(new Date()))
   const [instances, setInstances] = useState<Instance[]>([])
+  // Templates with location_id NULL (0036) — drives NULL-location writes (EN3).
+  const [churchWideTmpl, setChurchWideTmpl] = useState<Set<string>>(new Set())
   const [periodMetrics, setPeriodMetrics] = useState<Metric[]>([])
   const [entries, setEntries] = useState<EntryMap>({})
 
@@ -139,7 +145,8 @@ export default function EntriesPage() {
       setRole(membership.role as UserRole)
       setChurch(churchData)
       setChurchId(membership.church_id)
-      setGridPrefs(((churchData as { grid_config?: GridPrefs })?.grid_config as GridPrefs) ?? {})
+      // 0039 split: prefs from dashboard_prefs (legacy grid_config keys pre-apply).
+      setGridPrefs(readChurchPrefs(churchData) as GridPrefs)
 
       // active campus (N-5): default_location_id, else first active location by sort_order
       let campusRow: { id: string; name: string } | null = null
@@ -196,19 +203,20 @@ export default function EntriesPage() {
     const start = weekStartStr
     const end = toDateStr(addDays(weekStart, 6))
 
-    // E-6 / QP-ENTRIES-WEEK — week's instances for this campus
+    // E-6 / QP-ENTRIES-WEEK — week's instances for this campus PLUS church-wide
+    // (location_id IS NULL = one shared occurrence visible at every campus, 0036).
     const { data: instRows } = await supabase
       .from('service_instances')
       .select('id, service_date, service_template_id, start_datetime, service_templates(display_name)')
       .eq('church_id', churchId)
-      .eq('location_id', campus.id)
+      .or(`location_id.eq.${campus.id},location_id.is.null`)
       .eq('status', 'active')
       .gte('service_date', start)
       .lte('service_date', end)
       .order('service_date', { ascending: true })
       .order('start_datetime', { ascending: true, nullsFirst: true })
 
-    const rawInstances = (instRows ?? []).map((r: any) => ({
+    const rawInstancesAll = (instRows ?? []).map((r: any) => ({
       id: r.id as string,
       service_date: r.service_date as string,
       template_id: r.service_template_id as string,
@@ -216,16 +224,44 @@ export default function EntriesPage() {
       template_name: (Array.isArray(r.service_templates) ? r.service_templates[0]?.display_name : r.service_templates?.display_name) ?? 'Service',
     }))
 
-    // Schedule-derived expected services for this week+campus (E-70). Any week —
-    // past, present, or future — that the schedule says a service runs is shown
-    // as an enterable occurrence even with no row yet; the row is created on the
+    // Templates visible on the entry screen: this campus + church-wide, active,
+    // and show_in_entries (EN2). Pre-0036 the column doesn't exist — selecting it
+    // errors → fall back without it and treat every template as visible.
+    type TmplRow = { id: string; display_name: string | null; location_id: string | null; show_in_entries?: boolean }
+    let tmplRowsRaw: TmplRow[] = []
+    {
+      const withCol = await supabase
+        .from('service_templates')
+        .select('id, display_name, location_id, show_in_entries')
+        .eq('church_id', churchId)
+        .or(`location_id.eq.${campus.id},location_id.is.null`)
+        .eq('is_active', true)
+      if (!withCol.error && withCol.data) {
+        tmplRowsRaw = (withCol.data as TmplRow[]).filter(t => t.show_in_entries !== false)
+      } else {
+        const noCol = await supabase
+          .from('service_templates')
+          .select('id, display_name, location_id')
+          .eq('church_id', churchId)
+          .or(`location_id.eq.${campus.id},location_id.is.null`)
+          .eq('is_active', true)
+        tmplRowsRaw = ((noCol.data ?? []) as TmplRow[])
+      }
+    }
+    const visibleTmplIds = new Set(tmplRowsRaw.map(t => t.id))
+    const churchWideTmplIds = new Set(tmplRowsRaw.filter(t => t.location_id === null).map(t => t.id))
+    setChurchWideTmpl(churchWideTmplIds)
+
+    // Only instances of visible templates render (a retired or hidden service
+    // keeps its History; it just stops appearing here — EN2/SE8).
+    const rawInstances = rawInstancesAll.filter(i => visibleTmplIds.has(i.template_id))
+
+    // Schedule-derived expected services for this week (E-70) — campus +
+    // church-wide. Any week the schedule says a service runs is shown as an
+    // enterable occurrence even with no row yet; the row is created on the
     // first entry (materializeVirtual). A missed/forgotten week is never lost.
-    const { data: schedTmplRows } = await supabase
-      .from('service_templates')
-      .select('id, display_name')
-      .eq('church_id', churchId).eq('location_id', campus.id).eq('is_active', true)
-    const schedTmplName = new Map((schedTmplRows ?? []).map(t => [t.id as string, (t.display_name as string) ?? 'Service']))
-    const schedTmplIds = (schedTmplRows ?? []).map(t => t.id as string)
+    const schedTmplName = new Map(tmplRowsRaw.map(t => [t.id, t.display_name ?? 'Service']))
+    const schedTmplIds = tmplRowsRaw.map(t => t.id)
     const expected: Array<{ template_id: string; service_date: string }> = []
     if (schedTmplIds.length > 0) {
       const { data: schedRows } = await supabase
@@ -296,6 +332,7 @@ export default function EntriesPage() {
     const builtInstances: Instance[] = rawInstances.map(i => ({
       ...i,
       ministries: ministriesByTemplate.get(i.template_id) ?? [],
+      church_wide: churchWideTmplIds.has(i.template_id),
     }))
 
     // Virtual (not-yet-created) occurrences for scheduled services this week.
@@ -307,9 +344,13 @@ export default function EntriesPage() {
       template_name: schedTmplName.get(e.template_id) ?? 'Service',
       start_datetime: null,
       ministries: ministriesByTemplate.get(e.template_id) ?? [],
+      church_wide: churchWideTmplIds.has(e.template_id),
     }))
+    // Campus occurrences first, church-wide after (EN1 — the tab strip renders
+    // a divider at the boundary); date/time order within each group.
     const allInstances: Instance[] = [...builtInstances, ...virtualInstances].sort((a, b) =>
-      a.service_date < b.service_date ? -1 : a.service_date > b.service_date ? 1
+      a.church_wide !== b.church_wide ? (a.church_wide ? 1 : -1)
+        : a.service_date < b.service_date ? -1 : a.service_date > b.service_date ? 1
         : (a.start_datetime ?? '') < (b.start_datetime ?? '') ? -1 : 1)
 
     // ── Prefill existing metric_entries (N-7: paginate past 1000) ─────────
@@ -376,10 +417,13 @@ export default function EntriesPage() {
   const materializeVirtual = useCallback(async (instId: string): Promise<string> => {
     if (!instId.startsWith('virtual:') || !churchId || !campus) return instId
     const parts = instId.split(':')          // ['virtual', templateId, 'YYYY-MM-DD']
+    // Church-wide template (0036) → the shared occurrence carries NO campus (EN3);
+    // the server re-verifies the template really is church-wide before accepting NULL.
+    const isChurchWide = churchWideTmpl.has(parts[1])
     const res = await fetch('/api/occurrences', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ church_id: churchId, service_template_id: parts[1], service_date: parts[2], location_id: campus.id }),
+      body: JSON.stringify({ church_id: churchId, service_template_id: parts[1], service_date: parts[2], location_id: isChurchWide ? null : campus.id }),
     })
     if (!res.ok) {
       const body = await res.json().catch(() => ({}))
@@ -389,7 +433,16 @@ export default function EntriesPage() {
     setInstances(list => list.map(i => (i.id === instId ? { ...i, id: occurrence_id as string } : i)))
     setTab(t => (t === instId ? (occurrence_id as string) : t))
     return occurrence_id as string
-  }, [churchId, campus])
+  }, [churchId, campus, churchWideTmpl])
+
+  /** EN3 — entry rows against a church-wide occurrence carry NO campus.
+   *  Virtual ids embed the template (`virtual:<tmpl>:<date>`), so this stays
+   *  correct even after materializeVirtual swaps the id in state. */
+  const locationForInst = useCallback((instId: string): string | null => {
+    const tmplId = instId.startsWith('virtual:') ? instId.split(':')[1] : instances.find(i => i.id === instId)?.template_id
+    if (tmplId && churchWideTmpl.has(tmplId)) return null
+    return campus?.id ?? null
+  }, [instances, churchWideTmpl, campus])
 
   /* ── autosave (E-40 / DS-11 / N-2): optimistic upsert on uq_metric_entry ─ */
   const upsertInstance = useCallback(async (metric: Metric, instId: string, value: number | null) => {
@@ -407,13 +460,13 @@ export default function EntriesPage() {
       value,
       is_not_applicable: false,
       reporting_tag_code: metric.reporting_tag_code,
-      location_id: campus?.id ?? null,
+      location_id: locationForInst(instId),
     }, { onConflict: 'metric_id,service_instance_id,period_anchor' })
     if (error) {
       setEntries(e => ({ ...e, [key]: prev ?? { value: null, is_not_applicable: false } }))
       throw error
     }
-  }, [supabase, churchId, campus, entries, materializeVirtual])
+  }, [supabase, churchId, entries, materializeVirtual, locationForInst])
 
   const upsertPeriod = useCallback(async (metric: Metric, anchor: string, value: number | null) => {
     if (!churchId) throw new Error('no church')
@@ -453,17 +506,20 @@ export default function EntriesPage() {
       value: na ? null : (entries[`${metric.id}|${realId}`]?.value ?? null),
       is_not_applicable: na,
       reporting_tag_code: metric.reporting_tag_code,
-      location_id: campus?.id ?? null,
+      location_id: locationForInst(instId),
     }))
     await supabase.from('metric_entries').upsert(payload, { onConflict: 'metric_id,service_instance_id,period_anchor' })
-  }, [supabase, churchId, campus, entries, readOnly, materializeVirtual])
+  }, [supabase, churchId, entries, readOnly, materializeVirtual, locationForInst])
 
   /* ── grid_config include-in-total prefs (E-12 / N-8) ────────────────────── */
   const saveGridPrefs = useCallback(async (next: GridPrefs) => {
     if (!churchId) return
     setGridPrefs(next)
-    const existing = ((church as { grid_config?: object } | null)?.grid_config as object) ?? {}
-    await supabase.from('churches').update({ grid_config: { ...existing, ...next } }).eq('id', churchId)
+    // 0039 split: merge the patch over the CURRENT prefs (dashboard_prefs, or
+    // the legacy grid_config keys pre-apply) so an entries save never drops the
+    // dashboard's keyMetrics/targets — then write via the shared helper.
+    const existing = readChurchPrefs(church)
+    await saveChurchPrefs(supabase, churchId, { ...existing, ...next })
   }, [supabase, churchId, church])
 
   // ── derived: all ministries across the week (deduped by tag) for Totals ──
@@ -598,13 +654,22 @@ export default function EntriesPage() {
             </button>
             {instances.map((inst, i) => {
               const active = tab === inst.id
+              // EN1 — church-wide occurrences sort last; a divider marks the boundary.
+              const firstChurchWide = inst.church_wide && (i === 0 || !instances[i - 1].church_wide)
               return (
-                <button key={inst.id} role="tab" aria-selected={active} onClick={() => setTab(inst.id)}
-                  style={active ? { background: '#4F6EF7' } : undefined}
-                  className={`flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-semibold transition-colors duration-200 ${active ? 'text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800'}`}>
-                  <Dot s={sectionStatuses[i]} />
-                  <span className="leading-none">{fmtTabLabel(inst)}</span>
-                </button>
+                <span key={inst.id} className="contents">
+                  {firstChurchWide && (
+                    <span className="flex items-center gap-1 self-center px-1.5 text-[9px] font-semibold uppercase tracking-wider text-slate-300" aria-hidden>
+                      <span className="h-4 w-px bg-slate-200" />Church-wide
+                    </span>
+                  )}
+                  <button role="tab" aria-selected={active} onClick={() => setTab(inst.id)}
+                    style={active ? { background: '#4F6EF7' } : undefined}
+                    className={`flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-semibold transition-colors duration-200 ${active ? 'text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800'}`}>
+                    <Dot s={sectionStatuses[i]} />
+                    <span className="leading-none">{fmtTabLabel(inst)}</span>
+                  </button>
+                </span>
               )
             })}
             <button role="tab" aria-selected={tab === 'Stat Entries'} onClick={() => setTab('Stat Entries')}

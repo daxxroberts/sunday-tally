@@ -31,6 +31,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Ico, roleLabel } from '@/app/(app)/entries/ui'
 import { buildGroupColorMap, type GroupColor } from '@/components/history-grid/group-colors'
 import type { UserRole } from '@/types'
+import { getOrphanMinistries, type OrphanMinistry } from '@/lib/ministryLinks'
 import {
   createMinistry,
   updateMinistry,
@@ -41,6 +42,8 @@ import {
   setMetricMode,
   setMetricParent,
   setRollupOp,
+  linkMinistryToServices,
+  convertMinistryToWeekly,
 } from './actions'
 import type { TagRole, MetricRow, MetricMode, RollupOp } from './actions'
 
@@ -118,6 +121,11 @@ export default function TrackPage() {
   const [busy, setBusy] = useState(false)
   const [, startTransition] = useTransition()
 
+  // TK2/TK5 — ministries whose instance metrics have no service to render on,
+  // and the "Where is this counted?" modal target.
+  const [orphans, setOrphans] = useState<OrphanMinistry[]>([])
+  const [fixTagId, setFixTagId] = useState<string | null>(null)
+
   const write = canWrite(role)
 
   // ── Load ────────────────────────────────────────────────────────────────
@@ -169,6 +177,11 @@ export default function TrackPage() {
       .map(m => ({ ...m, mode: 'entry' as MetricMode, rollup_op: null, parent_metric_id: null })))
   }, [supabase])
 
+  // TK2/TK4 — recompute orphans whenever the tree reloads (cheap, 3 reads).
+  const refreshOrphans = useCallback(async (cid: string) => {
+    setOrphans(await getOrphanMinistries(supabase, cid))
+  }, [supabase])
+
   useEffect(() => {
     let cancelled = false
     ;(async () => {
@@ -184,10 +197,17 @@ export default function TrackPage() {
       setRole(membership.role as UserRole)
       setChurchId(membership.church_id)
       await load(membership.church_id)
-      if (!cancelled) setLoading(false)
+      await refreshOrphans(membership.church_id)
+      if (!cancelled) {
+        setLoading(false)
+        // ?fix=<tagId> deep-link (S2 banner on Services) → open the picker.
+        // window.location instead of useSearchParams: no Suspense requirement.
+        const fix = new URLSearchParams(window.location.search).get('fix')
+        if (fix) setFixTagId(fix)
+      }
     })()
     return () => { cancelled = true }
-  }, [supabase, load])
+  }, [supabase, load, refreshOrphans])
 
   // ── Tree helpers ─────────────────────────────────────────────────────────
 
@@ -256,6 +276,8 @@ export default function TrackPage() {
 
   const rtById = useMemo(() => new Map(reportingTags.map(r => [r.id, r] as const)), [reportingTags])
 
+  const orphanIds = useMemo(() => new Set(orphans.map(o => o.tag_id)), [orphans])
+
   // Eligible roll-ups an entry metric may point at: same Kind, on an ancestor node.
   const eligibleParentsFor = useCallback((metric: Metric): Metric[] => {
     const anc = ancestorIds(metric.ministry_tag_id)
@@ -307,6 +329,12 @@ export default function TrackPage() {
         setNewRole('ADULT_SERVICE')
         setAddingMinistry(false)
         await load(churchId)   // pick up the auto-seeded (maybe auto-wired) Attendance
+        await refreshOrphans(churchId)
+        // TK3 "Where is this counted?": children inherit their nearest linked
+        // ancestor's services server-side (auto-link); a TOP-LEVEL ministry has
+        // nothing to inherit, so open the two-door picker. Closable = "decide
+        // later" (the orphan chip keeps pointing at it until resolved).
+        if (!parentId) setFixTagId(result.data.id)
       } else if (result.error) {
         alert(result.error)
       }
@@ -492,6 +520,8 @@ export default function TrackPage() {
                               countSummary={countSummary}
                               colorForNode={colorForNode}
                               hasUnreferenced={(id) => (metricsByMinistry.get(id) ?? []).some(m2 => unreferencedRollupIds.has(m2.id))}
+                              isOrphan={(id) => orphanIds.has(id)}
+                              onFixOrphan={setFixTagId}
                               write={write}
                               onReparent={handleReparent}
                               validParentsFor={validParentsFor}
@@ -550,8 +580,161 @@ export default function TrackPage() {
             </DndContext>
           )}
         </main>
+
+        {/* TK5 — "Where is this counted?" two-door picker */}
+        {fixTagId && (
+          <WhereCountedModal
+            tagId={fixTagId}
+            tagName={ministries.find(m => m.id === fixTagId)?.name ?? 'this ministry'}
+            supabase={supabase}
+            onClose={() => setFixTagId(null)}
+            onDone={async () => {
+              setFixTagId(null)
+              if (churchId) { await load(churchId); await refreshOrphans(churchId) }
+            }}
+          />
+        )}
       </div>
     </AppLayout>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// WhereCountedModal — TK5 (IRIS_SERVICES_RESTRUCTURE_ELEMENT_MAP.md §3).
+// Two doors, plain labels: count it AT services (Door A → junction links) or
+// JUST weekly/monthly church-wide (Door B → metrics become period-scoped and
+// live in the Stat Entries tab — the Giving model: convert, never link).
+// ─────────────────────────────────────────────────────────────────────────
+function WhereCountedModal({ tagId, tagName, supabase, onClose, onDone }: {
+  tagId: string
+  tagName: string
+  supabase: ReturnType<typeof createClient>
+  onClose: () => void
+  onDone: () => void | Promise<void>
+}) {
+  const [services, setServices] = useState<{ id: string; name: string; locationName: string | null }[]>([])
+  const [checked, setChecked] = useState<Set<string>>(new Set())
+  const [cadence, setCadence] = useState<'week' | 'month'>('week')
+  const [working, setWorking] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+  const [loadingSvcs, setLoadingSvcs] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      const { data } = await supabase
+        .from('service_templates')
+        .select('id, display_name, church_locations(name)')
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true })
+      if (cancelled) return
+      type Row = { id: string; display_name: string | null; church_locations: { name: string } | { name: string }[] | null }
+      setServices(((data ?? []) as Row[]).map(r => ({
+        id: r.id,
+        name: r.display_name ?? 'Service',
+        locationName: (Array.isArray(r.church_locations) ? r.church_locations[0]?.name : r.church_locations?.name) ?? null,
+      })))
+      setLoadingSvcs(false)
+    })()
+    return () => { cancelled = true }
+  }, [supabase])
+
+  async function doorA() {
+    if (checked.size === 0 || working) return
+    setWorking(true); setErr(null)
+    const res = await linkMinistryToServices({ tagId, templateIds: Array.from(checked) })
+    setWorking(false)
+    if (!res.ok) { setErr(res.error ?? 'Could not link.'); return }
+    await onDone()
+  }
+
+  async function doorB() {
+    if (working) return
+    setWorking(true); setErr(null)
+    const res = await convertMinistryToWeekly({ tagId, cadence })
+    setWorking(false)
+    if (!res.ok) { setErr(res.error ?? 'Could not convert.'); return }
+    await onDone()
+  }
+
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4" onClick={onClose} role="dialog" aria-modal="true">
+      <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
+        <h2 className="text-[16px] font-bold text-slate-900">Where is <span className="text-[#3D5BD4]">{tagName}</span> counted?</h2>
+        <p className="mt-1 text-[12px] leading-relaxed text-slate-500">
+          Its counts won&apos;t appear on any entry screen until you pick one.
+        </p>
+
+        {/* Door A — at a service */}
+        <div className="mt-4 rounded-xl border border-slate-200 p-3">
+          <p className="text-[13px] font-semibold text-slate-800">At a service</p>
+          <p className="text-[11px] text-slate-400">Each gathering gets its own count.</p>
+          {loadingSvcs ? (
+            <div className="mt-2 h-8 animate-pulse rounded-lg bg-slate-100" />
+          ) : services.length === 0 ? (
+            <p className="mt-2 text-[12px] text-slate-400">No active services yet — create one under Settings → Services.</p>
+          ) : (
+            <div className="mt-2 max-h-40 space-y-1 overflow-y-auto">
+              {services.map(s => (
+                <label key={s.id} className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-[13px] text-slate-700 hover:bg-slate-50">
+                  <input
+                    type="checkbox"
+                    checked={checked.has(s.id)}
+                    onChange={() => setChecked(prev => {
+                      const next = new Set(prev)
+                      if (next.has(s.id)) next.delete(s.id); else next.add(s.id)
+                      return next
+                    })}
+                    className="h-4 w-4 rounded border-slate-300 text-[#4F6EF7] focus:ring-[#4F6EF7]/40"
+                  />
+                  <span className="font-medium">{s.name}</span>
+                  {s.locationName && <span className="text-[11px] text-slate-400">· {s.locationName}</span>}
+                </label>
+              ))}
+            </div>
+          )}
+          <button
+            onClick={() => void doorA()}
+            disabled={working || checked.size === 0}
+            className="mt-2 rounded-lg bg-[#4F6EF7] px-3 py-1.5 text-[13px] font-semibold text-white transition-colors hover:bg-[#3D5BD4] disabled:opacity-40"
+          >
+            {working ? 'Saving…' : `Count it ${checked.size > 1 ? 'at these services' : 'there'}`}
+          </button>
+        </div>
+
+        {/* Door B — weekly/monthly church-wide */}
+        <div className="mt-3 rounded-xl border border-slate-200 p-3">
+          <p className="text-[13px] font-semibold text-slate-800">Just weekly or monthly, church-wide</p>
+          <p className="text-[11px] text-slate-400">No service — it shows in the Stat Entries tab. (How Giving works.)</p>
+          <div className="mt-2 flex items-center gap-2">
+            <select
+              value={cadence}
+              onChange={e => setCadence(e.target.value as 'week' | 'month')}
+              className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[13px] text-slate-700 focus-visible:border-[#4F6EF7] focus-visible:outline-none"
+            >
+              <option value="week">Weekly</option>
+              <option value="month">Monthly</option>
+            </select>
+            <button
+              onClick={() => void doorB()}
+              disabled={working}
+              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[13px] font-semibold text-slate-700 transition-colors hover:border-[#4F6EF7]/40 hover:bg-[#4F6EF7]/5 disabled:opacity-40"
+            >
+              {working ? 'Converting…' : 'Make it a stat entry'}
+            </button>
+          </div>
+        </div>
+
+        {err && (
+          <p className="mt-3 rounded-lg border border-[#F59E0B]/40 bg-[#F59E0B]/5 px-3 py-2 text-[12px] font-medium text-[#B45309]">{err}</p>
+        )}
+
+        <button onClick={onClose} className="mt-3 w-full rounded-lg px-3 py-2 text-[13px] font-medium text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-600">
+          Decide later
+        </button>
+      </div>
+    </div>,
+    document.body,
   )
 }
 
@@ -626,7 +809,7 @@ function RootDropZone() {
 // ─────────────────────────────────────────────────────────────────────────
 function MinistryTreeNode({
   ministry, level, selectedId, onSelect,
-  childrenOf, countSummary, colorForNode, hasUnreferenced, write,
+  childrenOf, countSummary, colorForNode, hasUnreferenced, isOrphan, onFixOrphan, write,
   onReparent, validParentsFor,
 }: {
   ministry: Ministry
@@ -637,6 +820,9 @@ function MinistryTreeNode({
   countSummary: (id: string) => string
   colorForNode: (id: string) => GroupColor | undefined
   hasUnreferenced: (id: string) => boolean
+  /** TK2 — instance metrics with no service to render on (the invisible-ministry trap). */
+  isOrphan: (id: string) => boolean
+  onFixOrphan: (id: string) => void
   write: boolean
   onReparent: (id: string, parentId: string | null) => void
   validParentsFor: (m: Ministry) => Ministry[]
@@ -698,6 +884,16 @@ function MinistryTreeNode({
             {hasUnreferenced(ministry.id) && (
               <span className="shrink-0 text-[11px] text-[#B45309]" title="A roll-up here has nothing pointing at it">⚠</span>
             )}
+            {/* TK2 — orphan chip: counted nowhere → click opens "Where is this counted?" */}
+            {isOrphan(ministry.id) && (
+              <button
+                onClick={e => { e.stopPropagation(); onFixOrphan(ministry.id) }}
+                title="This ministry's counts have no service to appear on — click to fix"
+                className="shrink-0 rounded-full border border-[#F59E0B]/40 bg-[#F59E0B]/5 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-[#B45309] transition-colors hover:bg-[#F59E0B]/10"
+              >
+                Not counted anywhere
+              </button>
+            )}
           </div>
           <div className="font-num mt-0.5 truncate text-[11px] text-slate-400">{countSummary(ministry.id)}</div>
         </div>
@@ -741,6 +937,8 @@ function MinistryTreeNode({
               countSummary={countSummary}
               colorForNode={colorForNode}
               hasUnreferenced={hasUnreferenced}
+              isOrphan={isOrphan}
+              onFixOrphan={onFixOrphan}
               write={write}
               onReparent={onReparent}
               validParentsFor={validParentsFor}

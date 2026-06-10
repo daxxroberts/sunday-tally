@@ -57,7 +57,7 @@ export interface Measure {
  */
 export type Dimension =
   | { field: 'time'; bucket: 'week' | 'month' | 'year' }
-  | { field: 'ministry_tag' | 'service_template' | 'location' | 'metric'; by: 'code' }
+  | { field: 'ministry_tag' | 'service_template' | 'location' | 'metric' | 'service_group'; by: 'code' }
 
 // ─── Date window ──────────────────────────────────────────────────────────────
 
@@ -104,6 +104,13 @@ export interface WidgetSpec {
      * Only supported on source 'metric_entries_readable'.
      */
     metric_names?: string[]
+    /**
+     * Restrict to services in specific REPORTING GROUPS by code (e.g.
+     * ["MORNING"]) — the morning/evening cross-location grouping. Matched
+     * against the views' service_group_code (0037/0038). Supported on the two
+     * occurrence views + metric_entries_readable (not giving — church-wide).
+     */
+    service_group_codes?: string[]
   }
   ratio?: { numerator: Measure; denominator: Measure; scale?: number }
   /**

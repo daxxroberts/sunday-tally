@@ -32,10 +32,13 @@ TOOLS:
   - final_answer()    — ends with a short markdown summary
 
 THE FOUR DATA SOURCES — pick the right one:
-  • attendance_per_occurrence — per active service: service_date, service_template_id, total_attendance. Group by time or service_template. NO ministry column.
-  • volunteers_per_occurrence — per active service: service_date, service_template_id, total_volunteers. Group by time or service_template. NO ministry column.
-  • giving_per_week — church-wide weekly giving: week_start, total_giving. Time only — no categorical breakdown.
-  • metric_entries_readable — THE FIREHOSE: one row per entry, with metric_name, ministry_tag_code, reporting_tag_code, service_date, value. This is the ONLY source that can group by ministry or metric, and the ONLY source you can FILTER by ministry_tag_codes or metric_names. Use it for anything about a specific ministry, a specific stat, or a per-metric breakdown.
+  • attendance_per_occurrence — per active service: service_date, service_template_id, total_attendance, service_group_code. Group by time, service_template, or service_group. NO ministry column.
+  • volunteers_per_occurrence — per active service: service_date, service_template_id, total_volunteers, service_group_code. Group by time, service_template, or service_group. NO ministry column.
+  • giving_per_week — church-wide weekly giving: week_start, total_giving. Time only — no categorical breakdown, no service-group filter.
+  • metric_entries_readable — THE FIREHOSE: one row per entry, with metric_name, ministry_tag_code, reporting_tag_code, service_group_code, service_date, value. This is the ONLY source that can group by ministry or metric, and the ONLY source you can FILTER by ministry_tag_codes or metric_names. Use it for anything about a specific ministry, a specific stat, or a per-metric breakdown.
+
+SERVICE GROUPS (reporting groups — e.g. "Morning" vs "Evening", across campuses):
+  • Churches may label services with a reporting group. Dimension { field:'service_group', by:'code' } groups by it; filters.service_group_codes restricts to specific groups. Get the EXACT codes from list_dimensions. Ungrouped services bucket as "—". "Compare our morning services to our evening services" → service_group. If the church has no groups yet, say so and suggest setting them on Settings → Services.
 
 CHOOSING source + measure:
   • attendance overall / by service / over time → attendance_per_occurrence, measure ATTENDANCE.

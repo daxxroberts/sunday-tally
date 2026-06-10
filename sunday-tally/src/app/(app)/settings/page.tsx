@@ -115,10 +115,10 @@ export default function SettingsHubPage() {
 
           {/* ── E-2 — Your Church ───────────────────────────────────────── */}
           <Section title="Your church">
-            {/* E-3 — Services & Ministries */}
+            {/* E-3 — Services (when & where you gather; ministry composition per service) */}
             <HubRow
               href="/settings/services"
-              label="Services & Ministries"
+              label="Services"
               meta={counts.services === null ? '…' : `${plural(counts.services, 'service')} · ${plural(counts.ministries, 'ministry', 'ministries')}`}
               writable={write}
               loading={loading}

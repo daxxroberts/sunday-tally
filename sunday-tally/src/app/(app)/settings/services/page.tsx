@@ -21,6 +21,7 @@ import Link from 'next/link'
 import AppLayout from '@/components/layouts/AppLayout'
 import { createClient } from '@/lib/supabase/client'
 import { Dot, Ico, accentForRole, roleLabel } from '@/app/(app)/entries/ui'
+import { getOrphanMinistries, type OrphanMinistry } from '@/lib/ministryLinks'
 import type { UserRole } from '@/types'
 
 const PAGE = 1000 // PostgREST cap (N-9)
@@ -79,6 +80,8 @@ export default function ServicesSettingsPage() {
   const [allTags, setAllTags] = useState<TagOption[]>([])
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState<string | null>(null) // link_id or card id being mutated
+  // S2 — ministries whose counts have no service to render on (deep-links to track's fixer)
+  const [orphans, setOrphans] = useState<OrphanMinistry[]>([])
 
   const write = canWrite(role)
 
@@ -189,6 +192,9 @@ export default function ServicesSettingsPage() {
       .range(0, PAGE - 1)
     type TagRow = { id: string; name: string; tag_role: string | null }
     setAllTags(((tagRows ?? []) as TagRow[]).map((t) => ({ id: t.id, name: t.name, tag_role: t.tag_role ?? null })))
+
+    // S2 — orphan detection (same helper the track page uses)
+    setOrphans(await getOrphanMinistries(supabase, cid))
   }, [supabase])
 
   useEffect(() => {
@@ -295,15 +301,36 @@ export default function ServicesSettingsPage() {
             </button>
             <div className="min-w-0 flex-1">
               {churchName && <div className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: '#3D5BD4' }}>{churchName}</div>}
-              <h1 className="text-lg font-extrabold leading-tight tracking-tight text-slate-900">Services &amp; Ministries</h1>
+              <h1 className="text-lg font-extrabold leading-tight tracking-tight text-slate-900">Services</h1>
             </div>
           </div>
         </header>
 
         <main className="mx-auto max-w-3xl px-4 py-6">
           <p className="mb-5 px-1 text-[13px] leading-relaxed text-slate-500">
-            Each service shows the ministries you enter for it every week. {write ? 'Add, remove, or reorder ministries — the change applies to every future week.' : 'This is read-only for your role.'}
+            When and where you gather — each service creates the weekly occurrences you log in Entries, and lists the ministries counted there.{' '}
+            {write ? 'Add, remove, or reorder ministries — the change applies to every future week.' : 'This is read-only for your role.'}
           </p>
+
+          {/* S2 — orphan banner: counts with nowhere to render (editors+ see it) */}
+          {!loading && orphans.length > 0 && (
+            <div className="mb-4 flex flex-wrap items-center gap-2 rounded-2xl border border-[#F59E0B]/40 bg-[#F59E0B]/5 px-4 py-3">
+              <span className="text-[13px] font-semibold text-[#B45309]">
+                {orphans.length === 1
+                  ? `${orphans[0].name} isn't counted anywhere yet`
+                  : `${orphans.length} ministries aren't counted anywhere yet`}
+              </span>
+              <span className="text-[12px] text-[#B45309]/80">
+                {orphans.length > 1 && `(${orphans.map(o => o.name).join(', ')}) `}— their counts won&apos;t appear in Entries.
+              </span>
+              <Link
+                href={`/settings/track?fix=${orphans[0].tag_id}`}
+                className="ml-auto shrink-0 rounded-lg border border-[#F59E0B]/40 bg-white px-2.5 py-1 text-[12px] font-semibold text-[#B45309] transition-colors hover:bg-[#F59E0B]/10"
+              >
+                Fix →
+              </Link>
+            </div>
+          )}
 
           {loading ? (
             <div className="space-y-4">{[1, 2].map(i => <div key={i} className="h-40 animate-pulse rounded-2xl bg-slate-100" />)}</div>
@@ -330,18 +357,45 @@ export default function ServicesSettingsPage() {
                   Add service
                 </button>
               )}
-              {cards.map(card => (
-                <ServiceCardView
-                  key={card.id}
-                  card={card}
-                  allTags={allTags}
-                  write={write}
-                  busy={busy}
-                  onAdd={(tag) => addMinistry(card, tag)}
-                  onRemove={(m) => removeMinistry(card, m)}
-                  onMove={(i, dir) => move(card, i, dir)}
-                />
-              ))}
+              {/* S3 — group by location; church-wide last. Headers only when there
+                  is more than one group (single-campus stays a flat list). */}
+              {(() => {
+                const groups = new Map<string, ServiceCard[]>()
+                for (const c of cards) {
+                  const key = c.locationName ?? '__churchwide'
+                  groups.set(key, [...(groups.get(key) ?? []), c])
+                }
+                const ordered = [...groups.entries()].sort(([a], [b]) =>
+                  a === '__churchwide' ? 1 : b === '__churchwide' ? -1 : a.localeCompare(b))
+                const showHeaders = ordered.length > 1
+                return ordered.map(([key, list]) => (
+                  <div key={key} className="space-y-4">
+                    {showHeaders && (
+                      <div className="px-1 pt-1">
+                        <h2 className="text-[12px] font-bold uppercase tracking-wider text-slate-400">
+                          {key === '__churchwide' ? 'Church-wide' : key}
+                        </h2>
+                        {key === '__churchwide' && (
+                          <p className="text-[11px] text-slate-400">Counted once for the whole church — visible at every campus.</p>
+                        )}
+                      </div>
+                    )}
+                    {list.map(card => (
+                      <ServiceCardView
+                        key={card.id}
+                        card={card}
+                        allTags={allTags}
+                        write={write}
+                        busy={busy}
+                        showLocation={!showHeaders}
+                        onAdd={(tag) => addMinistry(card, tag)}
+                        onRemove={(m) => removeMinistry(card, m)}
+                        onMove={(i, dir) => move(card, i, dir)}
+                      />
+                    ))}
+                  </div>
+                ))
+              })()}
               <p className="px-1 text-[12px] leading-relaxed text-slate-400">
                 Ministries are equal peers — the order here is the order they appear when you enter.
               </p>
@@ -357,11 +411,13 @@ export default function ServicesSettingsPage() {
  * Service card — mirrors the Entries Occurrence card (DS-7/DS-25)
  * G1: cadence badge + schedule link in card header.
  * ──────────────────────────────────────────────────────────────────────── */
-function ServiceCardView({ card, allTags, write, busy, onAdd, onRemove, onMove }: {
+function ServiceCardView({ card, allTags, write, busy, showLocation, onAdd, onRemove, onMove }: {
   card: ServiceCard
   allTags: TagOption[]
   write: boolean
   busy: string | null
+  /** Inline "· Campus" suffix — off when the list renders location section headers (S3). */
+  showLocation: boolean
   onAdd: (tag: TagOption) => void
   onRemove: (m: Ministry) => void
   onMove: (index: number, dir: -1 | 1) => void
@@ -386,7 +442,7 @@ function ServiceCardView({ card, allTags, write, busy, onAdd, onRemove, onMove }
         <div className="min-w-0 flex-1">
           <h3 className="truncate text-[17px] font-bold tracking-tight text-slate-900">
             {card.name}
-            {card.locationName && <span className="ml-2 text-[12px] font-medium text-slate-400">· {card.locationName}</span>}
+            {showLocation && card.locationName && <span className="ml-2 text-[12px] font-medium text-slate-400">· {card.locationName}</span>}
           </h3>
           {/* G1: cadence row — neutral DS-16 slate tag when scheduled, amber when not */}
           <div className="mt-1 flex items-center gap-2">
@@ -410,7 +466,23 @@ function ServiceCardView({ card, allTags, write, busy, onAdd, onRemove, onMove }
             )}
           </div>
         </div>
-        <Dot s={status} />
+        <div className="flex shrink-0 items-center gap-1.5">
+          {/* S4a — edit (T6C), owner/admin */}
+          {write && (
+            <Link
+              href={`/settings/services/${card.id}/edit`}
+              aria-label={`Edit ${card.name}`}
+              title="Edit service"
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-300 transition-colors duration-200 hover:bg-slate-100 hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/40"
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 20h9" strokeLinecap="round" />
+                <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" strokeLinejoin="round" />
+              </svg>
+            </Link>
+          )}
+          <Dot s={status} />
+        </div>
       </div>
 
       {/* ministry child rows (E-22) — equal-peer accent bars, no "primary" badge */}

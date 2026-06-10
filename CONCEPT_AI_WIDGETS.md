@@ -321,3 +321,17 @@ prototyped in throwaway mockups (`/mockup/widgets`, `/mockup/tremor`) on demo da
 **Next (real build):** apply `0033` (gated); fix starter-seed specs (BUILD_FLAGS); wire `location` into the
 compiler; build the in-chat dashboard surface + global date/campus filter; adopt Tremor renderers; add a
 `compare: prior_year` spec capability for true 4-window comparison widgets.
+
+---
+
+## Addendum 2 — Services restructure hooks (2026-06-09, approved plan)
+
+The Services/What-We-Track restructure adds two compiler-visible concepts (spec: `IRIS_SERVICES_RESTRUCTURE_ELEMENT_MAP.md` §5):
+
+- **`service_group` dimension + `service_group_codes` filter** — reporting groups (e.g. Morning / Evening,
+  cross-location) live in `service_groups` (0037) and surface on the three occurrence/firehose views as
+  `service_group_code` (0038, appended column). "Attendance by service group, weekly" becomes a first-class
+  widget. Ungrouped services bucket as `—`.
+- **Church-wide services (`location_id IS NULL`, 0036)** — campus-filtered widgets (`?campus=`) EXCLUDE
+  church-wide rows; they count under "All campuses" only. Override = one-line `.or()` flip in
+  `compile.ts` (BUILD_FLAGS records it). Giving stays church-wide as before (D-086).
