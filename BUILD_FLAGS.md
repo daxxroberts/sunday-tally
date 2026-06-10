@@ -21,6 +21,14 @@ Format: [SCREEN or FILE] — [what is ambiguous] — [what you need to proceed]
 
 - **[M3 service entry reversal]** — DEFERRED. Reverses the service-occurrence detail screen from process-organized cards (Attendance · Volunteers · Stats · Giving) to audience-organized cards (Adults · Kids · Students) when church operates in M3 mode. Blockers before any code change: (1) decide where `structural_meaning` (M1/M2/M3) is persisted on `churches` — likely a new column populated from Q-PAT-1 during import finalization; (2) a new IRIS map for the M3-shape detail screen; (3) decide whether existing per-process screens become per-audience entry surfaces or remain reachable via secondary nav. **Needs owner sign-off on architecture before code lands.**
 
+### AI Widgets (CONCEPT_AI_WIDGETS.md) — foundation batch landed 2026-06-08 (uncommitted, 0033 NOT applied)
+
+- **[AI Widgets · 0033 write role]** — church-scope writes use `get_user_role(church_id) IN ('owner','admin','editor')` (editor+, matching 0032), per CONCEPT "editor+". Live `is_church_manager()` = owner/admin only. **Confirm editor+ vs owner/admin-only** before applying 0033; if owner/admin-only, swap the three church-scope predicates to `is_church_manager(church_id)`.
+- **[AI Widgets · starter seed specs]** — `seed_starter_widgets()` is defined-not-called. Before it's called/applied, fix: starter **#3 "Volunteers by ministry" (pivot)** and **#5 "Volunteers to attendance" (ratio)** must source `metric_entries_readable` — `volunteers_per_occurrence` cannot group by `ministry_tag` and lacks ATTENDANCE for the cross-source ratio (compiler returns a graceful error otherwise). Starter **#4 "Avg weekly attendance"** is a 0-dim avg = average per *occurrence*, not per *week* (Builder's defined metric = AVG over weeks); reconcile the semantics or rename.
+- **[AI Widgets · dimension coverage]** — the views expose only `service_template` (by UUID) for attendance/volunteers; **no `location` grouping**, and `service_template` "by code" needs a UUID→code resolution or a view column; giving has no categorical axis. Decide whether to extend the views or cap widget dimensions to what's supported. Compiler declines unsupported combos gracefully (no wrong numbers).
+- **[AI Widgets · AI budget bucket]** — `/api/ai/widget-builder` spend currently draws the **analytics** cap (kind `analytics_chat`). Decide whether to add a dedicated `widget_builder` bucket (edits `lib/ai/budget.ts` + pricing/types).
+- **[AI Widgets · Batch 2 screens]** — GATED on: (a) approve `react-grid-layout` dependency; (b) apply 0033 (per-action auth); (c) approve `IRIS_WIDGETS_ELEMENT_MAP.md`; (d) DS-2 NO-RED fix in the reused `ChartBlock` palette (`#ef4444`) + page-local `DeltaBadge` (red) before they back widget renderers; (e) resolve IRIS open items O-1…O-9 (editor/viewer roles, viewer flip-to-explain, mobile drag vs read-only, promote user→church, page copy).
+
 ---
 
 ## Resolved Flags

@@ -92,6 +92,14 @@ export async function signupAction(data: SignupData): Promise<{ error: string } 
     return { error: 'Something went wrong. Try again.' }
   }
 
+  // Step 6 — Seed starter dashboard widgets (NON-FATAL). A usable account does not
+  // depend on these; the church can build widgets later, or we backfill. Do NOT roll
+  // back the account over a cosmetic library seed.
+  const { error: widgetSeedError } = await admin.rpc('seed_starter_widgets', { p_church_id: churchId })
+  if (widgetSeedError) {
+    console.error('SIGNUP WARN (Starter widgets):', widgetSeedError)
+  }
+
   const supabase = await createClient()
   const { error: signInError } = await supabase.auth.signInWithPassword({
     email: data.email,

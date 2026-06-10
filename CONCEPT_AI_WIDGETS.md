@@ -290,3 +290,34 @@ This is a **concept spec only.** No code, no migration applied, no dependency in
 exists and is reviewable alongside `MINISTRY_METRIC_TREE_CONCEPT.md`. The build-phase verification — compiler
 unit tests reconciling against `dashboard.ts` numbers, RLS isolation tests, and an end-to-end
 build → save → replay-with-zero-AI check — is specified for when Phase 1 begins.
+
+---
+
+## Addendum — prototyped + Builder-confirmed directions (2026-06-09)
+
+The foundation is now BUILT (compiler, AI build/save tools + guidelines, migration `0033` FILE, IRIS map) and
+prototyped in throwaway mockups (`/mockup/widgets`, `/mockup/tremor`) on demo data. Builder-confirmed updates:
+
+- **Lives INSIDE the existing Ask-AI chat (`/dashboard/ai`).** The custom dashboard is a feature *within* the
+  chat we already have — build/edit widgets in the chat, they pin to a dashboard view there; the chat stays a
+  general Q&A surface too. Supersedes the standalone `/dashboard/custom` placement (which was the prototype shell).
+- **Global dashboard filter (date + campus).** One top-level control re-scopes EVERY widget by date range and
+  campus/location; the AI can also add **filter widgets** and is given dashboard context to "understand" it.
+  Requires `location` wired into the compiler (per D-086/087 `metric_entries.location_id`) + a dashboard-filter
+  layer that overrides each widget's window/scope at read time.
+- **Renderers = the Tremor look.** `@tremor/react` npm targets Tailwind v3; the app is Tailwind v4 → use Tremor's
+  copy-paste / Recharts design layer (PARSE Option A). Fully AI-decoupled — still just `VizConfig.kind` + rows,
+  so the renderer choice never touches the AI/compiler. `react-grid-layout` adopted for the grid.
+- **`weekly_avg` is the house metric.** Added `measure.agg='weekly_avg'` — SUM within each ISO week, then AVERAGE
+  the weeks (NULL weeks don't drag it down). Headline numbers default to weekly averages, not raw totals. The
+  **4-window frame** (current week · last-4-wk avg · YTD weekly avg · prior-YTD weekly avg) is the comparison standard.
+- **AI behavior:** always OFFER a prior-year comparison after building; SUGGEST 1–2 drill-downs (by ministry / service).
+- **Remove + edit widgets** — ✕ removes; ✎ edits via the AI (re-opens the chat seeded with the widget).
+- **Query proof + dynamic guardrail** — every widget shows its equivalent SQL (relative `CURRENT_DATE`-based for
+  rolling windows) and a **Live / Fixed** badge so a pinned (static) widget is always identified.
+- **Save scope:** per church (0033) + **per campus/location** (the open add). Widgets/dashboards already church-
+  and user-scoped.
+
+**Next (real build):** apply `0033` (gated); fix starter-seed specs (BUILD_FLAGS); wire `location` into the
+compiler; build the in-chat dashboard surface + global date/campus filter; adopt Tremor renderers; add a
+`compare: prior_year` spec capability for true 4-window comparison widgets.
