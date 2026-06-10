@@ -20,10 +20,20 @@ import { type ReactNode, useEffect, useRef, useState } from 'react'
 
 type ChatMsg = { role: 'user' | 'assistant'; text: string }
 
+/** The "what this shows" proof panel: plain-language facts + the raw SQL (toggle). */
+type QueryProof = {
+  title: string
+  sql: string
+  plain?: { summing?: string; refresh?: string; currentlyShowing?: string; included?: string } | null
+}
+
 const STARTERS = ['Salvations by month this year', 'Volunteers by ministry', 'Attendance vs last year']
 
 export function WidgetChat({
   dashboardId,
+  editWidgetId,
+  editTitle,
+  onExitEdit,
   seed,
   onSeedConsumed,
   onSaved,
@@ -31,7 +41,14 @@ export function WidgetChat({
 }: {
   /** Open dashboard — passed to save_widget so the saved widget is placed here. */
   dashboardId: string | null
-  /** When set, pre-fills the composer (e.g. "Edit the "X" widget — ") and focuses. */
+  /** When set, the chat is EDITING this widget — sent as edit_widget_id so the
+   *  server updates it in place instead of creating a new one. */
+  editWidgetId?: string | null
+  /** Title of the widget being edited (for the "Editing …" banner). */
+  editTitle?: string | null
+  /** Leave edit mode → back to building a fresh widget. */
+  onExitEdit?: () => void
+  /** When set, pre-fills the composer and focuses. */
   seed?: string | null
   onSeedConsumed?: () => void
   /** Called after a build/save turn finishes so the canvas can refresh the replay. */
@@ -47,7 +64,8 @@ export function WidgetChat({
   ])
   const [input, setInput] = useState('')
   const [streaming, setStreaming] = useState(false)
-  const [lastQuery, setLastQuery] = useState<{ title: string; sql: string } | null>(null)
+  const [lastQuery, setLastQuery] = useState<QueryProof | null>(null)
+  const [showSql, setShowSql] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
   const taRef = useRef<HTMLTextAreaElement>(null)
 
@@ -99,6 +117,8 @@ export function WidgetChat({
           history: history.map((m) => ({ role: m.role, content: m.text })),
           // Place saved widgets onto the currently-open dashboard.
           dashboard_id: dashboardId ?? undefined,
+          // When editing, the server updates THIS widget in place (never a clone).
+          edit_widget_id: editWidgetId ?? undefined,
         }),
       })
       if (!res.ok || !res.body) {
@@ -129,7 +149,14 @@ export function WidgetChat({
           if (ev === 'text') appendAssistant(String(payload.delta ?? ''))
           else if (ev === 'chart' || ev === 'grid') {
             built++
-            if (payload.sql) setLastQuery({ title: String(payload.title ?? 'Widget'), sql: String(payload.sql) })
+            if (payload.sql || payload.explain) {
+              setShowSql(false)
+              setLastQuery({
+                title: String(payload.title ?? 'Widget'),
+                sql: String(payload.sql ?? ''),
+                plain: (payload.explain as QueryProof['plain']) ?? null,
+              })
+            }
           } else if (ev === 'final') {
             const md = String(payload.markdown ?? '')
             if (md) appendAssistant((built ? '\n\n' : '') + md)
@@ -177,6 +204,22 @@ export function WidgetChat({
         )}
       </div>
 
+      {editWidgetId && (
+        <div className="flex items-center gap-2 border-b border-amber-100 bg-amber-50 px-4 py-2 text-[12px] text-amber-800">
+          <span className="font-semibold">Editing{editTitle ? `: ${editTitle}` : ''}</span>
+          <span className="text-amber-600">— changes update this widget in place.</span>
+          {onExitEdit && (
+            <button
+              type="button"
+              onClick={onExitEdit}
+              className="ml-auto shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold text-amber-700 hover:bg-amber-100"
+            >
+              New widget instead
+            </button>
+          )}
+        </div>
+      )}
+
       <div ref={scrollRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-4">
         {messages.map((m, i) =>
           m.role === 'user' ? (
@@ -202,15 +245,45 @@ export function WidgetChat({
 
       {lastQuery && (
         <div className="border-t border-slate-100 bg-slate-50 px-3 py-2">
-          <div className="mb-1 flex items-center justify-between">
-            <span className="truncate text-[11px] font-semibold uppercase tracking-wide text-slate-500">Query · {lastQuery.title}</span>
-            <button type="button" onClick={() => setLastQuery(null)} className="ml-2 shrink-0 text-[11px] text-slate-400 hover:text-slate-600">
-              hide
-            </button>
+          <div className="mb-1 flex items-center justify-between gap-2">
+            <span className="truncate text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+              What this shows · {lastQuery.title}
+            </span>
+            <div className="flex shrink-0 items-center gap-2">
+              {lastQuery.sql && (
+                <button
+                  type="button"
+                  onClick={() => setShowSql((s) => !s)}
+                  className="text-[11px] font-medium text-slate-400 hover:text-[#4F6EF7]"
+                >
+                  {showSql ? 'Hide SQL' : 'Show SQL'}
+                </button>
+              )}
+              <button type="button" onClick={() => setLastQuery(null)} className="text-[11px] text-slate-400 hover:text-slate-600">
+                hide
+              </button>
+            </div>
           </div>
-          <pre className="max-h-40 overflow-auto rounded-lg bg-slate-900 p-2.5 text-[11px] leading-relaxed text-slate-100">
-            <code>{lastQuery.sql}</code>
-          </pre>
+          {lastQuery.plain &&
+          (lastQuery.plain.summing || lastQuery.plain.refresh || lastQuery.plain.currentlyShowing || lastQuery.plain.included) ? (
+            <ul className="space-y-1 text-[12px] leading-relaxed text-slate-600">
+              {[lastQuery.plain.summing, lastQuery.plain.refresh, lastQuery.plain.currentlyShowing, lastQuery.plain.included]
+                .filter(Boolean)
+                .map((line, i) => (
+                  <li key={i} className="flex gap-1.5">
+                    <span className="mt-[2px] text-[#4F6EF7]">•</span>
+                    <span>{line}</span>
+                  </li>
+                ))}
+            </ul>
+          ) : (
+            !showSql && <p className="text-[12px] text-slate-400">A plain-language summary will appear here.</p>
+          )}
+          {showSql && lastQuery.sql && (
+            <pre className="mt-2 max-h-40 overflow-auto rounded-lg bg-slate-900 p-2.5 text-[11px] leading-relaxed text-slate-100">
+              <code>{lastQuery.sql}</code>
+            </pre>
+          )}
         </div>
       )}
 
@@ -227,7 +300,7 @@ export function WidgetChat({
               }
             }}
             rows={2}
-            placeholder="e.g. salvations by month this year"
+            placeholder={editWidgetId ? 'Describe your change…' : 'e.g. salvations by month this year'}
             className="min-h-[44px] flex-1 resize-none rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus-visible:border-[#4F6EF7] focus-visible:outline-none"
           />
           <button
@@ -239,18 +312,20 @@ export function WidgetChat({
             {streaming ? '…' : 'Send'}
           </button>
         </div>
-        <div className="mt-2 flex flex-wrap gap-1.5">
-          {STARTERS.map((q) => (
-            <button
-              key={q}
-              type="button"
-              onClick={() => setInput(q)}
-              className="rounded-full border border-slate-200 px-2 py-1 text-[11px] text-slate-600 hover:border-[#4F6EF7] hover:text-[#4F6EF7]"
-            >
-              {q}
-            </button>
-          ))}
-        </div>
+        {!editWidgetId && (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {STARTERS.map((q) => (
+              <button
+                key={q}
+                type="button"
+                onClick={() => setInput(q)}
+                className="rounded-full border border-slate-200 px-2 py-1 text-[11px] text-slate-600 hover:border-[#4F6EF7] hover:text-[#4F6EF7]"
+              >
+                {q}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </aside>
   )

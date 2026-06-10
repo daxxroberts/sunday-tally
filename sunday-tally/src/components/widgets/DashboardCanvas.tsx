@@ -105,6 +105,7 @@ export function DashboardCanvas() {
   const [chatOpen, setChatOpen] = useState(false)
   const [libOpen, setLibOpen] = useState(false)
   const [chatSeed, setChatSeed] = useState<string | null>(null)
+  const [editTarget, setEditTarget] = useState<{ id: string; title: string } | null>(null)
   const [busyWidget, setBusyWidget] = useState<string | null>(null)
 
   // Global filters.
@@ -295,15 +296,16 @@ export function DashboardCanvas() {
     [activeId],
   )
 
-  // ── ✎ edit a widget → open the chat seeded ──
+  // ── ✎ edit a widget → open the chat in EDIT mode. The server loads the widget's
+  //    current spec from edit_widget_id and UPDATES it in place (never clones). ──
   const editWidget = useCallback((w: ReplayWidget) => {
     setChatOpen(true)
-    setChatSeed(`Edit the "${w.title}" widget — `)
+    setChatSeed(null)
+    setEditTarget({ id: w.id, title: w.title })
   }, [])
 
-  // Library entries not already on the board (so the palette only offers new adds).
+  // Which library widgets are already on this board (the Library shows them "Added").
   const placed = useMemo(() => new Set(widgets.map((w) => w.id)), [widgets])
-  const palette = useMemo(() => library.filter((l) => !placed.has(l.id)), [library, placed])
 
   const activeName = dashboards.find((d) => d.id === activeId)?.name ?? 'Dashboard'
 
@@ -387,7 +389,7 @@ export function DashboardCanvas() {
             libOpen ? 'border-[#4F6EF7] bg-[#4F6EF7]/5 text-[#4F6EF7]' : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
           }`}
         >
-          + Add widget
+          Library
         </button>
         <button
           type="button"
@@ -400,43 +402,63 @@ export function DashboardCanvas() {
         </button>
         <button
           type="button"
-          onClick={() => setChatOpen((c) => !c)}
+          onClick={() => {
+            if (!chatOpen) setEditTarget(null) // opening fresh → build a NEW widget, not edit
+            setChatOpen((c) => !c)
+          }}
           className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:border-slate-300"
         >
           {chatOpen ? 'Hide AI' : '✦ Build with AI'}
         </button>
       </header>
 
-      {/* Library palette (collapsible) */}
+      {/* Library (collapsible) — your whole saved collection; placed ones show "Added". */}
       {libOpen && (
         <div className="border-b border-slate-200 bg-white px-4 py-3">
-          {palette.length === 0 ? (
-            <p className="text-xs text-slate-400">
+          <div className="mb-2 flex items-center gap-2">
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Library</span>
+            <span className="text-[11px] text-slate-400">
               {library.length === 0
-                ? 'No saved widgets yet — build one with AI to start your library.'
-                : 'Every saved widget is already on this dashboard.'}
-            </p>
+                ? 'empty'
+                : `${library.length} widget${library.length === 1 ? '' : 's'} · click one to add it to this dashboard`}
+            </span>
+          </div>
+          {library.length === 0 ? (
+            <p className="text-xs text-slate-400">No saved widgets yet — build one with AI to start your library.</p>
           ) : (
             <div className="flex flex-wrap gap-2">
-              {palette.map((l) => (
-                <button
-                  key={l.id}
-                  type="button"
-                  disabled={!!busyWidget}
-                  onClick={() => void placeWidget(l.id)}
-                  className="group inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-left text-xs text-slate-700 transition-colors hover:border-[#4F6EF7] hover:bg-[#4F6EF7]/5 disabled:opacity-50"
-                  title={`Add "${l.title}" to this dashboard`}
-                >
-                  <KindIcon kind={l.kind} />
-                  <span className="font-medium">{l.title}</span>
-                  {l.is_starter && (
-                    <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-slate-500">
-                      Starter
-                    </span>
-                  )}
-                  <span className="text-[#4F6EF7] opacity-0 transition-opacity group-hover:opacity-100">+</span>
-                </button>
-              ))}
+              {library.map((l) => {
+                const isPlaced = placed.has(l.id)
+                return (
+                  <button
+                    key={l.id}
+                    type="button"
+                    disabled={!!busyWidget || isPlaced}
+                    onClick={() => void placeWidget(l.id)}
+                    className={`group inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-left text-xs transition-colors disabled:cursor-default ${
+                      isPlaced
+                        ? 'border-slate-200 bg-slate-50 text-slate-400'
+                        : 'border-slate-200 bg-white text-slate-700 hover:border-[#4F6EF7] hover:bg-[#4F6EF7]/5 disabled:opacity-50'
+                    }`}
+                    title={isPlaced ? `"${l.title}" is already on this dashboard` : `Add "${l.title}" to this dashboard`}
+                  >
+                    <KindIcon kind={l.kind} />
+                    <span className="font-medium">{l.title}</span>
+                    {l.is_starter && (
+                      <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-slate-500">
+                        Starter
+                      </span>
+                    )}
+                    {isPlaced ? (
+                      <span className="rounded-full bg-emerald-50 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-emerald-600">
+                        Added
+                      </span>
+                    ) : (
+                      <span className="text-[#4F6EF7] opacity-0 transition-opacity group-hover:opacity-100">+</span>
+                    )}
+                  </button>
+                )
+              })}
             </div>
           )}
         </div>
@@ -496,6 +518,9 @@ export function DashboardCanvas() {
           <div className="absolute inset-y-0 right-0 z-30 w-[min(100vw,22rem)] shadow-2xl lg:relative lg:z-auto lg:w-80 lg:shadow-none xl:w-96">
             <WidgetChat
               dashboardId={activeId}
+              editWidgetId={editTarget?.id ?? null}
+              editTitle={editTarget?.title ?? null}
+              onExitEdit={() => setEditTarget(null)}
               seed={chatSeed}
               onSeedConsumed={() => setChatSeed(null)}
               onSaved={() => {
@@ -535,7 +560,7 @@ function EmptyBoard({ onAdd, onBuild, hasLibrary }: { onAdd: () => void; onBuild
             onClick={onAdd}
             className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:border-slate-300"
           >
-            + Add widget
+            Add from library
           </button>
         )}
         <button type="button" onClick={onBuild} className="rounded-lg bg-[#4F6EF7] px-3 py-2 text-sm font-semibold text-white hover:bg-[#3D5BD4]">

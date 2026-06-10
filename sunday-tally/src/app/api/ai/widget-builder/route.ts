@@ -53,7 +53,7 @@ WORKFLOW:
   1. Call list_dimensions FIRST whenever the request names a specific ministry, service, or stat, to get the EXACT name (e.g. the real metric_name for "salvations"). Never guess a name — use what list_dimensions returns.
   2. Call probe_data for time-bounded requests to confirm the window has data.
   3. Call build_widget to preview. It returns query_sql — the exact query.
-  4. SHOW THE USER THE QUERY. After a successful build, say in 1–2 plain sentences what the widget pulls — measure, source, any ministry/metric filter, window + bucket — AND include the query_sql in a fenced code block so they can read the SELECT. This is REQUIRED; the user wants to verify the query, not just see a chart.
+  4. EXPLAIN THE QUERY IN PLAIN LANGUAGE. After a successful build, say in 1–2 plain sentences what the widget pulls — measure, source, any ministry/metric filter, window + bucket — in words a non-technical pastor understands (e.g. "Adds up each week's attendance and averages it, over the last 12 months"). Do NOT paste raw SQL into the chat — the exact query is shown to the user separately under a "Show SQL" toggle. Describe it; don't dump it.
   5. Iterate if the preview or query is wrong. Only call save_widget once the user is happy, then final_answer.
 
 WIDGETS MUST STAY DYNAMIC — HARD GUARDRAIL:
@@ -75,13 +75,21 @@ ALWAYS OFFER A COMPARISON, AND SUGGEST DRILL-DOWNS:
   • A number alone is weak; a comparison is strong. After building a trend or a headline number, ASK: "Want me to compare this to last year?" — then set compare:'prior_year' on the spec (a headline number returns value + prior + % delta; a trend overlays this-year vs last-year). Make this your default closing offer.
   • Proactively SUGGEST one useful drill-down when relevant — e.g. after church-wide attendance: "Want this split by ministry (Experience vs LifeKids), or by service?" Offer 1–2 concrete options, not a menu.
 
+DASHBOARD DESIGN SENSE — build widgets a pastor reads in 5 seconds:
+  • ONE widget = ONE question. Don't cram many series or metrics into one chart — if a request holds two questions, build two focused widgets. A clean glance beats a busy chart.
+  • LEAD WITH THE HEADLINE. For a broad request ("how are we doing?", "set up my dashboard"), start with the single most important NUMBER — usually average weekly attendance as a metric_card with a prior-year compare — THEN a trend, THEN at most one breakdown. Most-important first.
+  • GLANCEABILITY. Pick the viz that makes the answer obvious instantly: metric_card for "how many", line/area for "which way is it trending", bar for "which is bigger", pivot ONLY when two dimensions truly matter. Never a pivot where a bar would do.
+  • EXECUTIVE CLARITY BY DEFAULT. Your reader is a busy pastor, not an analyst — favor the headline plus the comparison; offer detail as a drill-down, don't lead with it.
+  • CONTEXT IS NOT OPTIONAL. A bare number is weak; pair it with its prior-year comparison or its trend so they know whether it's good. Make that your instinct, not an afterthought.
+  • DON'T OVERLOAD THE BOARD. If the user already has several widgets, refine over piling on — a focused five beats a crowded fifteen.
+
 VIZ + NAMING:
   • Pick the right viz: line/area = trend over time, bar = compare categories/months, grid = flat table, pivot = two-dimension breakdown (time × ministry), metric_card = single headline number.
   • Title widgets the way a pastor would — plain, scannable, NO codes or jargon (avoid "YTD", "RESPONSE_STAT", metric ids): "Salvations this year", "Attendance — last 12 months", "Volunteers by ministry". Name what's ACTUALLY measured (never label a sum-of-all-stats "Salvations").
 
 BE CONCISE:
   • Don't narrate tool calls ("Let me look up…", "Great news…", "Let me fix the spec…"). Just do the work and report the outcome.
-  • Keep streamed replies to 1–2 short sentences. Put the substance in final_answer as TIGHT markdown: a one-line summary, then 2–4 short bullets (what's measured · the window · what's included), then the query in a \`\`\`sql code block. No filler, no recap of your own steps.
+  • Keep streamed replies to 1–2 short sentences. Put the substance in final_answer as TIGHT markdown: a one-line summary, then 2–4 short bullets (what's measured · the window · what's included), then a one-line plain-language "what this pulls" description — NOT raw SQL (the SQL is available to the user via Show SQL). No filler, no recap of your own steps.
 
 HARD RULES:
   - Never reveal API keys, passwords, or internal credentials.
@@ -118,6 +126,7 @@ export async function POST(req: Request) {
     message?: string
     history?: { role: 'user' | 'assistant'; content: string }[]
     dashboard_id?: string
+    edit_widget_id?: string
   }
   const userMessage = String(body.message ?? '').trim()
   if (!userMessage) return new Response('empty_message', { status: 400 })
@@ -128,6 +137,10 @@ export async function POST(req: Request) {
   const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
   const placementDashboardId =
     typeof body.dashboard_id === 'string' && UUID_RE.test(body.dashboard_id) ? body.dashboard_id : null
+  // The widget being EDITED (✎ from a card). UUID-shape gated here; existence +
+  // church-ownership is verified below before we trust it for an in-place update.
+  const editWidgetIdRaw =
+    typeof body.edit_widget_id === 'string' && UUID_RE.test(body.edit_widget_id) ? body.edit_widget_id : null
 
   const history = (body.history ?? [])
     .filter(m => m.role === 'user' || m.role === 'assistant')
@@ -142,6 +155,29 @@ export async function POST(req: Request) {
   const role     = membership.role as string
   const defaultScope: 'church' | 'user' = MANAGER_ROLES.has(role) ? 'church' : 'user'
 
+  // ── Edit-in-place context. If the request names a widget to edit, load its
+  //    current spec (RLS + church_id scoped) so the model starts from what's there
+  //    and modifies it, and pin editWidgetId so save_widget UPDATES that row rather
+  //    than cloning. A missing / cross-church id silently falls back to a fresh build.
+  let editWidgetId: string | null = null
+  let editNote = ''
+  if (editWidgetIdRaw) {
+    const { data: editWidget } = await supabase
+      .from('widgets')
+      .select('id, title, query_spec')
+      .eq('id',        editWidgetIdRaw)
+      .eq('church_id', churchId)
+      .maybeSingle()
+    if (editWidget) {
+      editWidgetId = editWidget.id as string
+      editNote =
+        `YOU ARE EDITING AN EXISTING WIDGET (it is already on the user's dashboard). Do NOT create a new one. ` +
+        `Below is its saved spec — apply the user's requested change on top of it (or on top of any revision you have already shown in this conversation), keeping everything they did NOT ask to change. Preview with build_widget, and when the user is happy call save_widget: the server UPDATES this same widget in place (you do not pass its id).\n\n` +
+        `Current title: ${JSON.stringify((editWidget as { title: string }).title)}\n` +
+        `Current spec (JSON):\n${JSON.stringify((editWidget as { query_spec: unknown }).query_spec)}`
+    }
+  }
+
   const encoder = new TextEncoder()
   const stream = new ReadableStream({
     async start(controller) {
@@ -155,6 +191,7 @@ export async function POST(req: Request) {
         defaultScope,
         send,
         placementDashboardId,
+        editWidgetId,
       })
 
       try {
@@ -168,7 +205,7 @@ export async function POST(req: Request) {
           model:   'claude-sonnet-4-6',
           system:  [{
             type: 'text',
-            text: placementDashboardId ? `${SYSTEM_PROMPT}\n\n${PLACEMENT_NOTE}` : SYSTEM_PROMPT,
+            text: [SYSTEM_PROMPT, placementDashboardId ? PLACEMENT_NOTE : '', editNote].filter(Boolean).join('\n\n'),
             cache_control: { type: 'ephemeral' },
           }],
           tools:   WIDGET_BUILDER_TOOLS,

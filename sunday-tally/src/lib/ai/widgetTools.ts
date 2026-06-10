@@ -243,6 +243,13 @@ export interface WidgetToolDeps {
    * the open board. null/undefined = no open dashboard → library-only save.
    */
   placementDashboardId?: string | null
+  /**
+   * When the user opened a widget's ✎ edit, the route pins that widget's id here
+   * (UUID-validated + church-ownership-checked server-side). save_widget then
+   * UPDATES this widget in place instead of INSERTing a clone — editing edits,
+   * never clones. null/undefined = a fresh build → INSERT.
+   */
+  editWidgetId?: string | null
 }
 
 /**
@@ -252,7 +259,7 @@ export interface WidgetToolDeps {
  * via the closure since runToolLoop's ctx carries only churchId + supabase.
  */
 export function makeWidgetHandlers(deps: WidgetToolDeps) {
-  const { userId, defaultScope, send, placementDashboardId } = deps
+  const { userId, defaultScope, send, placementDashboardId, editWidgetId } = deps
 
   return {
     probe_data: async (input: Record<string, unknown>, ctx: { supabase: SupabaseClient; churchId: string }) => {
@@ -292,9 +299,11 @@ export function makeWidgetHandlers(deps: WidgetToolDeps) {
       const rows = runResult.rows
 
       // 3. Stream the preview. recharts kinds → 'chart'; tabular kinds → 'grid'.
-      //    Include the spec + the equivalent SQL so the UI can SHOW the user the
-      //    exact query the widget runs (proof — CONCEPT §8/§9.1).
+      //    Include the spec, the equivalent SQL (raw proof), AND the plain-language
+      //    `explain` facts so the UI shows a HUMANIZED description by default and
+      //    keeps the SQL behind a "Show SQL" toggle (CONCEPT §8/§9.1).
       const sql = explainQuery(spec, runResult.resolved)
+      const facts = describeSpec(spec, runResult.resolved)
       const previewPayload = {
         title:   viz.title,
         xKey:    viz.xKey,
@@ -302,19 +311,24 @@ export function makeWidgetHandlers(deps: WidgetToolDeps) {
         data:    rows,
         spec,
         sql,
+        explain: {
+          summing:          facts.summing,
+          refresh:          facts.refresh,
+          currentlyShowing: facts.currentlyShowing,
+          included:         facts.included,
+        },
         rolling: isRollingWindow(spec),
       }
       if (CHART_KINDS.has(viz.kind)) {
-        // Mirror the analytics 'chart' contract + spec/sql for proof.
+        // Mirror the analytics 'chart' contract + spec/sql/explain for proof.
         send('chart', { type: viz.kind, ...previewPayload })
       } else {
         // 'grid' event for grid / pivot / metric_card previews.
         send('grid', { kind: viz.kind, ...previewPayload })
       }
 
-      // 4. Return the templated facts (describeSpec wants the RESOLVED range, not
-      //    a Date) + the SQL so the model can explain EXACTLY what it queried.
-      const facts = describeSpec(spec, runResult.resolved)
+      // 4. Return the templated facts + the SQL so the model can explain EXACTLY
+      //    what it queried (facts computed once above).
       return {
         previewed:        true,
         kind:             viz.kind,
@@ -352,6 +366,39 @@ export function makeWidgetHandlers(deps: WidgetToolDeps) {
       const resolved = resolveWindow(window, new Date())
       const facts = describeSpec(spec, resolved)
       const explainer = buildExplainer(title || viz.title, viz, facts)
+
+      // EDIT-IN-PLACE: when the route pinned an editWidgetId (the user opened ✎ on
+      // an existing card), UPDATE that widget instead of INSERTing a clone — so
+      // editing edits, never duplicates. It stays on whatever dashboard(s) already
+      // hold it (no new placement). church_id pins the tenant; RLS is the guard
+      // (a cross-church / not-owned id updates 0 rows → reported as a failed save).
+      if (editWidgetId) {
+        const { data: updated, error: updErr } = await ctx.supabase
+          .from('widgets')
+          .update({
+            title:      title || viz.title,
+            kind:       viz.kind,
+            query_kind: 'spec',
+            query_spec: spec,
+            viz_config: viz,
+            explainer,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id',        editWidgetId)
+          .eq('church_id', ctx.churchId)
+          .select('id')
+          .maybeSingle()
+        if (updErr || !updated) {
+          return { saved: false, error: updErr?.message ?? 'widget_update_failed' }
+        }
+        return {
+          saved:     true,
+          widget_id: editWidgetId,
+          updated:   true,
+          placed:    true, // already placed; editing never moves or clones it
+          explainer: explainer.narrative,
+        }
+      }
 
       // INSERT into `widgets`. church_id / scope / owner / created_by are all
       // server-injected from the session — NEVER from the AI. The `widgets` and
