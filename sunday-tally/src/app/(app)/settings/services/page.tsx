@@ -388,13 +388,13 @@ export default function ServicesSettingsPage() {
                 return ordered.map(([key, list]) => (
                   <div key={key} className="space-y-4">
                     {showHeaders && (
-                      <div className="flex items-center gap-2 border-b border-slate-200 px-1 pb-1.5 pt-2">
-                        <span className="h-4 w-1.5 rounded-full bg-[#4F6EF7]" aria-hidden />
-                        <h2 className="text-[14px] font-extrabold tracking-tight text-slate-800">
+                      /* S3 — full-width color bar, white text (Builder 2026-06-10) */
+                      <div className="flex items-center gap-2.5 rounded-xl bg-[#4F6EF7] px-4 py-2.5 shadow-sm">
+                        <h2 className="text-[14px] font-extrabold tracking-tight text-white">
                           {key === '__churchwide' ? 'Church-wide' : key}
                         </h2>
                         {key === '__churchwide' && (
-                          <p className="text-[11px] text-slate-400">counted once for the whole church — visible at every campus</p>
+                          <p className="text-[11px] font-medium text-white/75">counted once for the whole church — visible at every campus</p>
                         )}
                       </div>
                     )}
