@@ -578,7 +578,7 @@ function ServiceCardView({ card, allTags, write, busy, showLocation, onAdd, onRe
                     Add metrics now →
                   </Link>
                 ) : (
-                  <span className="font-num text-[11px] text-slate-400">{m.metricCount}</span>
+                  <span className="font-num text-[11px] text-slate-400">{m.metricCount} {m.metricCount === 1 ? 'metric' : 'metrics'}</span>
                 )}
 
                 {write && (
