@@ -388,13 +388,19 @@ export default function ServicesSettingsPage() {
                 return ordered.map(([key, list]) => (
                   <div key={key} className="space-y-4">
                     {showHeaders && (
-                      /* S3 — full-width color bar, white text (Builder 2026-06-10) */
-                      <div className="flex items-center gap-2.5 rounded-xl bg-[#4F6EF7] px-4 py-2.5 shadow-sm">
-                        <h2 className="text-[14px] font-extrabold tracking-tight text-white">
+                      /* S3 — full-width color bars (Builder 2026-06-10): Church-wide
+                         pops (brand bar + GOLD headline); campuses recede on a
+                         desaturated slate-blue bar with white text. */
+                      <div className={`flex items-center gap-2.5 rounded-xl px-4 py-2.5 shadow-sm ${
+                        key === '__churchwide' ? 'bg-[#4F6EF7]' : 'bg-[#64748B]'
+                      }`}>
+                        <h2 className={`text-[14px] font-extrabold tracking-tight ${
+                          key === '__churchwide' ? 'text-[#FBBF24]' : 'text-white'
+                        }`}>
                           {key === '__churchwide' ? 'Church-wide' : key}
                         </h2>
                         {key === '__churchwide' && (
-                          <p className="text-[11px] font-medium text-white/75">counted once for the whole church — visible at every campus</p>
+                          <p className="text-[11px] font-medium text-[#FDE68A]/90">counted once for the whole church — visible at every campus</p>
                         )}
                       </div>
                     )}
