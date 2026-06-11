@@ -47,6 +47,7 @@ import {
   type RatioOperand,
 } from '@/lib/dashboardDrilldown'
 import { DrillDownDrawer } from './drilldown'
+import { buildGroupColorMap } from '@/components/history-grid/group-colors'
 import {
   DashHeader, ColumnHeaders, FourColRow, CardHeader, NotInTotalTag, KpiCard,
   KeyMetricCard, KeyMetricsPicker, LaneLabel, EmptyState, fmtVal, Ico, accentForRole,
@@ -110,13 +111,14 @@ function subtractFourWin(a: FourWin, b: FourWin): FourWin {
 
 // ── Zone D — Summary card (E-30..E-33) + include-in-total edit (E-22 / I) ─────
 function SummaryCard({
-  summary, grandTotalOverride, tagSections, roleByTag, excluded, flags, onChangeFlags, onSavePrefs,
+  summary, grandTotalOverride, tagSections, roleByTag, colorByTag, excluded, flags, onChangeFlags, onSavePrefs,
   tracks, hideComparisons, readOnly, windows, onDrill,
 }: {
   summary: DashboardData['summary']
   grandTotalOverride: FourWin
   tagSections: TagSection[]
   roleByTag: Map<string, string | null>
+  colorByTag: Map<string, string>   // resolved ministry colors (match Setup/History)
   excluded: Set<string>
   flags: SummaryMetricFlags
   onChangeFlags: (flags: SummaryMetricFlags) => void
@@ -149,6 +151,23 @@ function SummaryCard({
       if (named.length === 1) return `${named[0].tag_name} Total`
     }
     return SUMMARY_METRIC_LABELS[key]
+  }
+
+  // Row accent — the SAME ministry color as Setup/History/the breakdown cards, so
+  // "LifeKids Total" carries the LifeKids hue and the Giving row carries the Giving
+  // ministry's hue. Only rows that map 1:1 to a ministry get a bar; aggregates
+  // (Grand Total, Total Volunteers, First-Time Decisions) stay neutral.
+  function accentFor(key: SummaryMetricKey): string | undefined {
+    if (key === 'adults' || key === 'kids' || key === 'youth') {
+      const named = tagSections.filter(s => s.tag_id !== 'UNASSIGNED' && roleByTag.get(s.tag_id) === ROLE_OF[key])
+      if (named.length === 1) return colorByTag.get(named[0].tag_id)
+      return undefined
+    }
+    if (key === 'giving') {
+      const giving = tagSections.find(s => s.tag_code === 'GIVING')
+      return giving ? colorByTag.get(giving.tag_id) : undefined
+    }
+    return undefined
   }
 
   const effectivelyHidden = (k: SummaryMetricKey): boolean => {
@@ -261,7 +280,11 @@ function SummaryCard({
                     <span className={`flex h-5 w-5 items-center justify-center rounded-md border-2 transition-colors duration-200 ${included ? 'border-transparent' : 'border-slate-300'}`} style={included ? { background: '#4F6EF7' } : undefined}>
                       {included && <Ico.check className="h-3 w-3 text-white" />}
                     </span>
-                    <span className={`h-4 w-1.5 rounded-full ${accentForRole(roleByTag.get(s.tag_id) ?? null)}`} aria-hidden />
+                    <span
+                      className={`h-4 w-1.5 rounded-full ${colorByTag.has(s.tag_id) ? '' : accentForRole(roleByTag.get(s.tag_id) ?? null)}`}
+                      style={colorByTag.has(s.tag_id) ? { backgroundColor: colorByTag.get(s.tag_id) } : undefined}
+                      aria-hidden
+                    />
                     <span className="text-[14px] font-semibold text-slate-800">{s.tag_name}</span>
                   </span>
                   <span className="font-num text-[13px] text-slate-500">{fmtVal(s.attendance.w)}</span>
@@ -292,6 +315,7 @@ function SummaryCard({
             hideComparisons={hideComparisons}
             selector={selectorFor(key)}
             onDrill={onDrill}
+            accentColor={accentFor(key)}
           />
         ))}
       </div>
@@ -308,11 +332,12 @@ function SummaryCard({
 // children, the header shows an expand chevron + a "N groups" label, and the
 // expanded child cards render indented underneath (handled by the page).
 function TagBlock({
-  section, role, excluded, tracks, hideComparisons, windows, onDrill,
+  section, role, accentColorHex, excluded, tracks, hideComparisons, windows, onDrill,
   showExpandToggle, expanded, onToggleExpand,
 }: {
   section: TagSection
   role: string | null
+  accentColorHex?: string   // resolved ministry color (matches Setup/History); undefined → role fallback
   excluded: boolean
   tracks: { tracks_volunteers: boolean; tracks_responses: boolean }
   hideComparisons: boolean
@@ -333,12 +358,21 @@ function TagBlock({
     ? { label: `${section.tag_name} · Volunteers`, source: { kind: 'volunteers-ministry', ministryTagId: section.tag_id } }
     : null
   const hasGroups = section.groupCount > 0
+  // Accent comes from the ministry's Setup color (resolved to match the Setup tree
+  // + History exactly) so the same thing reads the same hue everywhere ("giving is
+  // green → green everywhere"). No resolved color → role lane (or slate for the
+  // unassigned bucket).
+  const accentStyle = !isUnassigned && accentColorHex ? { backgroundColor: accentColorHex } : undefined
+  const accentClass = accentStyle ? undefined : (isUnassigned ? 'bg-slate-300' : accentForRole(role))
   return (
-    <div className={`overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-opacity duration-200 ${excluded ? 'opacity-60' : ''}`}>
+    // Excluded-from-total cards are NOT dimmed — the box stays full-strength and
+    // legible; the "not in total" tag alone signals it sits outside the grand total.
+    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
       <CardHeader
         label={section.tag_name}
         role={isUnassigned ? undefined : role}
-        accentClass={isUnassigned ? 'bg-slate-300' : accentForRole(role)}
+        accentClass={accentClass}
+        accentStyle={accentStyle}
         suffix={
           <>
             {excluded ? <NotInTotalTag /> : undefined}
@@ -617,6 +651,48 @@ export default function DashboardPage() {
     return { roots, childrenByParent }
   }, [data])
 
+  // ── Ministry colors — REPLICATE Setup/History exactly so the same thing reads
+  //    the same hue everywhere ("giving is green → green on the dashboard too").
+  //    Same recipe as settings/track: positional palette over the top-level
+  //    ministries in display order, with each ministry's chosen color (0040,
+  //    service_tags.color) as an override. Children inherit their root's color.
+  //    Every ministry gets a color (palette never returns empty), so even an
+  //    un-customized church matches between Setup, History, and here. ──────────
+  const colorByTag = useMemo(() => {
+    const sections = data?.tagSections ?? []
+    const byId = new Map(sections.map(s => [s.tag_id, s]))
+    const rootSections = sections.filter(
+      s => s.tag_id !== 'UNASSIGNED' && !(s.parent_tag_id && byId.has(s.parent_tag_id)),
+    )
+    const overrides = new Map<string, string>()
+    for (const r of rootSections) if (r.color) overrides.set(r.tag_id.toLowerCase(), r.color)
+    const colorMap = buildGroupColorMap(rootSections.map(r => `group_${r.tag_id}`), overrides)
+    // walk parent_tag_id up to the rendered root (cycle-guarded)
+    const rootOf = (tagId: string): string => {
+      let cur = byId.get(tagId)
+      const seen = new Set<string>()
+      while (cur && cur.parent_tag_id && byId.has(cur.parent_tag_id) && !seen.has(cur.tag_id)) {
+        seen.add(cur.tag_id)
+        cur = byId.get(cur.parent_tag_id)
+      }
+      return cur?.tag_id ?? tagId
+    }
+    const out = new Map<string, string>()
+    for (const s of sections) {
+      if (s.tag_id === 'UNASSIGNED') continue
+      const gc = colorMap.get(rootOf(s.tag_id).toLowerCase())
+      if (gc) out.set(s.tag_id, gc.strong)
+    }
+    return out
+  }, [data])
+
+  // The Giving ministry's resolved color — tints the top Giving KPI card so
+  // giving reads the same hue from the very top of the page on down.
+  const givingColor = useMemo(() => {
+    const giving = (data?.tagSections ?? []).find(s => s.tag_code === 'GIVING')
+    return giving ? colorByTag.get(giving.tag_id) : undefined
+  }, [data, colorByTag])
+
   // Parents expanded by default so roll-up children are visible on first paint.
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
   const toggleExpand = (tagId: string) =>
@@ -815,6 +891,7 @@ export default function DashboardPage() {
                         value={data.highlights.giving.current}
                         delta={highlightDelta(data.highlights.giving)}
                         prior={data.highlights.giving.prior}
+                        accentColor={givingColor}
                       />
                     )}
                     {tracks.tracks_volunteers && (
@@ -891,6 +968,7 @@ export default function DashboardPage() {
                     grandTotalOverride={grandTotalOverride}
                     tagSections={data.tagSections}
                     roleByTag={roleByTag}
+                    colorByTag={colorByTag}
                     excluded={excluded}
                     flags={flags}
                     onChangeFlags={handleFlagsChange}
@@ -914,6 +992,7 @@ export default function DashboardPage() {
                         <TagBlock
                           section={section}
                           role={roleByTag.get(section.tag_id) ?? null}
+                          accentColorHex={colorByTag.get(section.tag_id)}
                           excluded={excluded.has(section.tag_id)}
                           tracks={{ tracks_volunteers: tracks.tracks_volunteers, tracks_responses: tracks.tracks_responses }}
                           hideComparisons={hideComparisons}
@@ -930,6 +1009,7 @@ export default function DashboardPage() {
                                 key={child.tag_id}
                                 section={child}
                                 role={roleByTag.get(child.tag_id) ?? null}
+                                accentColorHex={colorByTag.get(child.tag_id)}
                                 excluded={excluded.has(child.tag_id)}
                                 tracks={{ tracks_volunteers: tracks.tracks_volunteers, tracks_responses: tracks.tracks_responses }}
                                 hideComparisons={hideComparisons}

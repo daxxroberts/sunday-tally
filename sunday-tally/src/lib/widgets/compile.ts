@@ -779,7 +779,22 @@ export async function compileAndRun(args: {
   shape: string
   error?: string
 }> {
-  const { supabase, churchId, spec, now, locationIds, windowOverride } = args
+  const { supabase, churchId, now, locationIds, windowOverride } = args
+
+  // Campus-scoped giving: the church-wide giving_per_week view has no location
+  // column, so it can't honor the per-user campus filter. When a campus scope
+  // is active, route giving through the firehose (metric_entries_readable),
+  // which DOES carry location_id (set on each per-service giving entry at save).
+  // Unscoped giving stays on giving_per_week (all campuses). Church-wide period
+  // giving has a NULL location and is correctly left out of a single campus.
+  let spec = args.spec
+  if (
+    locationIds && locationIds.length > 0 &&
+    spec.source === 'giving_per_week' &&
+    spec.measure.reporting_tag_code === 'GIVING'
+  ) {
+    spec = { ...spec, source: 'metric_entries_readable' }
+  }
 
   // 0. Prior-year comparison — re-run the SAME relative window against now − 1 year,
   //    then merge. One level of recursion (inner runs clear `compare`).
@@ -867,8 +882,9 @@ export async function compileAndRun(args: {
   }
 
   // Campus scope (the dashboard's per-user filter) — applies to every source
-  // that carries a campus; giving is church-wide so it's left unfiltered.
-  // (Requires 0035: location_id on the views.)
+  // that carries a campus. Scoped giving was already re-routed off
+  // giving_per_week (church-wide, no location column) to the firehose above, so
+  // it reaches this filter too. (Requires 0035: location_id on the views.)
   if (locationIds && locationIds.length > 0 && spec.source !== 'giving_per_week') {
     colFilters.push({ col: 'location_id', values: locationIds })
   }

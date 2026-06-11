@@ -113,39 +113,48 @@ export default function SettingsHubPage() {
             />
           </Section>
 
-          {/* ── E-2 — Your Church ───────────────────────────────────────── */}
+          {/* ── E-2 — Your Church ───────────────────────────────────────────
+              Setup is the parent workspace; the three rows under it are its tabs.
+              Each one opens the SAME tabbed window straight onto its page
+              (?tab=…) — it's just a faster way in than tabbing across. */}
           <Section title="Your church">
+            <HubRow
+              href="/settings/setup"
+              label="Setup"
+              meta="Everything about your church, in one place"
+              writable={write}
+              loading={false}
+              gold
+            />
             {/* E-3 — Services (when & where you gather; ministry composition per service) */}
             <HubRow
-              href="/settings/services"
-              label="Services"
+              href="/settings/setup?tab=services"
+              label="Services and Occurrences"
+              desc="Your gatherings, when and where they happen. Each one becomes a Sunday (or week) you fill in."
               meta={counts.services === null ? '…' : `${plural(counts.services, 'service')} · ${plural(counts.ministries, 'ministry', 'ministries')}`}
               writable={write}
               loading={loading}
+              indent
             />
             {/* E-4 — Locations & Team */}
             <HubRow
-              href="/settings/locations"
-              label="Locations & Team"
+              href="/settings/setup?tab=locations"
+              label="Locations and Team"
+              desc="Your campuses, and the people who can sign in to help."
               meta={counts.locations === null ? '…' : `${plural(counts.locations, 'campus', 'campuses')} · ${plural(counts.members, 'member')}`}
               writable={write}
               loading={loading}
-            />
-            {/* E-5 — Ministry Tags (existing) */}
-            <HubRow
-              href="/settings/tags"
-              label="Ministry Tags"
-              meta={plural(counts.ministries, 'tag')}
-              writable={write}
-              loading={loading}
+              indent
             />
             {/* What we track — T_TRACK tree editor (IRIS_TTRACK_ELEMENT_MAP) */}
             <HubRow
-              href="/settings/track"
+              href="/settings/setup?tab=track"
               label="What we track"
+              desc="The numbers you count each week, like attendance, giving, and volunteers."
               meta={plural(counts.ministries, 'ministry', 'ministries')}
               writable={write}
               loading={loading}
+              indent
             />
           </Section>
 
@@ -183,29 +192,43 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   )
 }
 
-/* ── index row → chevron, derived meta, role-gated "View only" tag ───────── */
-function HubRow({ href, label, meta, writable, loading }: {
+/* ── index row → chevron, derived meta, role-gated "View only" tag ─────────
+   `gold` styles a section parent (the Setup row) in dark gold; `indent` marks a
+   child page that lives inside that parent (it just opens the workspace on its
+   tab), shifted right with a gold tree tick so the hierarchy reads at a glance. */
+function HubRow({ href, label, meta, desc, writable, loading, gold = false, indent = false }: {
   href: string
   label: string
   meta: string
+  desc?: string
   writable: boolean
   loading: boolean
+  gold?: boolean
+  indent?: boolean
 }) {
   return (
     <Link
       href={href}
-      className="group flex items-center justify-between gap-3 px-4 py-3.5 transition-colors duration-200 hover:bg-slate-50 focus-visible:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#4F6EF7]/40"
+      className={`group flex items-center justify-between gap-3 py-3.5 pr-4 transition-colors duration-200 hover:bg-slate-50 focus-visible:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#4F6EF7]/40 ${
+        indent ? 'pl-11' : 'pl-4'
+      } ${gold ? 'bg-amber-50/40' : ''}`}
     >
-      <div className="min-w-0">
-        <div className="flex items-center gap-2">
-          <p className="text-[14px] font-semibold text-slate-800">{label}</p>
-          {!writable && (
-            <span className="rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400">View only</span>
-          )}
+      <div className="flex min-w-0 items-center gap-2">
+        {indent && <span className="-ml-5 shrink-0 text-[13px]" style={{ color: '#D4A017' }} aria-hidden>↳</span>}
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <p className="text-[14px] font-semibold" style={gold ? { color: '#B8860B' } : undefined}>
+              <span className={gold ? '' : 'text-slate-800'}>{label}</span>
+            </p>
+            {!writable && (
+              <span className="rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400">View only</span>
+            )}
+          </div>
+          {desc && <p className="mt-0.5 text-[12px] leading-snug text-slate-500">{desc}</p>}
+          <p className={`mt-0.5 truncate text-[11px] ${loading ? 'text-slate-300' : 'text-slate-400'}`}>{meta}</p>
         </div>
-        <p className={`mt-0.5 truncate text-[12px] ${loading ? 'text-slate-300' : 'text-slate-400'}`}>{meta}</p>
       </div>
-      <Ico.right className="h-4 w-4 shrink-0 text-slate-300 transition-colors duration-200 group-hover:text-[#4F6EF7]" />
+      <Ico.right className={`h-4 w-4 shrink-0 transition-colors duration-200 ${gold ? 'text-amber-300 group-hover:text-[#B8860B]' : 'text-slate-300 group-hover:text-[#4F6EF7]'}`} />
     </Link>
   )
 }

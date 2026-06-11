@@ -27,11 +27,15 @@ const PAGE = 1000 // PostgREST row cap (N-2)
 
 export type TeamRole = 'owner' | 'admin' | 'editor' | 'viewer'
 
+export type LocationScope = 'all' | 'restricted'
+
 export interface TeamMember {
   id: string                       // church_memberships.id
   user_id: string
   role: TeamRole
   default_location_id: string | null
+  location_scope: LocationScope    // 0042: 'all' = every campus; 'restricted' = location_ids only
+  location_ids: string[]           // allowed campuses when restricted
   name: string | null             // user_profiles.full_name (null pre-0029 for teammates)
   email: string | null            // service-role resolved; null if not available
   isSelf: boolean
@@ -104,12 +108,12 @@ export async function getTeamData(): Promise<TeamData | null> {
   const churchName = (ch as { name?: string } | null)?.name ?? ''
 
   // ── members (active), paginated past the 1000-row cap (QP-MEMBERS-ACTIVE) ──
-  type MemberRow = { id: string; user_id: string; role: string; default_location_id: string | null }
+  type MemberRow = { id: string; user_id: string; role: string; default_location_id: string | null; location_scope: string | null }
   const memberRows: MemberRow[] = []
   for (let from = 0; ; from += PAGE) {
     const { data: batch } = await supabase
       .from('church_memberships')
-      .select('id, user_id, role, default_location_id')
+      .select('id, user_id, role, default_location_id, location_scope')
       .eq('church_id', churchId)
       .eq('is_active', true)
       .order('created_at', { ascending: true })
@@ -120,6 +124,21 @@ export async function getTeamData(): Promise<TeamData | null> {
   }
 
   const userIds = Array.from(new Set(memberRows.map(m => m.user_id)))
+
+  // ── allowed campuses per restricted member (0042 junction) ────────────────
+  const allowedByMembership = new Map<string, string[]>()
+  const membershipIds = memberRows.map(m => m.id)
+  if (membershipIds.length > 0) {
+    const { data: mloc } = await supabase
+      .from('church_membership_locations')
+      .select('membership_id, location_id')
+      .in('membership_id', membershipIds)
+      .range(0, PAGE - 1)
+    for (const r of ((mloc ?? []) as { membership_id: string; location_id: string }[])) {
+      const arr = allowedByMembership.get(r.membership_id) ?? []
+      arr.push(r.location_id); allowedByMembership.set(r.membership_id, arr)
+    }
+  }
 
   // ── names: user_profiles (QP-MEMBER-PROFILES; co-member read needs 0029) ──
   const nameById = new Map<string, string | null>()
@@ -155,6 +174,8 @@ export async function getTeamData(): Promise<TeamData | null> {
     user_id: m.user_id,
     role: m.role as TeamRole,
     default_location_id: m.default_location_id ?? null,
+    location_scope: (m.location_scope as LocationScope) ?? 'all',
+    location_ids: allowedByMembership.get(m.id) ?? [],
     name: nameById.get(m.user_id) ?? null,
     email: emailById.get(m.user_id) ?? null,
     isSelf: m.user_id === user.id,
@@ -298,6 +319,86 @@ export async function setMemberDefaultCampusAction(
   return {}
 }
 
+// Count active owners with all-campus access (0042 guardrail), optionally excluding one.
+async function allCampusOwnerCount(churchId: string, excludeMembershipId?: string): Promise<number> {
+  const supabase = await createClient()
+  let q = supabase
+    .from('church_memberships')
+    .select('id')
+    .eq('church_id', churchId)
+    .eq('role', 'owner')
+    .eq('is_active', true)
+    .eq('location_scope', 'all')
+    .range(0, PAGE - 1)
+  if (excludeMembershipId) q = q.neq('id', excludeMembershipId)
+  const { data } = await q
+  return (data ?? []).length
+}
+
+// ── WRITE: set a member's CAMPUS ACCESS — which campuses they can see (0042) ──
+// Distinct from default campus (a view preference): this is the hard boundary,
+// RLS-enforced. 'all' = every campus; 'restricted' = only location_ids.
+export async function setMemberCampusScopeAction(
+  membershipId: string,
+  scope: LocationScope,
+  locationIds: string[],
+): Promise<{ error?: string }> {
+  const caller = await resolveCaller()
+  if ('error' in caller) return { error: caller.error }
+  if (!isWriter(caller.role)) return { error: 'Not allowed.' }
+
+  const target = await loadTarget(membershipId, caller.churchId)
+  if (!target) return { error: 'Member not found.' }
+  if (caller.role === 'admin' && target.role === 'owner') {
+    return { error: 'Only an owner can manage owners.' }
+  }
+
+  // Guardrail: never restrict the last all-campus owner (the church must always
+  // keep someone who sees everything). The DB trigger backstops this too.
+  if (scope === 'restricted' && target.role === 'owner'
+      && (await allCampusOwnerCount(caller.churchId, target.id)) === 0) {
+    return { error: 'Keep at least one owner with access to all campuses. Give another owner all-campus access first.' }
+  }
+
+  let ids: string[] = []
+  if (scope === 'restricted') {
+    ids = Array.from(new Set(locationIds))
+    if (ids.length === 0) return { error: 'Pick at least one campus, or choose all campuses.' }
+    // validate every campus belongs to this church
+    const supabase = await createClient()
+    const { data: valid } = await supabase
+      .from('church_locations')
+      .select('id')
+      .eq('church_id', caller.churchId)
+      .in('id', ids)
+    const validIds = new Set(((valid ?? []) as { id: string }[]).map(l => l.id))
+    if (validIds.size !== ids.length) return { error: 'One of those campuses is not in this church.' }
+  }
+
+  const admin = createServiceRoleClient()
+  // 1. set the scope flag (trigger enforces the last-all-campus-owner rule).
+  const { error: upErr } = await admin
+    .from('church_memberships')
+    .update({ location_scope: scope })
+    .eq('id', membershipId)
+    .eq('church_id', caller.churchId)
+  if (upErr) {
+    return { error: /all-campus owner/i.test(upErr.message)
+      ? 'Keep at least one owner with access to all campuses.'
+      : 'Could not update campus access.' }
+  }
+  // 2. replace the allowed-campus junction (delete-all then insert).
+  await admin.from('church_membership_locations').delete().eq('membership_id', membershipId)
+  if (scope === 'restricted' && ids.length > 0) {
+    const { error: insErr } = await admin
+      .from('church_membership_locations')
+      .insert(ids.map(location_id => ({ membership_id: membershipId, location_id })))
+    if (insErr) return { error: 'Saved access level, but could not save the campus list.' }
+  }
+  revalidatePath('/settings/team')
+  return {}
+}
+
 // ── WRITE: deactivate a member, soft + global session revoke (N-6) ───────────
 export async function deactivateMemberAction(
   membershipId: string,
@@ -340,6 +441,8 @@ function allowedInviteRoles(callerRole: TeamRole): TeamRole[] {
 export async function sendInviteAction(
   emailRaw: string,
   role: TeamRole,
+  campusScope: LocationScope = 'all',
+  campusIds: string[] = [],
 ): Promise<{ error?: string; sent?: boolean; emailSent?: boolean }> {
   const caller = await resolveCaller()
   if ('error' in caller) return { error: caller.error }
@@ -350,6 +453,19 @@ export async function sendInviteAction(
 
   const email = emailRaw.trim().toLowerCase()
   if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return { error: 'Enter a valid email.' }
+
+  // Validate campus scope (the campuses must belong to this church).
+  let inviteCampusIds: string[] = []
+  if (campusScope === 'restricted') {
+    inviteCampusIds = Array.from(new Set(campusIds))
+    if (inviteCampusIds.length === 0) return { error: 'Pick at least one campus, or invite to all campuses.' }
+    const sb = await createClient()
+    const { data: valid } = await sb.from('church_locations')
+      .select('id').eq('church_id', caller.churchId).in('id', inviteCampusIds)
+    if (new Set(((valid ?? []) as { id: string }[]).map(l => l.id)).size !== inviteCampusIds.length) {
+      return { error: 'One of those campuses is not in this church.' }
+    }
+  }
 
   const supabase = await createClient()
 
@@ -402,6 +518,8 @@ export async function sendInviteAction(
       status: 'pending',
       expires_at: expiresAt,
       invited_by: caller.userId,
+      location_scope: campusScope,
+      location_ids: campusScope === 'restricted' ? inviteCampusIds : [],
     })
   if (insertError) return { error: 'Could not create the invite.' }
 

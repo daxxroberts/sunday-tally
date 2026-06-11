@@ -103,9 +103,16 @@ export default function HistoryPage() {
 
   // Church-chosen ministry colors (0040) — loaded in boot; palette fills the rest.
   const [colorOverrides, setColorOverrides] = useState<Map<string, string>>(new Map())
+  // Roots in TAG order (display_order, created_at) — the SAME order Setup and the
+  // dashboard feed their palettes. The grid's own column order puts the synthetic
+  // Giving WK block first, which would shift every positional color one slot off
+  // Setup. Seeding the map with tag order keeps "same thing, same hue" on every
+  // surface; the grid's groups are appended for leftovers (e.g. the stats
+  // fallback) — buildGroupColorMap skips keys it has already assigned.
+  const [rootOrderIds, setRootOrderIds] = useState<string[]>([])
   const groupColorMap = useMemo(
-    () => buildGroupColorMap(filterOptions.map(o => o.id), colorOverrides),
-    [filterOptions, colorOverrides],
+    () => buildGroupColorMap([...rootOrderIds, ...filterOptions.map(o => o.id)], colorOverrides),
+    [rootOrderIds, filterOptions, colorOverrides],
   )
 
   const filteredConfig = useMemo<GridConfig | null>(() => {
@@ -113,12 +120,25 @@ export default function HistoryPage() {
     if (hiddenGroups.size === 0) return config
     return {
       ...config,
-      columns:        config.columns.filter(col => !hiddenGroups.has(col.id)),
-      weeklyMetrics:  config.weeklyMetrics.filter(m  => !hiddenGroups.has(m.columnId  ?? '')),
-      monthlyMetrics: config.monthlyMetrics.filter(m => !hiddenGroups.has(m.columnId  ?? '')),
-      serviceMetrics: config.serviceMetrics.filter(m => !hiddenGroups.has(m.columnId  ?? '')),
+      columns:          config.columns.filter(col => !hiddenGroups.has(col.id)),
+      weeklyMetrics:    config.weeklyMetrics.filter(m  => !hiddenGroups.has(m.columnId  ?? '')),
+      monthlyMetrics:   config.monthlyMetrics.filter(m => !hiddenGroups.has(m.columnId  ?? '')),
+      serviceMetrics:   config.serviceMetrics.filter(m => !hiddenGroups.has(m.columnId  ?? '')),
+      // Strip service templates whose every group is hidden — otherwise their
+      // SV rows stay in the grid as blank-cell rows even when all columns are gone.
+      serviceTemplates: (config.serviceTemplates ?? []).filter(st =>
+        st.populatesColumnGroups.some(g => !hiddenGroups.has(g))
+      ),
     }
   }, [config, hiddenGroups])
+
+  // Service occurrences scoped to the visible service templates.
+  // Filters in sync with filteredConfig so row count matches column visibility.
+  const filteredOccurrences = useMemo(() => {
+    if (hiddenGroups.size === 0) return occurrences
+    const visibleCodes = new Set((filteredConfig?.serviceTemplates ?? []).map(st => st.id))
+    return occurrences.filter(o => visibleCodes.has(o.serviceTemplateId))
+  }, [filteredConfig, occurrences, hiddenGroups])
 
   const today = new Date()
   const yearAgo = new Date(today)
@@ -174,14 +194,21 @@ export default function HistoryPage() {
         .select('code, parent_tag_id, color')
         .eq('church_id', ch.id)
         .eq('is_active', true)
+        // Tag order (with created_at tiebreaker) — this order IS the positional
+        // palette, shared with the track page + dashboard.
+        .order('display_order', { ascending: true })
+        .order('created_at', { ascending: true })
       if (!colorErr && colorRows) {
         const overrides = new Map<string, string>()
+        const rootOrder: string[] = []
         for (const t of colorRows as { code: string; parent_tag_id: string | null; color?: string | null }[]) {
-          if (t.parent_tag_id === null && t.color) {
-            overrides.set(t.code.toLowerCase().replace(/_/g, ''), t.color)
+          if (t.parent_tag_id === null) {
+            rootOrder.push(`group_${t.code.toLowerCase().replace(/_/g, '')}`)
+            if (t.color) overrides.set(t.code.toLowerCase().replace(/_/g, ''), t.color)
           }
         }
         setColorOverrides(overrides)
+        setRootOrderIds(rootOrder)
       }
     })
   }, [router])
@@ -483,7 +510,7 @@ export default function HistoryPage() {
               <HistoryGrid
                 config={filteredConfig ?? config}
                 dateRange={{ startDate: rangeStart, endDate: rangeEnd }}
-                serviceInstances={occurrences.map(o => ({
+                serviceInstances={filteredOccurrences.map(o => ({
                   id:                o.id,
                   serviceTemplateId: o.serviceTemplateId,
                   serviceDate:       o.serviceDate,

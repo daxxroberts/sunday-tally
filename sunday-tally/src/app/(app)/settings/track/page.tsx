@@ -25,7 +25,7 @@ import {
   PointerSensor, KeyboardSensor, useSensor, useSensors,
   type DragEndEvent, type DragStartEvent,
 } from '@dnd-kit/core'
-import AppLayout from '@/components/layouts/AppLayout'
+import MaybeLayout from '@/components/layouts/MaybeLayout'
 import InlineEditField from '@/components/shared/InlineEditField'
 import { createClient } from '@/lib/supabase/client'
 import { Ico, roleLabel } from '@/app/(app)/entries/ui'
@@ -66,18 +66,23 @@ interface Ministry {
 /** A metric with its owning node id (flat list is the source of truth). */
 type Metric = MetricRow & { ministry_tag_id: string }
 
-const PHASE1_KINDS = ['ATTENDANCE', 'VOLUNTEERS', 'RESPONSE_STAT'] as const
-type KindCode = (typeof PHASE1_KINDS)[number]
+// The four system reporting tags every church is seeded with (0024). Giving is
+// a peer kind, not a church-wide special case — counts under it can ride a
+// service occurrence (per-service giving) or stay weekly church-wide.
+const SYSTEM_KINDS = ['ATTENDANCE', 'VOLUNTEERS', 'RESPONSE_STAT', 'GIVING'] as const
+type KindCode = (typeof SYSTEM_KINDS)[number]
 
 const KIND_LABEL: Record<KindCode, string> = {
   ATTENDANCE: 'Attendance',
   VOLUNTEERS: 'Volunteers',
   RESPONSE_STAT: 'Stats',
+  GIVING: 'Giving',
 }
 const KIND_PLACEHOLDER: Record<KindCode, string> = {
   ATTENDANCE: 'Attendance',
   VOLUNTEERS: 'Band',
   RESPONSE_STAT: 'Baptisms',
+  GIVING: 'Bucket',
 }
 
 const ROLE_OPTIONS: { value: TagRole; label: string }[] = [
@@ -103,7 +108,7 @@ function rolePillClasses(): string {
 // Root component
 // ─────────────────────────────────────────────────────────────────────────
 
-export default function TrackPage() {
+export function TrackPanel({ embedded = false }: { embedded?: boolean }) {
   const supabase = useMemo(() => createClient(), [])
   const router = useRouter()
 
@@ -140,7 +145,10 @@ export default function TrackPage() {
       .select('id, code, name, tag_role, parent_tag_id, display_order, is_active, color')
       .eq('church_id', cid)
       .eq('is_active', true)
+      // created_at tiebreaker — keeps the positional palette identical across
+      // track / dashboard / History when display_order values tie.
       .order('display_order', { ascending: true })
+      .order('created_at', { ascending: true })
     if (!withColor.error) {
       tagRows = (withColor.data ?? []) as Ministry[]
     } else {
@@ -150,6 +158,7 @@ export default function TrackPage() {
         .eq('church_id', cid)
         .eq('is_active', true)
         .order('display_order', { ascending: true })
+        .order('created_at', { ascending: true })
       tagRows = (base.data ?? []) as Ministry[]
     }
     const mins = tagRows
@@ -216,10 +225,15 @@ export default function TrackPage() {
       await refreshOrphans(membership.church_id)
       if (!cancelled) {
         setLoading(false)
-        // ?fix=<tagId> deep-link (S2 banner on Services) → open the picker.
-        // window.location instead of useSearchParams: no Suspense requirement.
-        const fix = new URLSearchParams(window.location.search).get('fix')
+        // Deep-links (window.location instead of useSearchParams: no Suspense
+        // requirement). ?fix=<tagId> → open the "Where is this counted?" picker
+        // (S2 banner on Services). ?select=<tagId> → just select that node —
+        // the "Add metrics now" jump from a metric-less ministry on Services.
+        const params = new URLSearchParams(window.location.search)
+        const fix = params.get('fix')
         if (fix) setFixTagId(fix)
+        const select = params.get('select')
+        if (select) setSelectedId(select)
       }
     })()
     return () => { cancelled = true }
@@ -458,7 +472,7 @@ export default function TrackPage() {
   const selected = ministries.find(m => m.id === selectedId) ?? null
 
   return (
-    <AppLayout role={role}>
+    <MaybeLayout embedded={embedded} role={role}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap');
         .font-num{font-family:'Fira Code',ui-monospace,monospace;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
@@ -466,6 +480,8 @@ export default function TrackPage() {
       `}</style>
 
       <div className="bg-slate-50 min-h-full" style={{ fontFamily: "'Fira Sans', ui-sans-serif, system-ui, sans-serif" }}>
+        {/* Header hidden when embedded in the Setup workspace (tabs provide it). */}
+        {!embedded && (
         <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 backdrop-blur-sm">
           <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3.5">
             <button
@@ -484,6 +500,7 @@ export default function TrackPage() {
             Each ministry, the groups inside it, and the numbers you count.
           </p>
         </header>
+        )}
 
         <main className="mx-auto max-w-5xl px-4 py-6">
           {loading ? (
@@ -620,8 +637,12 @@ export default function TrackPage() {
           />
         )}
       </div>
-    </AppLayout>
+    </MaybeLayout>
   )
+}
+
+export default function TrackPage() {
+  return <TrackPanel />
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -697,7 +718,7 @@ function WhereCountedModal({ tagId, tagName, supabase, onClose, onDone }: {
           {loadingSvcs ? (
             <div className="mt-2 h-8 animate-pulse rounded-lg bg-slate-100" />
           ) : services.length === 0 ? (
-            <p className="mt-2 text-[12px] text-slate-400">No active services yet — create one under Settings → Services.</p>
+            <p className="mt-2 text-[12px] text-slate-400">No active services yet. Create one under Settings → Services.</p>
           ) : (
             <div className="mt-2 max-h-40 space-y-1 overflow-y-auto">
               {services.map(s => (
@@ -730,7 +751,7 @@ function WhereCountedModal({ tagId, tagName, supabase, onClose, onDone }: {
         {/* Door B — weekly/monthly church-wide */}
         <div className="mt-3 rounded-xl border border-slate-200 p-3">
           <p className="text-[13px] font-semibold text-slate-800">Just weekly or monthly, church-wide</p>
-          <p className="text-[11px] text-slate-400">No service — it shows in the Stat Entries tab. (How Giving works.)</p>
+          <p className="text-[11px] text-slate-400">No service needed. It shows in the Stat Entries tab, like Giving.</p>
           <div className="mt-2 flex items-center gap-2">
             <select
               value={cadence}
@@ -913,7 +934,7 @@ function MinistryTreeNode({
             {isOrphan(ministry.id) && (
               <button
                 onClick={e => { e.stopPropagation(); onFixOrphan(ministry.id) }}
-                title="This ministry's counts have no service to appear on — click to fix"
+                title="This ministry's counts have no service to appear on. Click to fix."
                 className="shrink-0 rounded-full border border-[#F59E0B]/40 bg-[#F59E0B]/5 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-[#B45309] transition-colors hover:bg-[#F59E0B]/10"
               >
                 Not counted anywhere
@@ -1111,7 +1132,7 @@ function DetailPanel({
                     type="color"
                     value={ministry.color ?? (color?.strong ?? '#4F6EF7')}
                     onChange={e => void onColorChange(e.target.value)}
-                    title="Pick this ministry's color — used everywhere this ministry appears"
+                    title="Pick this ministry's color. It shows everywhere this ministry appears."
                     className="h-7 w-9 cursor-pointer rounded-md border border-slate-200 bg-white p-0.5"
                   />
                   {ministry.color && (
@@ -1184,13 +1205,13 @@ function DetailPanel({
       )}
 
       {/* Metric Kind sections — only Kinds that have ≥1 metric here.
-          Phase-1 kinds first, then ANY other kind with metrics on this node
-          (e.g. GIVING after the weekly conversion, or custom kinds) so no
-          metric is ever invisible here ("where do I edit Giving"). */}
+          System kinds first (Attendance, Volunteers, Stats, Giving), then ANY
+          other kind with metrics on this node (custom kinds) so no metric is
+          ever invisible here ("where do I edit Giving"). */}
       {[
-        ...PHASE1_KINDS.map(k => ({ code: k as string, label: KIND_LABEL[k as KindCode] })),
+        ...SYSTEM_KINDS.map(k => ({ code: k as string, label: KIND_LABEL[k as KindCode] })),
         ...reportingTags
-          .filter(r => !PHASE1_KINDS.includes(r.code as KindCode) && (byKind.get(r.id) ?? []).length > 0)
+          .filter(r => !SYSTEM_KINDS.includes(r.code as KindCode) && (byKind.get(r.id) ?? []).length > 0)
           .map(r => ({ code: r.code, label: r.name })),
       ].map(kind => {
         const rt = reportingTags.find(r => r.code === kind.code)
@@ -1241,7 +1262,7 @@ function AddMetricControl({
   const [kind, setKind] = useState<KindCode>('VOLUNTEERS')
   const [name, setName] = useState('')
   const [busy, setBusy] = useState(false)
-  const available = PHASE1_KINDS.filter(k => reportingTags.some(r => r.code === k))
+  const available = SYSTEM_KINDS.filter(k => reportingTags.some(r => r.code === k))
 
   async function submit() {
     const n = name.trim()
@@ -1308,6 +1329,8 @@ function KindSection({
     ? 'bg-[#4F6EF7]/8 border-[#4F6EF7]/20'
     : kindCode === 'VOLUNTEERS'
     ? 'bg-[#22C55E]/8 border-[#22C55E]/20'
+    : kindCode === 'GIVING'
+    ? 'bg-[#F59E0B]/8 border-[#F59E0B]/20'
     : 'bg-[#8B5CF6]/8 border-[#8B5CF6]/20'
 
   return (
@@ -1323,7 +1346,7 @@ function KindSection({
           <h3 className="text-[13px] font-bold uppercase tracking-wider text-slate-700">{kindLabel}</h3>
           <span
             className="text-[10px] font-medium text-slate-400 cursor-help"
-            title={`"${kindLabel}" is a reporting type — it tells the dashboard how to handle these numbers. The counts you add here all report as ${kindLabel}.`}
+            title={`"${kindLabel}" is a reporting type. It tells the dashboard how to handle these numbers. The counts you add here all report as ${kindLabel}.`}
           >
             reporting type
           </span>
@@ -1391,7 +1414,7 @@ function MetricRowItem({
             <span className="text-[14px] font-medium text-slate-800">{metric.name}</span>
           )}
           {isPeriod && (
-            <span className="shrink-0 rounded-md bg-[#4F6EF7]/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#3D5BD4]" title="Entered once per period in the Stat Entries tab — no service needed">
+            <span className="shrink-0 rounded-md bg-[#4F6EF7]/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#3D5BD4]" title="How often this is counted is set on its schedule in Services and Occurrences.">
               {metric.cadence === 'month' ? 'Monthly' : 'Weekly'} · church-wide
             </span>
           )}
@@ -1430,7 +1453,7 @@ function MetricRowItem({
       <div className="mt-1.5 flex flex-wrap items-center gap-2 pl-0 text-[12px] text-slate-500">
         {isPeriod ? (
           <span className="text-slate-400">
-            Entered once per {metric.cadence === 'month' ? 'month' : 'week'} on the Stat Entries tab — not tied to any service.
+            How often this is counted is set on its schedule in Services and Occurrences.
           </span>
         ) : isRollup ? (
           <>

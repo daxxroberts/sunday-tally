@@ -106,7 +106,7 @@ export function ColumnHeaders({ windows }: {
 // ── 4-window data row (E-31 / E-51..E-53). Curr-Wk bold + delta_w_m4 badge,
 //    YTD + delta_ytd_prior badge. hideComparisons → only `w`, rest dashed. ─────
 export function FourColRow({
-  label, sub, values, prefix, suffix, indent, hideComparisons, selector, onDrill,
+  label, sub, values, prefix, suffix, indent, hideComparisons, selector, onDrill, accentColor,
 }: {
   label: string
   sub?: string
@@ -120,6 +120,9 @@ export function FourColRow({
   // dash (hideComparisons) are not clickable.
   selector?: MetricSelector | null
   onDrill?: (selector: MetricSelector, window: DrillWindow) => void
+  // Ministry color (matches Setup/History) — renders a small bar before the
+  // label so a row reads as "that ministry" at a glance. Omitted → no bar.
+  accentColor?: string
 }) {
   const dash = <span className="text-slate-300">—</span>
   const drillable = !!(selector && onDrill)
@@ -141,8 +144,9 @@ export function FourColRow({
 
   return (
     <div className={`${GRID} items-start border-b border-slate-50 px-3 py-2 transition-colors duration-200 last:border-b-0 hover:bg-slate-50/60`}>
-      <div className={`self-center text-[12px] font-medium leading-tight text-slate-600 ${indent ? 'pl-4' : 'pl-1'}`}>
-        {label}{sub && <span className="ml-1 text-[10px] text-slate-400">{sub}</span>}
+      <div className={`flex items-center gap-1.5 self-center text-[12px] font-medium leading-tight text-slate-600 ${indent ? 'pl-4' : 'pl-1'}`}>
+        {accentColor && <span className="h-3.5 w-1 shrink-0 rounded-full" style={{ backgroundColor: accentColor }} aria-hidden />}
+        <span>{label}{sub && <span className="ml-1 text-[10px] text-slate-400">{sub}</span>}</span>
       </div>
       <Cell window="w" enabled={values.w !== null}>
         <p className="font-num text-[14px] font-semibold leading-tight text-slate-900">{fmtVal(values.w, prefix, suffix)}</p>
@@ -193,16 +197,20 @@ export function NotInTotalTag() {
 
 // ── Zone B — highlight KPI card (E-10..E-13). Top accent bar by lane (DS-5). ──
 export function KpiCard({
-  label, value, prefix, delta, prior,
+  label, value, prefix, delta, prior, accentColor,
 }: {
   label: string
   value: number
   prefix?: string
   delta: number | null
   prior: number
+  // Ministry color (matches Setup/History) — thin top strip so the KPI reads as
+  // that thing everywhere ("giving is green → green up here too").
+  accentColor?: string
 }) {
   return (
     <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      {accentColor && <span className="absolute inset-x-0 top-0 h-1" style={{ backgroundColor: accentColor }} aria-hidden />}
       <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">{label}</p>
       <div className="flex items-end justify-between gap-2">
         <p className="font-num text-3xl font-bold leading-none tracking-tight text-slate-900">{fmtVal(value, prefix)}</p>

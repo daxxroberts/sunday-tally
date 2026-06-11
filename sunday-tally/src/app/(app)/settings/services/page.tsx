@@ -18,7 +18,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import AppLayout from '@/components/layouts/AppLayout'
+import MaybeLayout from '@/components/layouts/MaybeLayout'
 import { createClient } from '@/lib/supabase/client'
 import { Dot, Ico, accentForRole, roleLabel } from '@/app/(app)/entries/ui'
 import { getOrphanMinistries, type OrphanMinistry } from '@/lib/ministryLinks'
@@ -50,6 +50,7 @@ interface Ministry {
 interface ScheduleSummary {            // G1
   day_of_week: number
   start_time: string
+  frequency: 'specific' | 'weekly' | 'monthly'   // 0041: cadence-only occurrences
 }
 interface ServiceCard {
   id: string              // service_templates.id
@@ -71,7 +72,7 @@ function canWrite(role: UserRole) {
   return role === 'owner' || role === 'admin'
 }
 
-export default function ServicesSettingsPage() {
+export function ServicesPanel({ embedded = false }: { embedded?: boolean }) {
   const supabase = useMemo(() => createClient(), [])
   const router = useRouter()
 
@@ -180,15 +181,21 @@ export default function ServicesSettingsPage() {
     // G1: active schedule version per template (is_active=true, effective_end_date IS NULL)
     const scheduleByTemplate = new Map<string, ScheduleSummary>()
     if (templates.length > 0) {
+      // select('*') so a pre-0041 DB (no `frequency` column) doesn't break the
+      // whole page; default to 'specific' when the column isn't present yet.
       const { data: schedRows } = await supabase
         .from('service_schedule_versions')
-        .select('service_template_id, day_of_week, start_time')
+        .select('*')
         .in('service_template_id', templates.map(t => t.id))
         .eq('is_active', true)
         .is('effective_end_date', null)
         .range(0, PAGE - 1)
-      for (const s of ((schedRows ?? []) as { service_template_id: string; day_of_week: number; start_time: string }[])) {
-        scheduleByTemplate.set(s.service_template_id, { day_of_week: s.day_of_week, start_time: s.start_time })
+      for (const s of ((schedRows ?? []) as { service_template_id: string; day_of_week: number; start_time: string; frequency?: string }[])) {
+        scheduleByTemplate.set(s.service_template_id, {
+          day_of_week: s.day_of_week,
+          start_time: s.start_time,
+          frequency: (s.frequency as ScheduleSummary['frequency']) ?? 'specific',
+        })
       }
     }
 
@@ -198,7 +205,12 @@ export default function ServicesSettingsPage() {
       schedule: scheduleByTemplate.get(t.id) ?? null,
     })))
 
-    // E-27 picker source: all active ministry tags for the church
+    // E-27 picker source: active ministry tags that make sense to link here.
+    // Linking controls ENTRY availability, so the picker hides ministries with
+    // nothing to type at a service: rollup-only nodes (computed from children)
+    // and period-only ones like Giving (entered weekly, church-wide). A brand-new
+    // ministry with no metrics at all stays listed; the red "Add metrics now"
+    // chip guides the next step. (Builder 2026-06-10.)
     const { data: tagRows } = await supabase
       .from('service_tags')
       .select('id, name, tag_role')
@@ -206,8 +218,23 @@ export default function ServicesSettingsPage() {
       .eq('is_active', true)
       .order('display_order', { ascending: true })
       .range(0, PAGE - 1)
+    const { data: modeRows } = await supabase
+      .from('metrics')
+      .select('ministry_tag_id, mode, scope')
+      .eq('church_id', cid)
+      .eq('is_active', true)
+      .range(0, PAGE - 1)
+    const hasAnyMetric = new Set<string>()
+    const hasEnterable = new Set<string>()
+    for (const m of ((modeRows ?? []) as { ministry_tag_id: string | null; mode: string | null; scope: string | null }[])) {
+      if (!m.ministry_tag_id) continue
+      hasAnyMetric.add(m.ministry_tag_id)
+      if (m.mode !== 'rollup' && m.scope === 'instance') hasEnterable.add(m.ministry_tag_id)
+    }
     type TagRow = { id: string; name: string; tag_role: string | null }
-    setAllTags(((tagRows ?? []) as TagRow[]).map((t) => ({ id: t.id, name: t.name, tag_role: t.tag_role ?? null })))
+    setAllTags(((tagRows ?? []) as TagRow[])
+      .filter((t) => hasEnterable.has(t.id) || !hasAnyMetric.has(t.id))
+      .map((t) => ({ id: t.id, name: t.name, tag_role: t.tag_role ?? null })))
 
     // S2 — orphan detection (same helper the track page uses)
     setOrphans(await getOrphanMinistries(supabase, cid))
@@ -300,7 +327,7 @@ export default function ServicesSettingsPage() {
   }, [supabase, churchId, write, cards])
 
   return (
-    <AppLayout role={role}>
+    <MaybeLayout embedded={embedded} role={role}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap');
         .font-num{font-family:'Fira Code',ui-monospace,monospace;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
@@ -308,7 +335,8 @@ export default function ServicesSettingsPage() {
       `}</style>
 
       <div className="bg-slate-50 min-h-full" style={{ fontFamily: "'Fira Sans', ui-sans-serif, system-ui, sans-serif" }}>
-        {/* ── Zone A — header (E-10..E-12) ─────────────────────────────── */}
+        {/* ── Zone A — header (E-10..E-12). Hidden when embedded in the workspace. ── */}
+        {!embedded && (
         <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 backdrop-blur-sm">
           <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-3.5">
             <button onClick={() => router.push('/settings')} aria-label="Back to Settings"
@@ -317,15 +345,16 @@ export default function ServicesSettingsPage() {
             </button>
             <div className="min-w-0 flex-1">
               {churchName && <div className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: '#3D5BD4' }}>{churchName}</div>}
-              <h1 className="text-lg font-extrabold leading-tight tracking-tight text-slate-900">Services</h1>
+              <h1 className="text-lg font-extrabold leading-tight tracking-tight text-slate-900">Services and Occurrences</h1>
             </div>
           </div>
         </header>
+        )}
 
         <main className="mx-auto max-w-3xl px-4 py-6">
           <p className="mb-5 px-1 text-[13px] leading-relaxed text-slate-500">
-            When and where you gather — each service creates the weekly occurrences you log in Entries, and lists the ministries counted there.{' '}
-            {write ? 'Add, remove, or reorder ministries — the change applies to every future week.' : 'This is read-only for your role.'}
+            When and where you gather, and what&apos;s counted there. Each service has its own schedule (a set day and time, or weekly or monthly) that creates the occurrences you log in Entries. The ministries on each card are what gets counted there.{' '}
+            {write ? 'Add, remove, or reorder ministries. Changes apply to every future week.' : 'This is read-only for your role.'}
           </p>
 
           {/* S2 — orphan banner: counts with nowhere to render (editors+ see it) */}
@@ -337,7 +366,7 @@ export default function ServicesSettingsPage() {
                   : `${orphans.length} ministries aren't counted anywhere yet`}
               </span>
               <span className="text-[12px] text-[#B45309]/80">
-                {orphans.length > 1 && `(${orphans.map(o => o.name).join(', ')}) `}— their counts won&apos;t appear in Entries.
+                {orphans.length > 1 && `(${orphans.map(o => o.name).join(', ')}) `}Their counts won&apos;t appear in Entries.
               </span>
               <Link
                 href={`/settings/track?fix=${orphans[0].tag_id}`}
@@ -388,14 +417,23 @@ export default function ServicesSettingsPage() {
                 return ordered.map(([key, list]) => (
                   <div key={key} className="space-y-4">
                     {showHeaders && (
-                      <div className="flex items-center gap-2 border-b border-slate-200 px-1 pb-1.5 pt-2">
-                        <span className="h-4 w-1.5 rounded-full bg-[#4F6EF7]" aria-hidden />
-                        <h2 className="text-[14px] font-extrabold tracking-tight text-slate-800">
+                      /* S3 — full-width color bars (Builder 2026-06-10): Church-wide
+                         pops (brand bar + GOLD headline); campuses recede on a soft
+                         slate bar. When church-wide services exist, each campus bar
+                         carries a pointer note so nobody hunts for those counts here. */
+                      <div className={`flex flex-wrap items-center gap-x-2.5 gap-y-0.5 rounded-xl px-4 py-2.5 shadow-sm ${
+                        key === '__churchwide' ? 'bg-[#4F6EF7]' : 'bg-[#94A3B8]'
+                      }`}>
+                        <h2 className={`text-[14px] font-extrabold tracking-tight ${
+                          key === '__churchwide' ? 'text-[#FBBF24]' : 'text-white'
+                        }`}>
                           {key === '__churchwide' ? 'Church-wide' : key}
                         </h2>
-                        {key === '__churchwide' && (
-                          <p className="text-[11px] text-slate-400">counted once for the whole church — visible at every campus</p>
-                        )}
+                        {key === '__churchwide' ? (
+                          <p className="text-[11px] font-medium text-[#FDE68A]/90">counted once for the whole church, visible at every campus</p>
+                        ) : groups.has('__churchwide') ? (
+                          <p className="text-[11px] font-medium text-white/90">some metrics are set up church-wide. See the section above.</p>
+                        ) : null}
                       </div>
                     )}
                     {list.map(card => (
@@ -415,14 +453,18 @@ export default function ServicesSettingsPage() {
                 ))
               })()}
               <p className="px-1 text-[12px] leading-relaxed text-slate-400">
-                Ministries are equal peers — the order here is the order they appear when you enter.
+                Ministries are equal peers. The order here is the order they appear when you enter.
               </p>
             </div>
           )}
         </main>
       </div>
-    </AppLayout>
+    </MaybeLayout>
   )
+}
+
+export default function ServicesSettingsPage() {
+  return <ServicesPanel />
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
@@ -448,10 +490,15 @@ function ServiceCardView({ card, allTags, write, busy, showLocation, onAdd, onRe
   // E-29 status: amber-outline when 0 ministries (won't render in Entries), else complete
   const status = card.ministries.length === 0 ? 'needs' : 'complete'
 
-  // G1: cadence label e.g. "Sundays · 9:00 AM"
-  const cadenceLabel = card.schedule
-    ? `${DAY_NAMES_PLURAL[card.schedule.day_of_week]} · ${fmt12h(card.schedule.start_time)}`
-    : null
+  // G1: cadence label. A set day & time shows "Sundays · 9:00 AM"; weekly /
+  // monthly occurrences have no clock, so they read just "Weekly" / "Monthly".
+  const cadenceLabel = !card.schedule
+    ? null
+    : card.schedule.frequency === 'weekly'
+    ? 'Weekly'
+    : card.schedule.frequency === 'monthly'
+    ? 'Monthly'
+    : `${DAY_NAMES_PLURAL[card.schedule.day_of_week]} · ${fmt12h(card.schedule.start_time)}`
 
   return (
     <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -475,7 +522,7 @@ function ServiceCardView({ card, allTags, write, busy, showLocation, onAdd, onRe
             )}
             {/* S4b — reporting group chip */}
             {card.groupName && (
-              <span className="rounded-md bg-[#4F6EF7]/10 px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-[#3D5BD4]" title="Reporting group — used to compare services in reports">
+              <span className="rounded-md bg-[#4F6EF7]/10 px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-[#3D5BD4]" title="Reporting group. Used to compare services in reports.">
                 {card.groupName}
               </span>
             )}
@@ -515,58 +562,75 @@ function ServiceCardView({ card, allTags, write, busy, showLocation, onAdd, onRe
         </div>
       </div>
 
-      {/* ministry child rows (E-22) — equal-peer accent bars, no "primary" badge */}
+      {/* ministry child rows (E-22) — COMPACT: one line each, two per row
+          (Builder 2026-06-10: "unnecessarily tall — single line, two cards").
+          A ministry with no metrics shows faint red + "Add metrics now" that
+          jumps straight to its node in What we track. */}
       {card.ministries.length === 0 ? (
-        <div className="flex flex-col items-center gap-1 px-4 py-6 text-center">
+        <div className="flex flex-col items-center gap-1 px-4 py-5 text-center">
           <span className="text-[13px] font-semibold text-slate-600">No ministries yet</span>
           <span className="text-[12px] text-slate-400">Add a ministry so this service appears in Entries.</span>
         </div>
       ) : (
-        <ul className="divide-y divide-slate-50">
+        <ul className="grid grid-cols-1 gap-2 px-3 py-2.5 sm:grid-cols-2">
           {card.ministries.map((m, i) => (
-            <li key={m.link_id} className="group flex items-center justify-between gap-3 px-4 py-3 transition-colors duration-200 hover:bg-slate-50">
-              <div className="flex min-w-0 items-center gap-3">
-                <span className={`h-7 w-1.5 shrink-0 rounded-full ${accentForRole(m.tag_role)}`} aria-hidden />
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="truncate text-[15px] font-semibold text-slate-800">{m.name}</span>
-                    <span className="text-[12px] font-medium text-slate-400">· {roleLabel(m.tag_role)}</span>
-                  </div>
-                  <span className="font-num text-[11px] text-slate-400">{m.metricCount} {m.metricCount === 1 ? 'metric' : 'metrics'}</span>
-                </div>
-              </div>
+            <li
+              key={m.link_id}
+              className={`group flex items-center gap-2 rounded-xl border px-2.5 py-1.5 transition-colors duration-200 ${
+                m.metricCount === 0
+                  ? 'border-red-200/70 bg-red-50/50'
+                  : 'border-slate-100 bg-white hover:bg-slate-50'
+              }`}
+            >
+              <span className={`h-5 w-1.5 shrink-0 rounded-full ${accentForRole(m.tag_role)}`} aria-hidden />
+              <span className="min-w-0 truncate text-[14px] font-semibold text-slate-800">{m.name}</span>
+              <span className="shrink-0 text-[11px] font-medium text-slate-400">· {roleLabel(m.tag_role)}</span>
 
-              {write && (
-                <div className="flex items-center gap-1">
-                  {/* E-24 reorder ↑/↓ (O-3) */}
-                  <button onClick={() => onMove(i, -1)} disabled={i === 0 || busy === card.id} aria-label={`Move ${m.name} up`}
-                    className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-300 transition-colors duration-200 hover:bg-slate-100 hover:text-slate-600 disabled:cursor-not-allowed disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/40">
-                    <Ico.up className="h-4 w-4" />
-                  </button>
-                  <button onClick={() => onMove(i, 1)} disabled={i === card.ministries.length - 1 || busy === card.id} aria-label={`Move ${m.name} down`}
-                    className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-300 transition-colors duration-200 hover:bg-slate-100 hover:text-slate-600 disabled:cursor-not-allowed disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/40">
-                    <Ico.down className="h-4 w-4" />
-                  </button>
-                  {/* E-25 remove — slate "Remove", amber confirm, no red */}
-                  {confirmRemove === m.link_id ? (
-                    <span className="flex items-center gap-1">
-                      <button onClick={() => { onRemove(m); setConfirmRemove(null) }} disabled={busy === m.link_id}
-                        className="rounded-lg px-2 py-1 text-[12px] font-semibold text-[#B45309] transition-colors duration-200 hover:bg-[#F59E0B]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F59E0B]/40">
-                        Confirm
-                      </button>
-                      <button onClick={() => setConfirmRemove(null)}
-                        className="rounded-lg px-2 py-1 text-[12px] font-medium text-slate-400 transition-colors duration-200 hover:bg-slate-100 hover:text-slate-600">
-                        Cancel
-                      </button>
-                    </span>
-                  ) : (
-                    <button onClick={() => setConfirmRemove(m.link_id)} aria-label={`Remove ${m.name}`}
-                      className="ml-1 flex h-7 items-center gap-1 rounded-lg px-2 text-[12px] font-medium text-slate-400 opacity-0 transition-all duration-200 hover:bg-slate-100 hover:text-slate-700 focus-visible:opacity-100 group-hover:opacity-100">
-                      <Ico.trash className="h-3.5 w-3.5" />Remove
+              <span className="ml-auto flex shrink-0 items-center gap-1">
+                {m.metricCount === 0 ? (
+                  <Link
+                    href={`/settings/track?select=${m.tag_id}`}
+                    className="rounded text-[12px] font-semibold text-red-500/90 hover:text-red-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300"
+                    title={`${m.name} has no metrics yet, so there is nothing to enter`}
+                  >
+                    Add metrics now →
+                  </Link>
+                ) : (
+                  <span className="font-num text-[11px] text-slate-400">{m.metricCount} {m.metricCount === 1 ? 'metric' : 'metrics'}</span>
+                )}
+
+                {write && (
+                  <>
+                    {/* E-24 reorder ↑/↓ (O-3) — compact, hover-revealed */}
+                    <button onClick={() => onMove(i, -1)} disabled={i === 0 || busy === card.id} aria-label={`Move ${m.name} up`}
+                      className="flex h-6 w-6 items-center justify-center rounded-md text-slate-300 opacity-0 transition-all duration-200 hover:bg-slate-100 hover:text-slate-600 disabled:cursor-not-allowed disabled:opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/40">
+                      <Ico.up className="h-3.5 w-3.5" />
                     </button>
-                  )}
-                </div>
-              )}
+                    <button onClick={() => onMove(i, 1)} disabled={i === card.ministries.length - 1 || busy === card.id} aria-label={`Move ${m.name} down`}
+                      className="flex h-6 w-6 items-center justify-center rounded-md text-slate-300 opacity-0 transition-all duration-200 hover:bg-slate-100 hover:text-slate-600 disabled:cursor-not-allowed disabled:opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/40">
+                      <Ico.down className="h-3.5 w-3.5" />
+                    </button>
+                    {/* E-25 remove — compact; amber confirm */}
+                    {confirmRemove === m.link_id ? (
+                      <span className="flex items-center gap-0.5">
+                        <button onClick={() => { onRemove(m); setConfirmRemove(null) }} disabled={busy === m.link_id}
+                          className="rounded-md px-1.5 py-0.5 text-[11px] font-semibold text-[#B45309] transition-colors duration-200 hover:bg-[#F59E0B]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F59E0B]/40">
+                          Confirm
+                        </button>
+                        <button onClick={() => setConfirmRemove(null)}
+                          className="rounded-md px-1.5 py-0.5 text-[11px] font-medium text-slate-400 transition-colors duration-200 hover:bg-slate-100 hover:text-slate-600">
+                          Cancel
+                        </button>
+                      </span>
+                    ) : (
+                      <button onClick={() => setConfirmRemove(m.link_id)} aria-label={`Remove ${m.name}`} title={`Remove ${m.name}`}
+                        className="flex h-6 w-6 items-center justify-center rounded-md text-slate-300 opacity-0 transition-all duration-200 hover:bg-slate-100 hover:text-slate-600 group-hover:opacity-100 focus-visible:opacity-100">
+                        <Ico.trash className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </>
+                )}
+              </span>
             </li>
           ))}
         </ul>
@@ -589,7 +653,7 @@ function ServiceCardView({ card, allTags, write, busy, showLocation, onAdd, onRe
               {available.length === 0 ? (
                 <p className="text-[12px] text-slate-400">
                   Every ministry is already on this service.{' '}
-                  <Link href="/settings/tags" className="font-semibold text-[#3D5BD4] hover:underline">Create a new ministry →</Link>
+                  <Link href="/settings/track" className="font-semibold text-[#3D5BD4] hover:underline">Create a new ministry →</Link>
                 </p>
               ) : (
                 <>
@@ -602,8 +666,8 @@ function ServiceCardView({ card, allTags, write, busy, showLocation, onAdd, onRe
                       </button>
                     ))}
                   </div>
-                  {/* E-28 create-in-place → deep-link to canonical Tags screen (N-7 MVP) */}
-                  <Link href="/settings/tags" className="mt-2 inline-block text-[12px] font-semibold text-[#3D5BD4] hover:underline">
+                  {/* E-28 create-in-place → deep-link to What we track (ministry tree) */}
+                  <Link href="/settings/track" className="mt-2 inline-block text-[12px] font-semibold text-[#3D5BD4] hover:underline">
                     Create a new ministry →
                   </Link>
                 </>

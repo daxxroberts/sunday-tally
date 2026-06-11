@@ -94,7 +94,7 @@ export async function GET(
   // also pins the tenant (church_id) from the session.
   const { data: membership } = await supabase
     .from('church_memberships')
-    .select('church_id, role, default_location_id')
+    .select('id, church_id, role, default_location_id, location_scope')
     .eq('user_id',   user.id)
     .eq('is_active', true)
     .order('created_at', { ascending: true })
@@ -112,11 +112,26 @@ export async function GET(
   const url = new URL(req.url)
   const campusParam = url.searchParams.get('campus')
   const defaultLoc = (membership as { default_location_id?: string | null }).default_location_id ?? null
-  const locationIds: string[] | undefined =
+  let locationIds: string[] | undefined =
     campusParam === 'all' ? undefined
     : campusParam ? [campusParam]
     : defaultLoc ? [defaultLoc]
     : undefined
+
+  // 0042 — campus-restricted members can never widen to all/other campuses. RLS
+  // already bounds the rows; this just keeps the totals honest (no "all campuses"
+  // that silently means "only mine"). Clamp the scope to their allowed set.
+  if ((membership as { location_scope?: string }).location_scope === 'restricted') {
+    const { data: allowed } = await supabase
+      .from('church_membership_locations')
+      .select('location_id')
+      .eq('membership_id', (membership as { id: string }).id)
+    const allowedIds = ((allowed ?? []) as { location_id: string }[]).map(r => r.location_id)
+    locationIds = locationIds && locationIds.length > 0
+      ? locationIds.filter(id => allowedIds.includes(id))   // requested ∩ allowed
+      : allowedIds                                          // 'all'/default → their allowed set
+    if (locationIds.length === 0) locationIds = allowedIds  // never empty → no accidental church-wide
+  }
 
   // Global date filter (dashboard-level): ?from=YYYY-MM-DD&to=YYYY-MM-DD overrides
   // every widget's own window so the whole board reports the same range.
