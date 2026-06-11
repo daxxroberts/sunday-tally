@@ -18,7 +18,7 @@
 // DB-level enforcement of role-restricted writes depends on migration 0029 (N-1).
 // ─────────────────────────────────────────────────────────────────────────
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import AppLayout from '@/components/layouts/AppLayout'
 import { Ico, Dot, membershipRoleLabel } from '@/app/(app)/entries/ui'
@@ -26,6 +26,7 @@ import {
   getTeamData,
   setMemberRoleAction,
   setMemberDefaultCampusAction,
+  setMemberCampusScopeAction,
   deactivateMemberAction,
   sendInviteAction,
   resendInviteAction,
@@ -148,6 +149,17 @@ export default function MembersPage() {
     const res = await setMemberDefaultCampusAction(m.id, locId)
     setBusy(null)
     if (res.error) { patchMember(m.id, { default_location_id: prev }); setNotice(res.error) }
+  }, [patchMember])
+
+  const onSetCampusScope = useCallback(async (m: TeamMember, scope: 'all' | 'restricted', ids: string[]) => {
+    setNotice(null)
+    setBusy(m.id)
+    const prevScope = m.location_scope
+    const prevIds = m.location_ids
+    patchMember(m.id, { location_scope: scope, location_ids: scope === 'restricted' ? ids : [] })
+    const res = await setMemberCampusScopeAction(m.id, scope, ids)
+    setBusy(null)
+    if (res.error) { patchMember(m.id, { location_scope: prevScope, location_ids: prevIds }); setNotice(res.error) }
   }, [patchMember])
 
   const onDeactivate = useCallback(async (m: TeamMember) => {
@@ -279,6 +291,17 @@ export default function MembersPage() {
                       </div>
 
                       <div className="flex flex-wrap items-center gap-2">
+                        {/* Campus access (0042) — which campuses this member can SEE.
+                            Only meaningful with 2+ campuses. RLS is the hard boundary. */}
+                        {canEditCampus && activeCampuses.length >= 2 ? (
+                          <CampusAccess
+                            member={m}
+                            campuses={activeCampuses}
+                            disabled={rowBusy}
+                            onSave={(scope, ids) => onSetCampusScope(m, scope, ids)}
+                          />
+                        ) : null}
+
                         {/* E-15 default-campus picker */}
                         {canEditCampus ? (
                           <select
@@ -422,5 +445,101 @@ export default function MembersPage() {
         </main>
       </div>
     </AppLayout>
+  )
+}
+
+// ── Campus access control (0042) — All campuses vs Specific campuses ─────────
+// A small disclosure: pick All, or Specific + a checklist of campuses. Saves on
+// "Save". Shown only with 2+ campuses; RLS is the real boundary either way.
+function CampusAccess({ member, campuses, disabled, onSave }: {
+  member: TeamMember
+  campuses: { id: string; name: string }[]
+  disabled: boolean
+  onSave: (scope: 'all' | 'restricted', ids: string[]) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [scope, setScope] = useState<'all' | 'restricted'>(member.location_scope)
+  const [ids, setIds] = useState<string[]>(member.location_ids)
+  const btnRef = useRef<HTMLButtonElement>(null)
+  const [pos, setPos] = useState<{ top: number; right: number }>({ top: 0, right: 0 })
+
+  useEffect(() => {
+    setScope(member.location_scope)
+    setIds(member.location_ids)
+  }, [member.location_scope, member.location_ids])
+
+  const label = member.location_scope === 'all'
+    ? 'All campuses'
+    : member.location_ids.length === 1
+      ? (campuses.find(c => c.id === member.location_ids[0])?.name ?? '1 campus')
+      : `${member.location_ids.length} campuses`
+
+  function toggleOpen() {
+    if (!open && btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect()
+      setPos({ top: r.bottom + 4, right: Math.max(8, window.innerWidth - r.right) })
+    }
+    setOpen(o => !o)
+  }
+  function save() {
+    onSave(scope, scope === 'restricted' ? ids : [])
+    setOpen(false)
+  }
+
+  return (
+    <div className="relative">
+      <button
+        ref={btnRef}
+        type="button"
+        disabled={disabled}
+        onClick={toggleOpen}
+        aria-label={`Campus access for ${member.name ?? member.email ?? 'member'}`}
+        className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[13px] text-slate-700 transition-colors hover:border-[#4F6EF7]/40 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        <Ico.pin className="h-3.5 w-3.5 text-[#4F6EF7]" />
+        {label}
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          {/* fixed so the member-card's overflow-hidden can't clip it */}
+          <div className="fixed z-50 w-60 rounded-xl border border-slate-200 bg-white p-3 shadow-lg" style={{ top: pos.top, right: pos.right }}>
+            <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400">Can see</p>
+            <label className="flex items-center gap-2 rounded-md px-1 py-1 text-[13px] text-slate-700 hover:bg-slate-50">
+              <input type="radio" checked={scope === 'all'} onChange={() => setScope('all')} className="text-[#4F6EF7]" />
+              All campuses
+            </label>
+            <label className="flex items-center gap-2 rounded-md px-1 py-1 text-[13px] text-slate-700 hover:bg-slate-50">
+              <input type="radio" checked={scope === 'restricted'} onChange={() => setScope('restricted')} className="text-[#4F6EF7]" />
+              Specific campuses
+            </label>
+            {scope === 'restricted' && (
+              <div className="mt-1 border-t border-slate-100 pt-1.5">
+                {campuses.map(c => (
+                  <label key={c.id} className="flex items-center gap-2 rounded-md px-1 py-1 text-[13px] text-slate-700 hover:bg-slate-50">
+                    <input
+                      type="checkbox"
+                      checked={ids.includes(c.id)}
+                      onChange={() => setIds(p => p.includes(c.id) ? p.filter(x => x !== c.id) : [...p, c.id])}
+                      className="rounded text-[#4F6EF7]"
+                    />
+                    {c.name}
+                  </label>
+                ))}
+              </div>
+            )}
+            <div className="mt-2 flex justify-end gap-2">
+              <button type="button" onClick={() => setOpen(false)} className="rounded-lg px-2.5 py-1 text-[12px] font-medium text-slate-400 hover:text-slate-700">Cancel</button>
+              <button
+                type="button"
+                onClick={save}
+                disabled={scope === 'restricted' && ids.length === 0}
+                className="rounded-lg bg-[#4F6EF7] px-2.5 py-1 text-[12px] font-semibold text-white hover:bg-[#3D5BD4] disabled:opacity-40"
+              >Save</button>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
   )
 }

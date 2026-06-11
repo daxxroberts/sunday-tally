@@ -15,6 +15,8 @@ export type InviteData = {
   church_name: string
   accepted_at: string | null
   expires_at: string | null
+  location_scope: 'all' | 'restricted'
+  location_ids: string[]
 }
 
 export async function getInviteByToken(token: string): Promise<
@@ -30,7 +32,7 @@ export async function getInviteByToken(token: string): Promise<
 
   const { data, error } = await admin
     .from('church_invites')
-    .select(`id, email, role, church_id, status, accepted_at, expires_at, churches(name)`)
+    .select(`id, email, role, church_id, status, accepted_at, expires_at, location_scope, location_ids, churches(name)`)
     .eq('token', token)
     .single()
 
@@ -56,6 +58,8 @@ export async function getInviteByToken(token: string): Promise<
         'Your church',
       accepted_at: data.accepted_at,
       expires_at: data.expires_at,
+      location_scope: (data.location_scope as 'all' | 'restricted' | null) ?? 'all',
+      location_ids: (data.location_ids as string[] | null) ?? [],
     },
   }
 }
@@ -100,15 +104,47 @@ export async function acceptInviteAction(
     if (pwError) return { error: 'Could not set password. Try again.' }
   }
 
-  // Atomic: INSERT membership + UPDATE accepted_at (N86) — bind to invite's role/church
-  const { error: memberError } = await admin
-    .from('church_memberships')
-    .insert({ user_id: user.id, church_id: grantedChurchId, role: grantedRole, is_active: true })
+  // S2: campus scope also comes from the SERVER-VALIDATED invite, never the client.
+  const grantedScope = invite.location_scope === 'restricted' ? 'restricted' : 'all'
+  const grantedCampusIds = grantedScope === 'restricted' ? (invite.location_ids ?? []) : []
 
+  // Atomic: INSERT membership + UPDATE accepted_at (N86) — bind to invite's role/church
+  const { data: newMember, error: memberError } = await admin
+    .from('church_memberships')
+    .insert({
+      user_id: user.id, church_id: grantedChurchId, role: grantedRole, is_active: true,
+      location_scope: grantedScope,
+    })
+    .select('id')
+    .single()
+
+  let membershipId: string | null = newMember?.id ?? null
   if (memberError) {
-    // Already a member — still mark invite accepted
+    // Already a member — still mark invite accepted; reuse the existing membership.
     if (!memberError.message.includes('duplicate') && !memberError.message.includes('unique')) {
       return { error: 'Something went wrong joining the church. Try again.' }
+    }
+    const { data: existing } = await admin
+      .from('church_memberships')
+      .select('id')
+      .eq('user_id', user.id).eq('church_id', grantedChurchId)
+      .maybeSingle()
+    membershipId = existing?.id ?? null
+    if (membershipId) {
+      await admin.from('church_memberships').update({ location_scope: grantedScope }).eq('id', membershipId)
+    }
+  }
+
+  // Apply the allowed-campus junction for a restricted invite (re-validate ⊆ church).
+  if (membershipId && grantedScope === 'restricted' && grantedCampusIds.length > 0) {
+    const { data: validLocs } = await admin
+      .from('church_locations').select('id')
+      .eq('church_id', grantedChurchId).in('id', grantedCampusIds)
+    const validIds = ((validLocs ?? []) as { id: string }[]).map(l => l.id)
+    await admin.from('church_membership_locations').delete().eq('membership_id', membershipId)
+    if (validIds.length > 0) {
+      await admin.from('church_membership_locations')
+        .insert(validIds.map(location_id => ({ membership_id: membershipId, location_id })))
     }
   }
 
