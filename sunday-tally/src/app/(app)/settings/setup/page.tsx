@@ -20,10 +20,12 @@ import { LocationsPanel } from '@/app/(app)/settings/locations/page'
 
 type TabKey = 'services' | 'track' | 'locations'
 
+// Tab labels mirror the Settings hub rows exactly — same names, same pages, just
+// a tabbed way in. Order matches the hub: Services → Locations → What we track.
 const TABS: { key: TabKey; label: string }[] = [
-  { key: 'services',  label: 'Services' },
-  { key: 'track',     label: 'Ministries' },
-  { key: 'locations', label: 'Locations' },
+  { key: 'services',  label: 'Services and Occurrences' },
+  { key: 'locations', label: 'Locations and Team' },
+  { key: 'track',     label: 'What we track' },
 ]
 
 export default function SetupWorkspacePage() {
@@ -91,8 +93,8 @@ export default function SetupWorkspacePage() {
               <Ico.left className="h-5 w-5" />
             </button>
             <div className="min-w-0 flex-1">
-              {churchName && <div className="truncate text-[11px] font-semibold uppercase tracking-wider" style={{ color: '#3D5BD4' }}>{churchName}</div>}
-              <h1 className="text-lg font-extrabold leading-tight tracking-tight text-slate-900">Setup</h1>
+              {churchName && <div className="truncate text-[11px] font-semibold uppercase tracking-wider" style={{ color: '#B8860B' }}>{churchName}</div>}
+              <h1 className="text-lg font-extrabold leading-tight tracking-tight" style={{ color: '#B8860B' }}>Setup</h1>
             </div>
           </div>
           {/* Tabs */}
@@ -105,11 +107,11 @@ export default function SetupWorkspacePage() {
                   onClick={() => go(t.key)}
                   aria-current={on ? 'page' : undefined}
                   className={`relative flex-1 px-3 py-2.5 text-[13px] font-semibold transition-colors focus-visible:outline-none ${
-                    on ? 'text-[#3D5BD4]' : 'text-slate-500 hover:text-slate-800'
+                    on ? 'text-[#B8860B]' : 'text-slate-500 hover:text-slate-800'
                   }`}
                 >
                   {t.label}
-                  <span className={`absolute inset-x-2 -bottom-px h-0.5 rounded-full transition-colors ${on ? 'bg-[#4F6EF7]' : 'bg-transparent'}`} />
+                  <span className={`absolute inset-x-2 -bottom-px h-0.5 rounded-full transition-colors ${on ? 'bg-[#D4A017]' : 'bg-transparent'}`} />
                 </button>
               )
             })}
