@@ -39,11 +39,14 @@ export async function getUnscheduledTemplates() {
   return unscheduled
 }
 
+export type ScheduleFrequency = 'specific' | 'weekly' | 'monthly'
+
 export async function saveScheduleAction(
   templateId: string,
   dayOfWeek: number,
   startTime: string,
-  effectiveStartDate: string
+  effectiveStartDate: string,
+  frequency: ScheduleFrequency = 'specific',
 ): Promise<{ error?: string }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -57,18 +60,31 @@ export async function saveScheduleAction(
     .eq('service_template_id', templateId)
     .eq('is_active', true)
 
-  // Upsert handles the case where a deactivated row already exists with the same effective_start_date
-  // (unique constraint: service_template_id + effective_start_date)
-  const { error } = await supabase
+  // Weekly / monthly occurrences have no clock; day_of_week + start_time stay
+  // NOT NULL, so write harmless placeholders the cadence makes us ignore.
+  const isClocked = frequency === 'specific'
+  const row = {
+    service_template_id: templateId,
+    day_of_week: isClocked ? dayOfWeek : 0,
+    start_time:  isClocked ? startTime : '00:00',
+    effective_start_date: effectiveStartDate,
+    effective_end_date: null,
+    is_active: true,
+  }
+  const conflict = { onConflict: 'service_template_id,effective_start_date' }
+
+  // Upsert WITH frequency. If the column isn't migrated yet (0041), Postgres
+  // rejects the unknown column — fall back to a frequency-less write so the
+  // existing 'set day & time' flow keeps working until the migration lands.
+  let { error } = await supabase
     .from('service_schedule_versions')
-    .upsert({
-      service_template_id: templateId,
-      day_of_week: dayOfWeek,
-      start_time: startTime,
-      effective_start_date: effectiveStartDate,
-      effective_end_date: null,
-      is_active: true,
-    }, { onConflict: 'service_template_id,effective_start_date' })
+    .upsert({ ...row, frequency }, conflict)
+
+  if (error && /frequency/i.test(error.message)) {
+    ({ error } = await supabase
+      .from('service_schedule_versions')
+      .upsert(row, conflict))
+  }
 
   if (error) return { error: `Failed to save schedule: ${error.message}` }
   revalidatePath('/onboarding/schedule')
