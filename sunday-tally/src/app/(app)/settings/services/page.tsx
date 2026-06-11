@@ -50,6 +50,7 @@ interface Ministry {
 interface ScheduleSummary {            // G1
   day_of_week: number
   start_time: string
+  frequency: 'specific' | 'weekly' | 'monthly'   // 0041: cadence-only occurrences
 }
 interface ServiceCard {
   id: string              // service_templates.id
@@ -180,15 +181,21 @@ export default function ServicesSettingsPage() {
     // G1: active schedule version per template (is_active=true, effective_end_date IS NULL)
     const scheduleByTemplate = new Map<string, ScheduleSummary>()
     if (templates.length > 0) {
+      // select('*') so a pre-0041 DB (no `frequency` column) doesn't break the
+      // whole page; default to 'specific' when the column isn't present yet.
       const { data: schedRows } = await supabase
         .from('service_schedule_versions')
-        .select('service_template_id, day_of_week, start_time')
+        .select('*')
         .in('service_template_id', templates.map(t => t.id))
         .eq('is_active', true)
         .is('effective_end_date', null)
         .range(0, PAGE - 1)
-      for (const s of ((schedRows ?? []) as { service_template_id: string; day_of_week: number; start_time: string }[])) {
-        scheduleByTemplate.set(s.service_template_id, { day_of_week: s.day_of_week, start_time: s.start_time })
+      for (const s of ((schedRows ?? []) as { service_template_id: string; day_of_week: number; start_time: string; frequency?: string }[])) {
+        scheduleByTemplate.set(s.service_template_id, {
+          day_of_week: s.day_of_week,
+          start_time: s.start_time,
+          frequency: (s.frequency as ScheduleSummary['frequency']) ?? 'specific',
+        })
       }
     }
 
@@ -477,10 +484,15 @@ function ServiceCardView({ card, allTags, write, busy, showLocation, onAdd, onRe
   // E-29 status: amber-outline when 0 ministries (won't render in Entries), else complete
   const status = card.ministries.length === 0 ? 'needs' : 'complete'
 
-  // G1: cadence label e.g. "Sundays · 9:00 AM"
-  const cadenceLabel = card.schedule
-    ? `${DAY_NAMES_PLURAL[card.schedule.day_of_week]} · ${fmt12h(card.schedule.start_time)}`
-    : null
+  // G1: cadence label. A set day & time shows "Sundays · 9:00 AM"; weekly /
+  // monthly occurrences have no clock, so they read just "Weekly" / "Monthly".
+  const cadenceLabel = !card.schedule
+    ? null
+    : card.schedule.frequency === 'weekly'
+    ? 'Weekly'
+    : card.schedule.frequency === 'monthly'
+    ? 'Monthly'
+    : `${DAY_NAMES_PLURAL[card.schedule.day_of_week]} · ${fmt12h(card.schedule.start_time)}`
 
   return (
     <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
