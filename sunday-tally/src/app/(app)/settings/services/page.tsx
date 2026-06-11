@@ -337,7 +337,7 @@ export default function ServicesSettingsPage() {
             </button>
             <div className="min-w-0 flex-1">
               {churchName && <div className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: '#3D5BD4' }}>{churchName}</div>}
-              <h1 className="text-lg font-extrabold leading-tight tracking-tight text-slate-900">Services</h1>
+              <h1 className="text-lg font-extrabold leading-tight tracking-tight text-slate-900">Services and Occurrences</h1>
             </div>
           </div>
         </header>

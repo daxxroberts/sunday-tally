@@ -118,7 +118,7 @@ export default function SettingsHubPage() {
             {/* E-3 — Services (when & where you gather; ministry composition per service) */}
             <HubRow
               href="/settings/services"
-              label="Services"
+              label="Services and Occurrences"
               meta={counts.services === null ? '…' : `${plural(counts.services, 'service')} · ${plural(counts.ministries, 'ministry', 'ministries')}`}
               writable={write}
               loading={loading}
