@@ -209,7 +209,13 @@ export async function deriveGridConfigFromSchema(
       scope:         m.scope,
     }
 
-    if (repCode === GIVING) {
+    // Giving is a peer kind, not a church-wide special case (occurrence model).
+    // PERIOD-scoped giving (weekly/monthly church-wide) renders as its own
+    // top-level WK block below. INSTANCE-scoped giving rides its service
+    // occurrence, so it falls through to the normal per-root-ministry grouping
+    // and shows as editable SV columns under its ministry (e.g. under
+    // Experience), exactly like Attendance.
+    if (repCode === GIVING && m.scope === 'period') {
       givingMetrics.push(classified)
       continue
     }
@@ -244,8 +250,11 @@ export async function deriveGridConfigFromSchema(
 
   const leafColId = (code: string) => `metric.${code}`
 
-  // GIVING (weekly, WK scope) — one top-level group, one child per giving metric.
-  if (givingMetrics.length > 0) {
+  // CHURCH-WIDE giving (period-scoped) — one top-level WK group, one child per
+  // metric. Skipped when a top-level ministry literally coded GIVING already
+  // owns the `group_giving` id (it would render its own SV columns via the
+  // ministry loop); only one block can claim that id.
+  if (givingMetrics.length > 0 && !orderedGroupIds.includes('group_giving')) {
     columns.push({
       type: 'group', id: 'group_giving', label: 'Giving', scope: 'WK',
       children: givingMetrics.map<DataColumn>(m => ({
@@ -262,6 +271,7 @@ export async function deriveGridConfigFromSchema(
     { code: ATTENDANCE,    label: 'Attendance' },
     { code: VOLUNTEERS,    label: 'Volunteers' },
     { code: RESPONSE_STAT, label: 'Stats'      },
+    { code: GIVING,        label: 'Giving'     },
   ]
 
   const orderedDimsForGroup = (dimMap: Map<string, ClassifiedMetric[]>): { code: string; label: string }[] => {

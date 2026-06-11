@@ -67,18 +67,23 @@ interface Ministry {
 /** A metric with its owning node id (flat list is the source of truth). */
 type Metric = MetricRow & { ministry_tag_id: string }
 
-const PHASE1_KINDS = ['ATTENDANCE', 'VOLUNTEERS', 'RESPONSE_STAT'] as const
-type KindCode = (typeof PHASE1_KINDS)[number]
+// The four system reporting tags every church is seeded with (0024). Giving is
+// a peer kind, not a church-wide special case — counts under it can ride a
+// service occurrence (per-service giving) or stay weekly church-wide.
+const SYSTEM_KINDS = ['ATTENDANCE', 'VOLUNTEERS', 'RESPONSE_STAT', 'GIVING'] as const
+type KindCode = (typeof SYSTEM_KINDS)[number]
 
 const KIND_LABEL: Record<KindCode, string> = {
   ATTENDANCE: 'Attendance',
   VOLUNTEERS: 'Volunteers',
   RESPONSE_STAT: 'Stats',
+  GIVING: 'Giving',
 }
 const KIND_PLACEHOLDER: Record<KindCode, string> = {
   ATTENDANCE: 'Attendance',
   VOLUNTEERS: 'Band',
   RESPONSE_STAT: 'Baptisms',
+  GIVING: 'Bucket',
 }
 
 const ROLE_OPTIONS: { value: TagRole; label: string }[] = [
@@ -1200,13 +1205,13 @@ function DetailPanel({
       )}
 
       {/* Metric Kind sections — only Kinds that have ≥1 metric here.
-          Phase-1 kinds first, then ANY other kind with metrics on this node
-          (e.g. GIVING after the weekly conversion, or custom kinds) so no
-          metric is ever invisible here ("where do I edit Giving"). */}
+          System kinds first (Attendance, Volunteers, Stats, Giving), then ANY
+          other kind with metrics on this node (custom kinds) so no metric is
+          ever invisible here ("where do I edit Giving"). */}
       {[
-        ...PHASE1_KINDS.map(k => ({ code: k as string, label: KIND_LABEL[k as KindCode] })),
+        ...SYSTEM_KINDS.map(k => ({ code: k as string, label: KIND_LABEL[k as KindCode] })),
         ...reportingTags
-          .filter(r => !PHASE1_KINDS.includes(r.code as KindCode) && (byKind.get(r.id) ?? []).length > 0)
+          .filter(r => !SYSTEM_KINDS.includes(r.code as KindCode) && (byKind.get(r.id) ?? []).length > 0)
           .map(r => ({ code: r.code, label: r.name })),
       ].map(kind => {
         const rt = reportingTags.find(r => r.code === kind.code)
@@ -1258,7 +1263,7 @@ function AddMetricControl({
   const [kind, setKind] = useState<KindCode>('VOLUNTEERS')
   const [name, setName] = useState('')
   const [busy, setBusy] = useState(false)
-  const available = PHASE1_KINDS.filter(k => reportingTags.some(r => r.code === k))
+  const available = SYSTEM_KINDS.filter(k => reportingTags.some(r => r.code === k))
 
   async function submit() {
     const n = name.trim()
@@ -1326,6 +1331,8 @@ function KindSection({
     ? 'bg-[#4F6EF7]/8 border-[#4F6EF7]/20'
     : kindCode === 'VOLUNTEERS'
     ? 'bg-[#22C55E]/8 border-[#22C55E]/20'
+    : kindCode === 'GIVING'
+    ? 'bg-[#F59E0B]/8 border-[#F59E0B]/20'
     : 'bg-[#8B5CF6]/8 border-[#8B5CF6]/20'
 
   return (
