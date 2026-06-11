@@ -33,6 +33,7 @@ export interface TagSection {
   tag_name: string
   tag_code: string
   parent_tag_id: string | null   // Phase B — nest child ministry cards under their parent
+  color: string | null           // 0040 — church-chosen ministry color; drives the card accent so it matches Setup + History
   attendance: FourWin
   volunteers: FourWin
   stats: OtherStatRow[]
@@ -128,6 +129,7 @@ interface TagRow {
   tag_role: TagRole
   parent_tag_id: string | null
   display_order: number | null
+  color: string | null   // 0040 — church-chosen ministry color; null = use palette/role
 }
 
 interface MetricRow {
@@ -328,10 +330,15 @@ export async function fetchDashboardData(
   //    audience pivot. (Old tag_code/tag_name renamed → code/name; tag_role new.)
   const { data: tagsData, error: tagsErr } = await supabase
     .from('service_tags')
-    .select('id, code, name, tag_role, parent_tag_id, display_order')
+    .select('id, code, name, tag_role, parent_tag_id, display_order, color')
     .eq('church_id', churchId)
     .eq('is_active', true)
+    // created_at tiebreaker: display_order ties (common — many tags sit at 0) come
+    // back in ARBITRARY per-query order from Postgres, which shuffles the
+    // positional color palette between surfaces. Every palette-feeding fetch
+    // (here, track page, History derive) must sort identically.
     .order('display_order', { ascending: true })
+    .order('created_at', { ascending: true })
   if (tagsErr) console.error('[dashboard] service_tags fetch failed:', tagsErr)
   const tags: TagRow[] = (tagsData ?? []) as TagRow[]
   const tagByIdCode = new Map<string, string>()
@@ -664,6 +671,7 @@ export async function fetchDashboardData(
       tag_name: tag.name,
       tag_code: tag.code,
       parent_tag_id: tag.parent_tag_id,
+      color: tag.color ?? null,
       attendance,
       volunteers,
       stats,
@@ -691,6 +699,7 @@ export async function fetchDashboardData(
       tag_name: 'General (No Tag)',
       tag_code: 'UNASSIGNED',
       parent_tag_id: null,
+      color: null,
       attendance: emptyFourWin(),
       volunteers: tracks.tracks_volunteers ? fourWinFromWeekly(unassignedVol ?? new Map(), b) : emptyFourWin(),
       stats: unassignedStats,

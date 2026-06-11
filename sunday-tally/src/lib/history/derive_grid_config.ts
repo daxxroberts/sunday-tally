@@ -118,7 +118,10 @@ export async function deriveGridConfigFromSchema(
       .select('id, code, name, tag_role, parent_tag_id, display_order')
       .eq('church_id', churchId)
       .eq('is_active', true)
-      .order('display_order', { ascending: true }),
+      // created_at tiebreaker — group order feeds the positional color palette,
+      // which must sort identically to the track page + dashboard.
+      .order('display_order', { ascending: true })
+      .order('created_at', { ascending: true }),
     supabase
       .from('reporting_tags')
       .select('id, code, name, unit_kind, agg_default')

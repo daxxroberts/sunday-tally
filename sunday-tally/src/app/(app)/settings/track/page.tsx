@@ -145,7 +145,10 @@ export function TrackPanel({ embedded = false }: { embedded?: boolean }) {
       .select('id, code, name, tag_role, parent_tag_id, display_order, is_active, color')
       .eq('church_id', cid)
       .eq('is_active', true)
+      // created_at tiebreaker — keeps the positional palette identical across
+      // track / dashboard / History when display_order values tie.
       .order('display_order', { ascending: true })
+      .order('created_at', { ascending: true })
     if (!withColor.error) {
       tagRows = (withColor.data ?? []) as Ministry[]
     } else {
@@ -155,6 +158,7 @@ export function TrackPanel({ embedded = false }: { embedded?: boolean }) {
         .eq('church_id', cid)
         .eq('is_active', true)
         .order('display_order', { ascending: true })
+        .order('created_at', { ascending: true })
       tagRows = (base.data ?? []) as Ministry[]
     }
     const mins = tagRows
