@@ -25,7 +25,7 @@ import {
   PointerSensor, KeyboardSensor, useSensor, useSensors,
   type DragEndEvent, type DragStartEvent,
 } from '@dnd-kit/core'
-import AppLayout from '@/components/layouts/AppLayout'
+import MaybeLayout from '@/components/layouts/MaybeLayout'
 import InlineEditField from '@/components/shared/InlineEditField'
 import { createClient } from '@/lib/supabase/client'
 import { Ico, roleLabel } from '@/app/(app)/entries/ui'
@@ -108,7 +108,7 @@ function rolePillClasses(): string {
 // Root component
 // ─────────────────────────────────────────────────────────────────────────
 
-export default function TrackPage() {
+export function TrackPanel({ embedded = false }: { embedded?: boolean }) {
   const supabase = useMemo(() => createClient(), [])
   const router = useRouter()
 
@@ -468,7 +468,7 @@ export default function TrackPage() {
   const selected = ministries.find(m => m.id === selectedId) ?? null
 
   return (
-    <AppLayout role={role}>
+    <MaybeLayout embedded={embedded} role={role}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap');
         .font-num{font-family:'Fira Code',ui-monospace,monospace;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
@@ -476,6 +476,8 @@ export default function TrackPage() {
       `}</style>
 
       <div className="bg-slate-50 min-h-full" style={{ fontFamily: "'Fira Sans', ui-sans-serif, system-ui, sans-serif" }}>
+        {/* Header hidden when embedded in the Setup workspace (tabs provide it). */}
+        {!embedded && (
         <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 backdrop-blur-sm">
           <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3.5">
             <button
@@ -494,6 +496,7 @@ export default function TrackPage() {
             Each ministry, the groups inside it, and the numbers you count.
           </p>
         </header>
+        )}
 
         <main className="mx-auto max-w-5xl px-4 py-6">
           {loading ? (
@@ -630,8 +633,12 @@ export default function TrackPage() {
           />
         )}
       </div>
-    </AppLayout>
+    </MaybeLayout>
   )
+}
+
+export default function TrackPage() {
+  return <TrackPanel />
 }
 
 // ─────────────────────────────────────────────────────────────────────────

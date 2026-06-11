@@ -115,6 +115,15 @@ export default function SettingsHubPage() {
 
           {/* ── E-2 — Your Church ───────────────────────────────────────── */}
           <Section title="Your church">
+            {/* Setup workspace — Services, Ministries, Locations in one tabbed
+                window so you can toggle between them without leaving the page. */}
+            <HubRow
+              href="/settings/setup"
+              label="Setup"
+              meta="Services, ministries, and locations in one place"
+              writable={write}
+              loading={false}
+            />
             {/* E-3 — Services (when & where you gather; ministry composition per service) */}
             <HubRow
               href="/settings/services"

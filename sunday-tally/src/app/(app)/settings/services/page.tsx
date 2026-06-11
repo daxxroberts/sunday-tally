@@ -18,7 +18,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import AppLayout from '@/components/layouts/AppLayout'
+import MaybeLayout from '@/components/layouts/MaybeLayout'
 import { createClient } from '@/lib/supabase/client'
 import { Dot, Ico, accentForRole, roleLabel } from '@/app/(app)/entries/ui'
 import { getOrphanMinistries, type OrphanMinistry } from '@/lib/ministryLinks'
@@ -72,7 +72,7 @@ function canWrite(role: UserRole) {
   return role === 'owner' || role === 'admin'
 }
 
-export default function ServicesSettingsPage() {
+export function ServicesPanel({ embedded = false }: { embedded?: boolean }) {
   const supabase = useMemo(() => createClient(), [])
   const router = useRouter()
 
@@ -327,7 +327,7 @@ export default function ServicesSettingsPage() {
   }, [supabase, churchId, write, cards])
 
   return (
-    <AppLayout role={role}>
+    <MaybeLayout embedded={embedded} role={role}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap');
         .font-num{font-family:'Fira Code',ui-monospace,monospace;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
@@ -335,7 +335,8 @@ export default function ServicesSettingsPage() {
       `}</style>
 
       <div className="bg-slate-50 min-h-full" style={{ fontFamily: "'Fira Sans', ui-sans-serif, system-ui, sans-serif" }}>
-        {/* ── Zone A — header (E-10..E-12) ─────────────────────────────── */}
+        {/* ── Zone A — header (E-10..E-12). Hidden when embedded in the workspace. ── */}
+        {!embedded && (
         <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 backdrop-blur-sm">
           <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-3.5">
             <button onClick={() => router.push('/settings')} aria-label="Back to Settings"
@@ -348,6 +349,7 @@ export default function ServicesSettingsPage() {
             </div>
           </div>
         </header>
+        )}
 
         <main className="mx-auto max-w-3xl px-4 py-6">
           <p className="mb-5 px-1 text-[13px] leading-relaxed text-slate-500">
@@ -457,8 +459,12 @@ export default function ServicesSettingsPage() {
           )}
         </main>
       </div>
-    </AppLayout>
+    </MaybeLayout>
   )
+}
+
+export default function ServicesSettingsPage() {
+  return <ServicesPanel />
 }
 
 /* ─────────────────────────────────────────────────────────────────────────

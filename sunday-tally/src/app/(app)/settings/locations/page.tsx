@@ -15,7 +15,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import AppLayout from '@/components/layouts/AppLayout'
+import MaybeLayout from '@/components/layouts/MaybeLayout'
 import InlineEditField from '@/components/shared/InlineEditField'
 import { createClient } from '@/lib/supabase/client'
 import { Ico } from '@/app/(app)/entries/ui'
@@ -40,7 +40,7 @@ function slugifyCode(name: string): string {
   return name.toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_+|_+$/g, '')
 }
 
-export default function LocationsTeamPage() {
+export function LocationsPanel({ embedded = false }: { embedded?: boolean }) {
   const supabase = useMemo(() => createClient(), [])
   const router = useRouter()
 
@@ -154,7 +154,7 @@ export default function LocationsTeamPage() {
   }, [supabase, write, campuses])
 
   return (
-    <AppLayout role={role}>
+    <MaybeLayout embedded={embedded} role={role}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap');
         .font-num{font-family:'Fira Code',ui-monospace,monospace;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
@@ -162,7 +162,8 @@ export default function LocationsTeamPage() {
       `}</style>
 
       <div className="bg-slate-50 min-h-full" style={{ fontFamily: "'Fira Sans', ui-sans-serif, system-ui, sans-serif" }}>
-        {/* ── Zone A — header (E-40/E-41) ──────────────────────────────── */}
+        {/* ── Zone A — header (E-40/E-41). Hidden when embedded in the workspace. ── */}
+        {!embedded && (
         <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 backdrop-blur-sm">
           <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-3.5">
             <button onClick={() => router.push('/settings')} aria-label="Back to Settings"
@@ -175,6 +176,7 @@ export default function LocationsTeamPage() {
             </div>
           </div>
         </header>
+        )}
 
         <main className="mx-auto max-w-3xl px-4 py-6">
           {loading ? (
@@ -263,6 +265,10 @@ export default function LocationsTeamPage() {
           )}
         </main>
       </div>
-    </AppLayout>
+    </MaybeLayout>
   )
+}
+
+export default function LocationsPage() {
+  return <LocationsPanel />
 }
