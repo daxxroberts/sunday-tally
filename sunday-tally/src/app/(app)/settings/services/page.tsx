@@ -353,8 +353,8 @@ export function ServicesPanel({ embedded = false }: { embedded?: boolean }) {
 
         <main className="mx-auto max-w-3xl px-4 py-6">
           <p className="mb-5 px-1 text-[13px] leading-relaxed text-slate-500">
-            When and where you gather. Each service creates the weekly occurrences you log in Entries, and lists the ministries counted there.{' '}
-            {write ? 'Add, remove, or reorder ministries. The change applies to every future week.' : 'This is read-only for your role.'}
+            When and where you gather, and what&apos;s counted there. Each service has its own schedule (a set day and time, or weekly or monthly) that creates the occurrences you log in Entries. The ministries on each card are what gets counted there.{' '}
+            {write ? 'Add, remove, or reorder ministries. Changes apply to every future week.' : 'This is read-only for your role.'}
           </p>
 
           {/* S2 — orphan banner: counts with nowhere to render (editors+ see it) */}

@@ -64,16 +64,24 @@ export default function SetupWorkspacePage() {
   }
 
   return (
-    <AppLayout role={role}>
+    <AppLayout role={role} fillHeight>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap');
         .font-num{font-family:'Fira Code',ui-monospace,monospace;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
         @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
       `}</style>
 
-      <div className="bg-slate-50 min-h-full" style={{ fontFamily: "'Fira Sans', ui-sans-serif, system-ui, sans-serif" }}>
-        {/* ── Header + tab bar (the one header for all three panels) ──────── */}
-        <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur-sm">
+      {/* The workspace owns a viewport-bounded height (dvh minus the ~58px fixed
+          bottom nav) so it has a REAL inner scroll container. AppLayout's <main>
+          isn't height-capped (min-h-screen), so sticky-to-main fails — instead
+          the header is a frozen flex row and only the panel region scrolls.
+          fillHeight drops main's own overflow so there's no double scrollbar. */}
+      <div
+        className="flex flex-col bg-slate-50"
+        style={{ height: 'calc(100dvh - 58px)', fontFamily: "'Fira Sans', ui-sans-serif, system-ui, sans-serif" }}
+      >
+        {/* Frozen header + tabs (shrink-0 — outside the scroll region). */}
+        <header className="shrink-0 border-b border-slate-200 bg-white">
           <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3.5">
             <button
               onClick={() => router.push('/settings')}
@@ -108,10 +116,12 @@ export default function SetupWorkspacePage() {
           </div>
         </header>
 
-        {/* ── Panels — lazy-mounted, kept alive, visibility-toggled ──────── */}
-        {mounted.has('services')  && <div className={active === 'services'  ? '' : 'hidden'}><ServicesPanel  embedded /></div>}
-        {mounted.has('track')     && <div className={active === 'track'     ? '' : 'hidden'}><TrackPanel     embedded /></div>}
-        {mounted.has('locations') && <div className={active === 'locations' ? '' : 'hidden'}><LocationsPanel embedded /></div>}
+        {/* ── Scrollable panel region — lazy-mounted, kept alive, toggled ──── */}
+        <div className="min-h-0 flex-1 overflow-y-auto pb-6">
+          {mounted.has('services')  && <div className={active === 'services'  ? '' : 'hidden'}><ServicesPanel  embedded /></div>}
+          {mounted.has('track')     && <div className={active === 'track'     ? '' : 'hidden'}><TrackPanel     embedded /></div>}
+          {mounted.has('locations') && <div className={active === 'locations' ? '' : 'hidden'}><LocationsPanel embedded /></div>}
+        </div>
       </div>
     </AppLayout>
   )
