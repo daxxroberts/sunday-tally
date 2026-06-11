@@ -3,7 +3,7 @@
 // ─────────────────────────────────────────────────────────────────────────
 // T_TRACK server actions — /settings/track
 // IRIS_TTRACK_ELEMENT_MAP contract. Owner/admin re-checked server-side on
-// every mutating action. Mirrors settings/tags/actions.ts patterns.
+// every mutating action.
 //
 // C2 GUARD: addCount() queries for an existing active canonical before
 // inserting. Sets is_canonical=true ONLY when none exists for

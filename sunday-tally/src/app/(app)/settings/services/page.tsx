@@ -653,7 +653,7 @@ function ServiceCardView({ card, allTags, write, busy, showLocation, onAdd, onRe
               {available.length === 0 ? (
                 <p className="text-[12px] text-slate-400">
                   Every ministry is already on this service.{' '}
-                  <Link href="/settings/tags" className="font-semibold text-[#3D5BD4] hover:underline">Create a new ministry →</Link>
+                  <Link href="/settings/track" className="font-semibold text-[#3D5BD4] hover:underline">Create a new ministry →</Link>
                 </p>
               ) : (
                 <>
@@ -666,8 +666,8 @@ function ServiceCardView({ card, allTags, write, busy, showLocation, onAdd, onRe
                       </button>
                     ))}
                   </div>
-                  {/* E-28 create-in-place → deep-link to canonical Tags screen (N-7 MVP) */}
-                  <Link href="/settings/tags" className="mt-2 inline-block text-[12px] font-semibold text-[#3D5BD4] hover:underline">
+                  {/* E-28 create-in-place → deep-link to What we track (ministry tree) */}
+                  <Link href="/settings/track" className="mt-2 inline-block text-[12px] font-semibold text-[#3D5BD4] hover:underline">
                     Create a new ministry →
                   </Link>
                 </>
