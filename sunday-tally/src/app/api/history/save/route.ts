@@ -177,12 +177,13 @@ async function findOrCreateOccurrence(
  * value === null → delete the row (D-003 NULL ≠ 0).
  */
 async function upsertInstanceEntry(
-  supabase:  SupabaseClient,
-  churchId:  string,
-  metricId:  string,
-  occId:     string,
-  value:     number | null,
-  userId:    string,
+  supabase:   SupabaseClient,
+  churchId:   string,
+  metricId:   string,
+  occId:      string,
+  locationId: string | null,   // the occurrence's campus (NULL = church-wide)
+  value:      number | null,
+  userId:     string,
 ): Promise<string | null> {
   if (value === null) {
     const { error } = await supabase.from('metric_entries')
@@ -197,6 +198,10 @@ async function upsertInstanceEntry(
         church_id:           churchId,
         metric_id:           metricId,
         service_instance_id: occId,
+        // Denormalize the occurrence's campus so location-scoped reporting
+        // (campus-filtered giving, etc.) sees it — matches the Entries-page
+        // save. NULL for church-wide occurrences.
+        location_id:         locationId,
         period_anchor:       null,
         value,
         is_not_applicable:   false,
@@ -308,7 +313,7 @@ export async function POST(req: Request) {
       const occId = await findOrCreateOccurrence(supabase, churchId, templateUuid, locationId, dateOnly)
       if (!occId) { errors.push(`Failed to find/create occurrence for ${third} ${dateOnly}`); continue }
 
-      const err = await upsertInstanceEntry(supabase, churchId, metric.id, occId, value, user.id)
+      const err = await upsertInstanceEntry(supabase, churchId, metric.id, occId, locationId, value, user.id)
       if (err) errors.push(`metric ${columnId} (instance): ${err}`)
       else counts.instance++
       continue
