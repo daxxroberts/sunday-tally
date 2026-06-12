@@ -453,6 +453,7 @@ export function TrackPanel({ embedded = false }: { embedded?: boolean }) {
                   {write && !addingMinistry && (
                     <button
                       onClick={() => setAddingMinistry(true)}
+                      title="Add a top-level ministry or group. Top-level items get their own card on the dashboard with their own color and trend line. Use this when something should report independently — like a whole service, a campus, or giving. If it belongs inside an existing ministry, select that ministry first and use 'Add a group inside' instead."
                       className="mb-3 flex w-full items-center justify-center gap-1.5 rounded-2xl border border-dashed border-[#4F6EF7]/40 bg-[#4F6EF7]/5 px-4 py-3 text-[14px] font-semibold text-[#3D5BD4] transition-colors duration-200 hover:bg-[#4F6EF7]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/40"
                     >
                       <Ico.plus className="h-4 w-4" />

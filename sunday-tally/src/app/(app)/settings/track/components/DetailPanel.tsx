@@ -145,7 +145,7 @@ export function DetailPanel({
             {write && (
               <div className="border-t border-slate-100 px-5 py-2.5">
                 {!addingGroup ? (
-                  <button onClick={() => { setAddingGroup(true); setGRole(ministry.tag_role) }} className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-[13px] font-semibold text-[#3D5BD4] transition-colors hover:bg-slate-50">
+                  <button onClick={() => { setAddingGroup(true); setGRole(ministry.tag_role) }} title={`Add a group inside ${ministry.name}. Groups are breakdowns within a ministry — same services, same audience, just tracked separately. Their numbers roll up to ${ministry.name} on the dashboard so you see one combined total, but you enter each group's counts individually in Entries. Use this when you want the detail without a separate dashboard card.`} className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-[13px] font-semibold text-[#3D5BD4] transition-colors hover:bg-slate-50">
                     <Ico.plus className="h-4 w-4" /> Add a group inside {ministry.name}
                   </button>
                 ) : (
