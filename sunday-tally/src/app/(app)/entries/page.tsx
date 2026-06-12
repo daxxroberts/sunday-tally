@@ -14,6 +14,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import AppLayout from '@/components/layouts/AppLayout'
 import { createClient } from '@/lib/supabase/client'
+import { addDays, sundayOf } from '@/lib/date-window'
 import { readChurchPrefs, saveChurchPrefs } from '@/lib/churchPrefs'
 import type { Church, UserRole } from '@/types'
 import { Dot, Field, Ico, accentForRole, fmt, roleLabel, type Stat } from './ui'
@@ -61,8 +62,6 @@ function toDateStr(d: Date) {
   const day = String(d.getDate()).padStart(2, '0')
   return `${y}-${m}-${day}`
 }
-function addDays(d: Date, n: number) { const x = new Date(d); x.setDate(x.getDate() + n); return x }
-function sundayOf(d: Date) { return addDays(d, -d.getDay()) } // getDay(): 0 = Sunday
 function fromDateStr(s: string) { return new Date(s + 'T12:00:00') }
 function fmtWeek(d: Date) { return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) }
 function fmtTabLabel(inst: Instance) {

@@ -8,6 +8,11 @@
 
 import { createClient } from '@/lib/supabase/client'
 import { computeRollups } from '@/lib/rollups'
+import { weekStartOf, shiftDays, weekOf } from '@/lib/date-window'
+
+// Re-export so existing consumers (dashboardDrilldown, rollups) keep importing
+// the week math from here; the implementations live in lib/date-window.ts.
+export { weekStartOf, shiftDays, weekOf }
 
 // ─── Shape helpers ────────────────────────────────────────────────────────────
 
@@ -181,20 +186,6 @@ export interface Boundaries {
   lastYearSameWeek: string
 }
 
-export function weekStartOf(d: Date): string {
-  const day = d.getDay()
-  const sunday = new Date(d)
-  sunday.setDate(d.getDate() - day)
-  sunday.setHours(0, 0, 0, 0)
-  return sunday.toISOString().split('T')[0]
-}
-
-export function shiftDays(dateStr: string, days: number): string {
-  const d = new Date(dateStr + 'T12:00:00')
-  d.setDate(d.getDate() + days)
-  return d.toISOString().split('T')[0]
-}
-
 export function buildBoundaries(now: Date): Boundaries {
   const today = now.toISOString().split('T')[0]
   const thisWeekStart = weekStartOf(now)
@@ -206,10 +197,6 @@ export function buildBoundaries(now: Date): Boundaries {
   priorYear.setFullYear(priorYear.getFullYear() - 1)
   const lastYearSameWeek = weekStartOf(priorYear)
   return { today, thisWeekStart, lastWeekEnd, fourWksAgoStart, yearStart, lastYearStart, lastYearSameWeek }
-}
-
-export function weekOf(dateStr: string): string {
-  return weekStartOf(new Date(dateStr + 'T12:00:00'))
 }
 
 // ─── Core aggregation (UNCHANGED window/delta/YTD math — D-053, D-055) ─────────
