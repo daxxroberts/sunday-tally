@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>What We Track — Visual Setup Guide · SundayTally</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --gold:    #C98A00;
+      --gold-bg: #FFF8E6;
+      --blue:    #4F6EF7;
+      --blue-dk: #3D5BD4;
+      --blue-bg: #EEF1FE;
+      --slate-9: #0F172A;
+      --slate-7: #334155;
+      --slate-5: #64748B;
+      --slate-3: #CBD5E1;
+      --slate-1: #F8FAFC;
+      --white:   #FFFFFF;
+      --radius:  12px;
+      --shadow:  0 1px 3px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.06);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--slate-1);
+      color: var(--slate-7);
+      line-height: 1.65;
+      font-size: 15px;
+    }
+
+    /* ── Top bar ── */
+    header {
+      position: sticky; top: 0; z-index: 100;
+      background: var(--white);
+      border-bottom: 1px solid var(--slate-3);
+      padding: 0 24px;
+      display: flex; align-items: center; gap: 12px;
+      height: 56px;
+    }
+    .logo {
+      font-size: 15px; font-weight: 700; color: var(--gold);
+      letter-spacing: -.3px; text-decoration: none;
+    }
+    .logo span { color: var(--slate-5); font-weight: 400; }
+    .badge {
+      font-size: 11px; font-weight: 600; letter-spacing: .5px;
+      text-transform: uppercase; padding: 2px 8px;
+      background: var(--gold-bg); color: var(--gold);
+      border-radius: 20px; border: 1px solid #F0D080;
+    }
+
+    /* ── Layout ── */
+    .layout {
+      display: grid;
+      grid-template-columns: 240px 1fr;
+      gap: 0;
+      max-width: 1200px;
+      margin: 0 auto;
+      min-height: calc(100vh - 56px);
+    }
+
+    /* ── Sidebar ── */
+    aside {
+      position: sticky; top: 56px; height: calc(100vh - 56px);
+      overflow-y: auto; padding: 32px 20px;
+      border-right: 1px solid var(--slate-3);
+      background: var(--white);
+    }
+    .toc-label {
+      font-size: 10px; font-weight: 700; letter-spacing: 1px;
+      text-transform: uppercase; color: var(--slate-5);
+      margin-bottom: 12px; padding-left: 8px;
+    }
+    .toc-list { list-style: none; }
+    .toc-list li + li { margin-top: 2px; }
+    .toc-list a {
+      display: block; padding: 5px 8px;
+      font-size: 13px; color: var(--slate-5);
+      text-decoration: none; border-radius: 6px;
+      transition: background .12s, color .12s;
+      line-height: 1.4;
+    }
+    .toc-list a:hover { background: var(--blue-bg); color: var(--blue-dk); }
+    .toc-list a.active { background: var(--blue-bg); color: var(--blue-dk); font-weight: 600; }
+
+    /* ── Main content ── */
+    main {
+      padding: 48px 56px 80px;
+      max-width: 860px;
+    }
+
+    .page-header { margin-bottom: 48px; }
+    .page-header h1 {
+      font-size: 28px; font-weight: 800; color: var(--slate-9);
+      letter-spacing: -.5px; line-height: 1.25;
+      margin-bottom: 10px;
+    }
+    .page-header p {
+      font-size: 15px; color: var(--slate-5); max-width: 560px;
+    }
+
+    /* ── Sections ── */
+    .section { margin-bottom: 64px; scroll-margin-top: 80px; }
+
+    .section h2 {
+      font-size: 19px; font-weight: 700; color: var(--slate-9);
+      letter-spacing: -.3px; margin-bottom: 14px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--slate-3);
+    }
+
+    .section p { margin-bottom: 14px; color: var(--slate-7); }
+    .section p:last-of-type { margin-bottom: 0; }
+
+    strong { color: var(--slate-9); }
+
+    /* ── Screenshot frame ── */
+    .screenshot-wrap {
+      margin: 28px 0;
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--slate-3);
+      background: var(--white);
+    }
+    .screenshot-wrap img {
+      display: block; width: 100%; height: auto;
+    }
+    .screenshot-caption {
+      font-size: 12px; color: var(--slate-5);
+      padding: 9px 14px;
+      border-top: 1px solid var(--slate-3);
+      background: var(--slate-1);
+    }
+
+    /* ── Callout box ── */
+    .callout {
+      background: var(--blue-bg); border-left: 3px solid var(--blue);
+      border-radius: 0 var(--radius) var(--radius) 0;
+      padding: 14px 18px; margin: 20px 0;
+      font-size: 14px; color: var(--slate-7);
+    }
+    .callout strong { color: var(--blue-dk); }
+
+    /* ── Quick answers ── */
+    .qa-list { list-style: none; margin-top: 16px; }
+    .qa-item { padding: 16px 0; border-bottom: 1px solid var(--slate-3); }
+    .qa-item:last-child { border-bottom: none; }
+    .qa-q {
+      font-weight: 600; color: var(--slate-9);
+      margin-bottom: 6px; font-size: 14px;
+    }
+    .qa-a { font-size: 14px; color: var(--slate-7); }
+
+    /* ── Responsive ── */
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+      aside { display: none; }
+      main { padding: 32px 24px 60px; }
+    }
+    @media (max-width: 540px) {
+      main { padding: 24px 16px 48px; }
+      .page-header h1 { font-size: 22px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <a class="logo" href="#">SundayTally <span>/ Help</span></a>
+  <span class="badge">What We Track</span>
+</header>
+
+<div class="layout">
+
+  <aside>
+    <p class="toc-label">On this page</p>
+    <ul class="toc-list">
+      <li><a href="#overview">The ministry tree</a></li>
+      <li><a href="#top-vs-group">Ministries vs. groups</a></li>
+      <li><a href="#add-ministry">Adding a ministry</a></li>
+      <li><a href="#detail-panel">The detail panel</a></li>
+      <li><a href="#add-group">Adding a group inside</a></li>
+      <li><a href="#add-count">Adding a count</a></li>
+      <li><a href="#count-form">The count form</a></li>
+      <li><a href="#entry-rollup">Entry vs. Roll-up</a></li>
+      <li><a href="#rollup-op">Roll-up operation</a></li>
+      <li><a href="#giving">Giving as top-level</a></li>
+      <li><a href="#churchwide">Weekly · church-wide</a></li>
+      <li><a href="#qa">Quick answers</a></li>
+    </ul>
+  </aside>
+
+  <main>
+
+    <div class="page-header">
+      <h1>What We Track — Visual Setup Guide</h1>
+      <p>Step-by-step guide with screenshots. Everything you need to set up your ministry tree, add counts, and understand how the dashboard gets its numbers.</p>
+    </div>
+
+    <!-- 01 -->
+    <section class="section" id="overview">
+      <h2>The ministry tree</h2>
+      <p>The left side of the screen shows every ministry your church tracks. Each row is either a <strong>top-level ministry</strong> (gets its own dashboard card) or a <strong>group</strong> nested inside one (rolls up to the parent card). The right side shows the detail — counts, groups, and settings — once you select a ministry.</p>
+      <p>Nothing is selected here. This is what you see when you first open the screen.</p>
+      <div class="screenshot-wrap">
+        <img src="screenshots/01-overview.png" alt="Full ministry tree with nothing selected" />
+        <div class="screenshot-caption">The What we track tab — full tree, no ministry selected yet.</div>
+      </div>
+    </section>
+
+    <!-- 02 -->
+    <section class="section" id="top-vs-group">
+      <h2>Ministries vs. groups — what's the difference?</h2>
+      <p><strong>Top-level means its own dashboard card.</strong> Anything sitting at the top of the tree gets its own color, its own chart, its own trend line. Think of a whole service — Experience, LifeKids, Switch — or something church-wide like Giving.</p>
+      <p><strong>Groups are breakdowns inside a ministry.</strong> They appear indented in the tree. You count them separately in Entries, but the dashboard adds them all up under the parent. Tabors and Roberts, for example, are both groups inside Life Groups.</p>
+      <div class="callout"><strong>The rule:</strong> If it deserves its own dashboard card, make it top-level. If it's a breakdown of something that already exists, nest it as a group.</div>
+    </section>
+
+    <!-- 02 screenshot -->
+    <section class="section" id="add-ministry">
+      <h2>Adding a new ministry</h2>
+      <p>The <strong>Add ministry or group</strong> button lives at the top of the left panel. Click it to create something brand new at the top level — its own dashboard card, its own color, its own trend line.</p>
+      <p>If you want to add a breakdown <em>inside</em> an existing ministry instead, click that ministry first and use <strong>Add a group inside</strong> at the bottom of its detail panel. Don't use this button for that — it will create a new card when you don't want one.</p>
+      <div class="screenshot-wrap">
+        <img src="screenshots/02-add-ministry-button.png" alt="Add ministry or group button at top of tree panel" />
+        <div class="screenshot-caption">The "Add ministry or group" button creates a brand-new dashboard card.</div>
+      </div>
+    </section>
+
+    <!-- 03 -->
+    <section class="section" id="detail-panel">
+      <h2>Selecting a ministry — the detail panel</h2>
+      <p>Click any ministry in the tree and the right panel opens its detail. Here you can see the <strong>Ministry</strong> label (top-level) or <strong>Group</strong> label (nested), the name, the Role badge, the color swatch, all groups nested inside it, and all the counts set up for it.</p>
+      <p>This is Experience selected — showing its groups, the Attendance section, and the Volunteers section below.</p>
+      <div class="screenshot-wrap">
+        <img src="screenshots/03-experience-selected.png" alt="Experience ministry selected — detail panel open on the right" />
+        <div class="screenshot-caption">Clicking a ministry opens its full detail on the right. The label "Ministry" confirms it's top-level.</div>
+      </div>
+    </section>
+
+    <!-- 04 -->
+    <section class="section" id="add-group">
+      <h2>Adding a group inside a ministry</h2>
+      <p>Scroll to the bottom of the detail panel and you'll find <strong>Add a group inside [Ministry Name]</strong>. Use this when you want to track something separately in Entries — like two campus locations or two service times — but you don't need a separate dashboard card.</p>
+      <p>The group's numbers will roll up to the parent ministry on the dashboard automatically.</p>
+      <div class="screenshot-wrap">
+        <img src="screenshots/04-add-group-button.png" alt="Add a group inside button at bottom of Experience detail panel" />
+        <div class="screenshot-caption">"Add a group inside Experience" — creates a breakdown, not a new dashboard card.</div>
+      </div>
+    </section>
+
+    <!-- 05 -->
+    <section class="section" id="add-count">
+      <h2>Adding a count</h2>
+      <p>Every number you track lives in a count. Below the groups section you'll find <strong>Add a count</strong> — this is where you add something new to track inside the selected ministry.</p>
+      <div class="callout"><strong>Important:</strong> A count you add here lives inside the selected ministry. It gets entered every time that ministry's services run, and shows on that ministry's dashboard card — not as a separate card. If you want a brand-new dashboard card, use "Add ministry or group" at the top instead.</div>
+      <div class="screenshot-wrap">
+        <img src="screenshots/05-add-count-button.png" alt="Add a count button at the bottom of the detail panel" />
+        <div class="screenshot-caption">The "Add a count" button sits at the bottom of the detail panel, below all the count sections.</div>
+      </div>
+    </section>
+
+    <!-- 06 -->
+    <section class="section" id="count-form">
+      <h2>The count form — pick your kind</h2>
+      <p>Click <strong>Add a count</strong> and the form expands. Pick the <strong>kind</strong> first — Attendance, Volunteers, Stats, or Giving. You can't change the kind after you save it, so pick carefully up front.</p>
+      <ul style="margin: 12px 0 14px 20px; color: var(--slate-7); font-size: 15px; line-height: 2;">
+        <li><strong>Attendance</strong> — people in the room</li>
+        <li><strong>Volunteers</strong> — people serving; add each role separately</li>
+        <li><strong>Stats</strong> — any number that's not a headcount (baptisms, salvations, first-time guests)</li>
+        <li><strong>Giving</strong> — dollar amounts; add one count per collection method</li>
+      </ul>
+      <p>Then give the count a name and save.</p>
+      <div class="screenshot-wrap">
+        <img src="screenshots/06-add-count-form.png" alt="Add a count form expanded — showing kind dropdown and name input" />
+        <div class="screenshot-caption">The expanded form shows the kind dropdown, the explanatory subheading, and the name input.</div>
+      </div>
+    </section>
+
+    <!-- 07 -->
+    <section class="section" id="entry-rollup">
+      <h2>Entry vs. Roll-up</h2>
+      <p>Every count you create is one or the other.</p>
+      <p><strong>Entry</strong> means you type it. Every week you open Entries and put a number in. Use this for every real number you count — attendance per service, each volunteer role, each giving source.</p>
+      <p><strong>Roll-up</strong> means the math is done for you. You set it to combine other entries — adding them, averaging them, or taking the highest — and you never type it directly. Use this for calculated totals, like a "Total Weekend Attendance" that adds two service times automatically.</p>
+      <p>The toggle appears on each count row. The default is Entry.</p>
+      <div class="screenshot-wrap">
+        <img src="screenshots/07-entry-rollup-toggle.png" alt="Entry and Roll-up sub-entries toggle buttons on a count row" />
+        <div class="screenshot-caption">Every count row shows the Entry / Roll-up toggle. Blue = selected mode.</div>
+      </div>
+    </section>
+
+    <!-- 08 -->
+    <section class="section" id="rollup-op">
+      <h2>Roll-up — choosing how to combine</h2>
+      <p>When you switch a count to <strong>Roll-up sub-entries</strong>, a second line appears where you choose how to combine the numbers: <strong>Sum</strong>, <strong>Average</strong>, or <strong>Max</strong>.</p>
+      <div class="callout"><strong>Don't do both.</strong> If you're entering a number manually (Entry), don't also set up a Roll-up for it. If the Roll-up is calculating it, don't type it manually too. Pick one and let the other go.</div>
+      <div class="screenshot-wrap">
+        <img src="screenshots/08-rollup-expanded.png" alt="Roll-up mode active — showing the operation dropdown" />
+        <div class="screenshot-caption">With Roll-up active, a dropdown lets you choose how the numbers combine — sum, average, or max.</div>
+      </div>
+    </section>
+
+    <!-- 09 -->
+    <section class="section" id="giving">
+      <h2>Giving — why it's its own top-level ministry</h2>
+      <p>Giving almost always needs to be top-level. Here's why: if Giving lives inside Experience, the system expects you to enter giving amounts once for the 9am service and again for the 11am service. That's not how giving works — you have one total for the weekend.</p>
+      <p>The test: <em>Would I enter this once per service, or once for the whole week?</em> Giving is once for the whole week, so it gets its own home at the top level.</p>
+      <div class="screenshot-wrap">
+        <img src="screenshots/09-giving-selected.png" alt="Giving node selected — shown as a top-level ministry" />
+        <div class="screenshot-caption">Giving as its own top-level ministry — the "Ministry" label confirms it has its own dashboard card.</div>
+      </div>
+    </section>
+
+    <!-- 10 -->
+    <section class="section" id="churchwide">
+      <h2>The Weekly · church-wide badge</h2>
+      <p>Some counts show a <strong>Weekly · church-wide</strong> badge. This means the count is entered once per week for the whole church — not once per service, and not per campus. It appears at every campus automatically.</p>
+      <p>Giving is the most common example. If you see this badge on a count, you enter one number per week total, regardless of how many services ran that week.</p>
+      <div class="screenshot-wrap">
+        <img src="screenshots/10-weekly-churchwide-badge.png" alt="Weekly · church-wide badge on a Giving count row" />
+        <div class="screenshot-caption">The blue "Weekly · church-wide" badge signals a once-per-week, whole-church count.</div>
+      </div>
+    </section>
+
+    <!-- QA -->
+    <section class="section" id="qa">
+      <h2>Quick answers</h2>
+      <ul class="qa-list">
+        <li class="qa-item">
+          <div class="qa-q">Should I make this a ministry or a group?</div>
+          <div class="qa-a">If it needs its own dashboard card — top-level. If it's a breakdown of something that already exists — nest it as a group.</div>
+        </li>
+        <li class="qa-item">
+          <div class="qa-q">I have two giving sources. Do I need two top-level nodes?</div>
+          <div class="qa-a">No. Add two counts under one Giving node. The dashboard totals them automatically.</div>
+        </li>
+        <li class="qa-item">
+          <div class="qa-q">Do I need a "Total Volunteers" count?</div>
+          <div class="qa-a">No. Add the individual roles and the system adds them up. A manual total double-counts everyone.</div>
+        </li>
+        <li class="qa-item">
+          <div class="qa-q">Do I need a "Total Giving" count?</div>
+          <div class="qa-a">Same reason — no. Add each collection method as its own count and the dashboard totals them.</div>
+        </li>
+        <li class="qa-item">
+          <div class="qa-q">I run two services and want one combined attendance number.</div>
+          <div class="qa-a">Add an Entry count per service. Add a Roll-up count on the parent ministry. The Roll-up does the math.</div>
+        </li>
+        <li class="qa-item">
+          <div class="qa-q">The service didn't meet this week. What do I enter?</div>
+          <div class="qa-a">Nothing. Leave it blank. Blank means the service didn't run. Zero means it ran and nobody came — zeros pull your averages down as though you held services with empty rooms.</div>
+        </li>
+        <li class="qa-item">
+          <div class="qa-q">I moved ministries around and the colors changed.</div>
+          <div class="qa-a">Order drives color. The first ministry gets color 1, the second gets color 2, and so on. Set your order before you start counting, or use the color picker to pin a custom color that sticks no matter where it sits.</div>
+        </li>
+        <li class="qa-item">
+          <div class="qa-q">Can I put Giving under Experience?</div>
+          <div class="qa-a">If you want Giving to show on the Experience dashboard card — entered per service — click Experience and use "Add a count" to add a Giving count inside it. If you want Giving to have its own dashboard card and its own weekly schedule, it needs to be its own top-level node. The tree shape is the dashboard shape.</div>
+        </li>
+      </ul>
+    </section>
+
+  </main>
+</div>
+
+<script>
+  // Highlight the active TOC link as you scroll
+  const sections = document.querySelectorAll('.section[id]');
+  const links = document.querySelectorAll('.toc-list a');
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        links.forEach(l => l.classList.remove('active'));
+        const active = document.querySelector(`.toc-list a[href="#${e.target.id}"]`);
+        if (active) active.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-20% 0px -70% 0px' });
+  sections.forEach(s => obs.observe(s));
+</script>
+
+</body>
+</html>
