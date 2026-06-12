@@ -64,10 +64,12 @@ export function DetailPanel({
 
   return (
     <div className="space-y-4">
-      {/* Header */}
+      {/* Header + Groups — one unified card */}
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex items-center gap-3 border-b border-slate-100 px-5 py-4">
-          <span className="h-8 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: accent }} aria-hidden />
+
+        {/* Identity row */}
+        <div className="flex items-start gap-3 px-5 py-4">
+          <span className="mt-1 h-7 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: accent }} aria-hidden />
           <div className="flex-1 min-w-0">
             <span
               className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 cursor-help"
@@ -82,102 +84,90 @@ export function DetailPanel({
             ) : (
               <h2 className="text-[17px] font-bold text-slate-900">{ministry.name}</h2>
             )}
-            <p className="mt-0.5 text-[12px] text-slate-400">Everything below belongs to {ministry.name}.</p>
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-4 px-5 py-3">
-          <div className="flex items-center gap-2">
-            <label className="text-[12px] font-semibold text-slate-400">Role</label>
-            {write ? (
-              <select value={ministry.tag_role} onChange={e => onRoleChange(e.target.value as TagRole)} aria-label="Ministry role" className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[13px] text-slate-700 outline-none focus:border-[#4F6EF7] focus:ring-1 focus:ring-[#4F6EF7]/30">
-                {ROLE_OPTIONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
-              </select>
-            ) : (
-              <span className={`rounded-md px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide ${rolePillClasses()}`}>{roleLabel(ministry.tag_role)}</span>
-            )}
-          </div>
-          {/* Ministry color (0040) — top level only; groups inherit it everywhere */}
-          {ministry.parent_tag_id === null && (
-            <div className="flex items-center gap-2">
-              <label className="text-[12px] font-semibold text-slate-400" htmlFor="ministry-color">Color</label>
+            {/* Role + Color inline — compact metadata beneath the name */}
+            <div className="mt-1.5 flex flex-wrap items-center gap-3">
               {write ? (
-                <>
-                  <input
-                    id="ministry-color"
-                    type="color"
-                    value={ministry.color ?? (color?.strong ?? '#4F6EF7')}
-                    onChange={e => void onColorChange(e.target.value)}
-                    title="Pick this ministry's color. It shows everywhere this ministry appears."
-                    className="h-7 w-9 cursor-pointer rounded-md border border-slate-200 bg-white p-0.5"
-                  />
-                  {ministry.color && (
-                    <button
-                      onClick={() => void onColorChange(null)}
-                      className="rounded text-[11px] font-medium text-slate-400 hover:text-slate-600"
-                      title="Back to the automatic palette"
-                    >
-                      Reset
-                    </button>
-                  )}
-                </>
+                <select value={ministry.tag_role} onChange={e => onRoleChange(e.target.value as TagRole)} aria-label="Ministry role" className="rounded-md border border-slate-200 bg-white px-2 py-0.5 text-[12px] text-slate-600 outline-none focus:border-[#4F6EF7] focus:ring-1 focus:ring-[#4F6EF7]/30">
+                  {ROLE_OPTIONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+                </select>
               ) : (
-                <span className="h-5 w-5 rounded-md border border-slate-200" style={{ backgroundColor: ministry.color ?? color?.strong ?? '#cbd5e1' }} aria-hidden />
+                <span className={`rounded-md px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide ${rolePillClasses()}`}>{roleLabel(ministry.tag_role)}</span>
+              )}
+              {ministry.parent_tag_id === null && (
+                write ? (
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      id="ministry-color"
+                      type="color"
+                      value={ministry.color ?? (color?.strong ?? '#4F6EF7')}
+                      onChange={e => void onColorChange(e.target.value)}
+                      title="Pick this ministry's color. It shows everywhere this ministry appears."
+                      className="h-6 w-7 cursor-pointer rounded border border-slate-200 bg-white p-0.5"
+                    />
+                    {ministry.color && (
+                      <button onClick={() => void onColorChange(null)} className="text-[11px] text-slate-400 hover:text-slate-600" title="Back to the automatic palette">Reset</button>
+                    )}
+                  </div>
+                ) : (
+                  <span className="h-4 w-4 rounded border border-slate-200" style={{ backgroundColor: ministry.color ?? color?.strong ?? '#cbd5e1' }} aria-hidden />
+                )
               )}
             </div>
-          )}
+          </div>
+          {/* Remove — small, top-right, unobtrusive */}
           {write && (
-            <button onClick={onDeactivate} className="ml-auto rounded-lg border border-[#F59E0B]/30 bg-[#F59E0B]/5 px-3 py-1.5 text-[12px] font-semibold text-[#B45309] transition-colors hover:bg-[#F59E0B]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F59E0B]/40">
-              Remove ministry
+            <button onClick={onDeactivate} className="shrink-0 rounded-md px-2.5 py-1 text-[12px] font-medium text-slate-400 transition-colors hover:bg-[#F59E0B]/8 hover:text-[#B45309] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F59E0B]/40">
+              Remove
             </button>
           )}
         </div>
-      </div>
 
-      {/* Groups inside this node */}
-      {(childNodes.length > 0 || write) && (
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="flex items-center justify-between gap-3 border-b border-slate-100 bg-slate-50/60 px-5 py-3">
-            <h3 className="text-[13px] font-bold uppercase tracking-wider text-slate-600">Groups inside {ministry.name}</h3>
-            <span className="font-num text-[12px] font-semibold text-slate-400">{childNodes.length}</span>
-          </div>
-          {childNodes.length > 0 && (
-            <ul className="divide-y divide-slate-50">
-              {childNodes.map(c => (
-                <li key={c.id}>
-                  <button onClick={() => onSelectChild(c.id)} className="flex w-full items-center gap-2 px-5 py-2.5 text-left transition-colors hover:bg-slate-50">
-                    <Ico.chevron className="h-3.5 w-3.5 -rotate-90 text-slate-300" />
-                    <span className="text-[14px] font-medium text-slate-700">{c.name}</span>
-                    <span className={`rounded-md px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide ${rolePillClasses()}`}>{roleLabel(c.tag_role)}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-          {write && (
-            <div className="border-t border-slate-100 px-5 py-3">
-              {!addingGroup ? (
-                <button onClick={() => { setAddingGroup(true); setGRole(ministry.tag_role) }} className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-[13px] font-semibold text-[#3D5BD4] transition-colors hover:bg-slate-50">
-                  <Ico.plus className="h-4 w-4" /> Add a group inside {ministry.name}
-                </button>
-              ) : (
-                <div className="flex flex-wrap items-center gap-2">
-                  <input
-                    type="text" value={gName} onChange={e => setGName(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter' && gName.trim()) { onAddGroupHere(gName, gRole); setGName(''); setAddingGroup(false) } if (e.key === 'Escape') { setAddingGroup(false); setGName('') } }}
-                    placeholder="Group name (e.g. Tabors)" autoFocus
-                    className="flex-1 min-w-[160px] rounded-lg border border-slate-200 px-3 py-1.5 text-[13px] text-slate-900 placeholder-slate-400 outline-none focus:border-[#4F6EF7] focus:ring-1 focus:ring-[#4F6EF7]/30"
-                  />
-                  <select value={gRole} onChange={e => setGRole(e.target.value as TagRole)} aria-label="Group role" className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[13px] text-slate-700 outline-none focus:border-[#4F6EF7]">
-                    {ROLE_OPTIONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
-                  </select>
-                  <button onClick={() => { if (gName.trim()) { onAddGroupHere(gName, gRole); setGName(''); setAddingGroup(false) } }} disabled={!gName.trim()} className="rounded-lg bg-[#4F6EF7] px-3 py-1.5 text-[13px] font-semibold text-white transition-colors hover:bg-[#3D5BD4] disabled:opacity-40">Add</button>
-                  <button onClick={() => { setAddingGroup(false); setGName('') }} className="rounded-lg px-2 py-1.5 text-[13px] text-slate-400 transition-colors hover:text-slate-700">Cancel</button>
-                </div>
-              )}
+        {/* Groups inside this node — merged into same card */}
+        {(childNodes.length > 0 || write) && (
+          <>
+            <div className="flex items-center justify-between gap-3 border-t border-slate-100 bg-slate-50/50 px-5 py-2.5">
+              <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Groups inside {ministry.name}</h3>
+              <span className="font-num text-[11px] font-semibold text-slate-400">{childNodes.length}</span>
             </div>
-          )}
-        </div>
-      )}
+            {childNodes.length > 0 && (
+              <ul className="divide-y divide-slate-50">
+                {childNodes.map(c => (
+                  <li key={c.id}>
+                    <button onClick={() => onSelectChild(c.id)} className="flex w-full items-center gap-2 px-5 py-2.5 text-left transition-colors hover:bg-slate-50">
+                      <Ico.chevron className="h-3.5 w-3.5 -rotate-90 text-slate-300" />
+                      <span className="text-[14px] font-medium text-slate-700">{c.name}</span>
+                      <span className={`rounded-md px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide ${rolePillClasses()}`}>{roleLabel(c.tag_role)}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {write && (
+              <div className="border-t border-slate-100 px-5 py-2.5">
+                {!addingGroup ? (
+                  <button onClick={() => { setAddingGroup(true); setGRole(ministry.tag_role) }} className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-[13px] font-semibold text-[#3D5BD4] transition-colors hover:bg-slate-50">
+                    <Ico.plus className="h-4 w-4" /> Add a group inside {ministry.name}
+                  </button>
+                ) : (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <input
+                      type="text" value={gName} onChange={e => setGName(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter' && gName.trim()) { onAddGroupHere(gName, gRole); setGName(''); setAddingGroup(false) } if (e.key === 'Escape') { setAddingGroup(false); setGName('') } }}
+                      placeholder="Group name (e.g. Tabors)" autoFocus
+                      className="flex-1 min-w-[160px] rounded-lg border border-slate-200 px-3 py-1.5 text-[13px] text-slate-900 placeholder-slate-400 outline-none focus:border-[#4F6EF7] focus:ring-1 focus:ring-[#4F6EF7]/30"
+                    />
+                    <select value={gRole} onChange={e => setGRole(e.target.value as TagRole)} aria-label="Group role" className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[13px] text-slate-700 outline-none focus:border-[#4F6EF7]">
+                      {ROLE_OPTIONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+                    </select>
+                    <button onClick={() => { if (gName.trim()) { onAddGroupHere(gName, gRole); setGName(''); setAddingGroup(false) } }} disabled={!gName.trim()} className="rounded-lg bg-[#4F6EF7] px-3 py-1.5 text-[13px] font-semibold text-white transition-colors hover:bg-[#3D5BD4] disabled:opacity-40">Add</button>
+                    <button onClick={() => { setAddingGroup(false); setGName('') }} className="rounded-lg px-2 py-1.5 text-[13px] text-slate-400 transition-colors hover:text-slate-700">Cancel</button>
+                  </div>
+                )}
+              </div>
+            )}
+          </>
+        )}
+      </div>
 
       {/* Metric Kind sections — only Kinds that have ≥1 metric here.
           System kinds first (Attendance, Volunteers, Stats, Giving), then ANY
