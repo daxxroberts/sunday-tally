@@ -10,6 +10,64 @@ import { useEffect, useState } from 'react'
 export type Stat = 'complete' | 'needs' | 'empty'
 export type Saved = 'idle' | 'saving' | 'saved' | 'error'
 
+/* ── domain types (shared by page + components) ──────────────────────────── */
+export interface Metric {
+  id: string
+  name: string
+  code: string
+  scope: 'instance' | 'period'
+  is_canonical: boolean
+  cadence: 'day' | 'week' | 'month' | null
+  ministry_tag_id: string | null
+  reporting_tag_code: string | null
+}
+export interface Ministry {
+  tag_id: string
+  name: string
+  tag_role: string | null
+  sort_order: number
+  metrics: Metric[]      // canonical instance metrics for this ministry
+}
+export interface Instance {
+  id: string
+  service_date: string
+  template_id: string
+  template_name: string
+  start_datetime: string | null
+  ministries: Ministry[]
+  /** Template has location_id NULL (0036) — one shared occurrence for the whole
+   *  church, shown at every campus after a "Church-wide" divider (EN1). */
+  church_wide: boolean
+}
+// entries keyed by `${metric_id}|${service_instance_id}` (instance) or `${metric_id}|${period_anchor}` (period)
+export type EntryMap = Record<string, { value: number | null; is_not_applicable: boolean }>
+
+export interface GridPrefs { excludedTotalMinistries?: string[] }
+
+/* ── date helper (client-side, browser-local is fine per task note) ──────── */
+export function toDateStr(d: Date) {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+/* ── completion (N-6) ──────────────────────────────────────────────────── */
+export function ministryStatus(m: Ministry, instId: string, entries: EntryMap): Stat {
+  // completion is measured against REQUIRED (canonical) metrics only — non-canonical
+  // metrics still render for entry but don't gate "complete"
+  const canon = m.metrics.filter(x => x.is_canonical)
+  if (canon.length === 0) return 'complete'
+  let done = 0
+  for (const metric of canon) {
+    const e = entries[`${metric.id}|${instId}`]
+    if (e && (e.is_not_applicable || e.value !== null)) done++
+  }
+  if (done === 0) return 'empty'
+  if (done === canon.length) return 'complete'
+  return 'needs'
+}
+
 export const fmt = (n: number) => (Number.isFinite(n) ? n.toLocaleString('en-US') : '0')
 
 /* ── inline SVG icons (Lucide-style) ───────────────────────────────────── */
