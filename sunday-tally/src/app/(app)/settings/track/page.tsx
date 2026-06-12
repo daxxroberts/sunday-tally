@@ -573,5 +573,14 @@ export function TrackPanel({ embedded = false }: { embedded?: boolean }) {
 }
 
 export default function TrackPage() {
-  return <TrackPanel />
+  // /settings/track is retired — access goes through /settings/setup?tab=track.
+  // This redirect preserves ?fix= and ?select= deep-link params.
+  if (typeof window !== 'undefined') {
+    const params = new URLSearchParams(window.location.search)
+    const qs = new URLSearchParams({ tab: 'track' })
+    if (params.get('fix')) qs.set('fix', params.get('fix')!)
+    if (params.get('select')) qs.set('select', params.get('select')!)
+    window.location.replace(`/settings/setup?${qs}`)
+  }
+  return null
 }

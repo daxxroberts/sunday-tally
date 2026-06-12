@@ -369,7 +369,7 @@ export function ServicesPanel({ embedded = false }: { embedded?: boolean }) {
                 {orphans.length > 1 && `(${orphans.map(o => o.name).join(', ')}) `}Their counts won&apos;t appear in Entries.
               </span>
               <Link
-                href={`/settings/track?fix=${orphans[0].tag_id}`}
+                href={`/settings/setup?tab=track&fix=${orphans[0].tag_id}`}
                 className="ml-auto shrink-0 rounded-lg border border-[#F59E0B]/40 bg-white px-2.5 py-1 text-[12px] font-semibold text-[#B45309] transition-colors hover:bg-[#F59E0B]/10"
               >
                 Fix →
@@ -589,7 +589,7 @@ function ServiceCardView({ card, allTags, write, busy, showLocation, onAdd, onRe
               <span className="ml-auto flex shrink-0 items-center gap-1">
                 {m.metricCount === 0 ? (
                   <Link
-                    href={`/settings/track?select=${m.tag_id}`}
+                    href={`/settings/setup?tab=track&select=${m.tag_id}`}
                     className="rounded text-[12px] font-semibold text-red-500/90 hover:text-red-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300"
                     title={`${m.name} has no metrics yet, so there is nothing to enter`}
                   >
@@ -653,7 +653,7 @@ function ServiceCardView({ card, allTags, write, busy, showLocation, onAdd, onRe
               {available.length === 0 ? (
                 <p className="text-[12px] text-slate-400">
                   Every ministry is already on this service.{' '}
-                  <Link href="/settings/track" className="font-semibold text-[#3D5BD4] hover:underline">Create a new ministry →</Link>
+                  <Link href="/settings/setup?tab=track" className="font-semibold text-[#3D5BD4] hover:underline">Create a new ministry →</Link>
                 </p>
               ) : (
                 <>
@@ -667,7 +667,7 @@ function ServiceCardView({ card, allTags, write, busy, showLocation, onAdd, onRe
                     ))}
                   </div>
                   {/* E-28 create-in-place → deep-link to What we track (ministry tree) */}
-                  <Link href="/settings/track" className="mt-2 inline-block text-[12px] font-semibold text-[#3D5BD4] hover:underline">
+                  <Link href="/settings/setup?tab=track" className="mt-2 inline-block text-[12px] font-semibold text-[#3D5BD4] hover:underline">
                     Create a new ministry →
                   </Link>
                 </>

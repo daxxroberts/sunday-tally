@@ -34,12 +34,12 @@ export function KindSection({
   const [expanded, setExpanded] = useState(true)
 
   const kindAccent = kindCode === 'ATTENDANCE'
-    ? 'bg-[#4F6EF7]/8 border-[#4F6EF7]/20'
+    ? 'bg-[#4F6EF7]/15 border-[#4F6EF7]/30'
     : kindCode === 'VOLUNTEERS'
-    ? 'bg-[#22C55E]/8 border-[#22C55E]/20'
+    ? 'bg-[#22C55E]/15 border-[#22C55E]/30'
     : kindCode === 'GIVING'
-    ? 'bg-[#F59E0B]/8 border-[#F59E0B]/20'
-    : 'bg-[#8B5CF6]/8 border-[#8B5CF6]/20'
+    ? 'bg-[#F59E0B]/15 border-[#F59E0B]/30'
+    : 'bg-[#8B5CF6]/15 border-[#8B5CF6]/30'
 
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">

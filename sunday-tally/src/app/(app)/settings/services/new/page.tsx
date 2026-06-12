@@ -278,7 +278,7 @@ export default function NewServicePage() {
                     No tags yet.{' '}
                     <button
                       type="button"
-                      onClick={() => router.push('/settings/track')}
+                      onClick={() => router.push('/settings/setup?tab=track')}
                       className="font-semibold text-[#3D5BD4] hover:underline"
                     >
                       Create a ministry first →
@@ -331,7 +331,7 @@ export default function NewServicePage() {
                   </div>
                   <p className="mt-2 text-[11px] text-slate-400">
                     Need a new ministry?{' '}
-                    <button type="button" onClick={() => router.push('/settings/track')} className="font-semibold text-[#3D5BD4] hover:underline">
+                    <button type="button" onClick={() => router.push('/settings/setup?tab=track')} className="font-semibold text-[#3D5BD4] hover:underline">
                       Manage ministries →
                     </button>
                   </p>
