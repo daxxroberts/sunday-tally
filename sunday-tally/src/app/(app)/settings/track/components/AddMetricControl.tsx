@@ -9,10 +9,11 @@ import { Ico } from '@/app/(app)/entries/ui'
 import { SYSTEM_KINDS, KIND_LABEL, KIND_PLACEHOLDER, type KindCode, type ReportingTag } from '../types'
 
 export function AddMetricControl({
-  reportingTags, onAdd,
+  reportingTags, onAdd, ministryName,
 }: {
   reportingTags: ReportingTag[]
   onAdd: (kind: KindCode, name: string) => Promise<void>
+  ministryName?: string
 }) {
   const [open, setOpen] = useState(false)
   const [kind, setKind] = useState<KindCode>('VOLUNTEERS')
@@ -30,14 +31,23 @@ export function AddMetricControl({
 
   if (!open) {
     return (
-      <button onClick={() => setOpen(true)} className="flex w-full items-center justify-center gap-1.5 rounded-2xl border border-dashed border-[#4F6EF7]/40 bg-[#4F6EF7]/5 px-4 py-3 text-[14px] font-semibold text-[#3D5BD4] transition-colors hover:bg-[#4F6EF7]/10">
+      <button
+        onClick={() => setOpen(true)}
+        title={ministryName
+          ? `Add a number to count inside ${ministryName}. It gets entered every time ${ministryName}'s services run and shows on the ${ministryName} dashboard card — not as its own separate card. If you want a brand-new dashboard card, use "Add ministry or group" instead.`
+          : 'Add a count to this ministry. It gets entered with its services and shows on its dashboard card.'}
+        className="flex w-full items-center justify-center gap-1.5 rounded-2xl border border-dashed border-[#4F6EF7]/40 bg-[#4F6EF7]/5 px-4 py-3 text-[14px] font-semibold text-[#3D5BD4] transition-colors hover:bg-[#4F6EF7]/10"
+      >
         <Ico.plus className="h-4 w-4" /> Add a count
       </button>
     )
   }
   return (
     <div className="rounded-2xl border border-[#4F6EF7]/30 bg-white p-4 shadow-sm">
-      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Add a count</p>
+      <p className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Add a count{ministryName ? ` to ${ministryName}` : ''}</p>
+      {ministryName && (
+        <p className="mb-3 text-[12px] text-slate-400">This count lives inside {ministryName}. It gets entered with its services and shows on its dashboard card — not as a separate card.</p>
+      )}
       <div className="flex flex-wrap items-center gap-2">
         <select value={kind} onChange={e => setKind(e.target.value as KindCode)} aria-label="Kind" className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[13px] text-slate-700 outline-none focus:border-[#4F6EF7]">
           {available.map(k => <option key={k} value={k}>{KIND_LABEL[k]}</option>)}

@@ -208,6 +208,7 @@ export function DetailPanel({
         <AddMetricControl
           reportingTags={reportingTags}
           onAdd={onAddMetric}
+          ministryName={ministry.name}
         />
       )}
     </div>

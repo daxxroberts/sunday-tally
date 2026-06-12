@@ -144,7 +144,10 @@ When you want to count something separately in Entries but you don't need it to 
 No. Add two Entry counts under one Giving node. The dashboard totals them.
 
 **Can I put Giving under Experience?**
-No. Giving is once per week for the whole church. Experience counts per service. Different scope — Giving needs its own top-level node.
+Depends on what you mean. If you want Giving to show on the Experience dashboard card — entered per service, every time Experience runs — click Experience and use "Add a count" to add a Giving count inside it. That's a count that belongs to Experience. If you want Giving to have its own dashboard card with its own trend line and its own schedule, it needs to be its own top-level node. The tree shape is the dashboard shape: same card = inside the same ministry. New card = top-level.
+
+**What's the difference between "Add ministry or group" and "Add a count"?**
+"Add ministry or group" creates a new dashboard card. "Add a count" adds a number to track inside whatever ministry you're looking at — it shows on that ministry's card, not a new one. If you want to add giving inside Experience, click Experience and use "Add a count." If you want Giving to be its own card, use "Add ministry or group."
 
 **Do I need a "Total Volunteers" count?**
 No. Add the individual roles. The system adds them up.

@@ -453,7 +453,7 @@ export function TrackPanel({ embedded = false }: { embedded?: boolean }) {
                   {write && !addingMinistry && (
                     <button
                       onClick={() => setAddingMinistry(true)}
-                      title="Start something new at the top level — its own dashboard card, its own color, its own story. Good for a whole service (Experience, LifeKids), a campus, or something church-wide like Giving. If it's a breakdown of something that already exists, click that ministry first and use 'Add a group inside' instead."
+                      title="This creates a brand-new dashboard card with its own color and trend line — think a whole service (Experience, LifeKids), a campus, or something church-wide like Giving. If you want to add a number that shows on an existing card — like tracking giving inside Experience — click that ministry first and use 'Add a count' there instead."
                       className="mb-3 flex w-full items-center justify-center gap-1.5 rounded-2xl border border-dashed border-[#4F6EF7]/40 bg-[#4F6EF7]/5 px-4 py-3 text-[14px] font-semibold text-[#3D5BD4] transition-colors duration-200 hover:bg-[#4F6EF7]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/40"
                     >
                       <Ico.plus className="h-4 w-4" />
