@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { PreviewGrid } from './PreviewGrid'
 import { applyPatchOp } from '@/lib/import/apply_patch_op'
-import type { PatchOp, ProposedSetup } from '@/lib/import/stageA_validate'
+import type { PatchOp, ProposedSetup, ClarificationProposal } from '@/lib/import/stageA_validate'
 
 interface ChatMsg {
   id: string
@@ -13,14 +13,8 @@ interface ChatMsg {
   text: string
 }
 
-interface Clarification {
-  id:           string
-  question:     string
-  visual_tree?: string
-  blocking:     boolean
-  options?:     Array<{ label: string; value: string }>
-  patch_op?:    PatchOp
-}
+/** Canonical validator shape — the walkthrough normalizes raw job questions into it. */
+type Clarification = ClarificationProposal
 
 /** Per-answer record assembled into the qa_answers handed to the server. */
 interface AnswerRecord {

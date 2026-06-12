@@ -8,7 +8,8 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend,
 } from 'recharts'
 import AiExhaustedBanner from '@/components/AiExhaustedBanner'
-import type { QaAnswer, AnomalyDecision, ConfirmedMapping } from '@/lib/import/stageB'
+import type { QaAnswer, AnomalyDecision, ConfirmedMapping, TallFormatConfig } from '@/lib/import/stageB'
+import type { ProposedSetup } from '@/lib/import/stageA_validate'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -17,6 +18,9 @@ interface QuestionOption {
   explanation:   string
   meaning_code?: string
 }
+// Stage A mapping-JSON question shape (richer UI fields: explanation, why,
+// recommended_answer, topic_group). Deliberately distinct from the validator's
+// ClarificationProposal in stageA_validate — do not merge them.
 interface ClarificationQuestion {
   id?:                 string
   blocking?:           boolean
@@ -36,14 +40,6 @@ interface ProposedColumnMap {
   dest_field:    string
   notes?:        string
 }
-interface TallFormatConfig {
-  metric_name_column:  string
-  value_column:        string
-  audience_column?:    string
-  group_type_column?:  string
-  audience_map?:       Record<string, 'MAIN' | 'KIDS' | 'YOUTH'>
-  area_field_map?:     Record<string, string>
-}
 interface ProposedSource {
   source_name:  string
   dest_table?:  string
@@ -52,36 +48,6 @@ interface ProposedSource {
   column_map:   ProposedColumnMap[]
   notes?:       string
   tall_format?: TallFormatConfig
-}
-// IR v2 (metric-centric) proposed_setup. ministry_tags + reporting_tags +
-// service_templates + metrics. The dropped v1 collections (giving_sources,
-// volunteer_categories, response_categories, tag_relationships) are GONE.
-interface ProposedMinistryTag {
-  code:         string
-  name?:        string
-  tag_role?:    string
-  parent_code?: string | null
-}
-interface ProposedReportingTag {
-  code:        string
-  name?:       string
-  unit_kind?:  string
-  agg_default?: string
-}
-interface ProposedMetric {
-  metric_code:   string
-  name?:         string
-  ministry_tag?: string
-  reporting_tag?: string
-  scope?:        'instance' | 'period'
-  is_canonical?: boolean
-}
-interface ProposedSetup {
-  locations?:         Array<{ name: string; code?: string }>
-  ministry_tags?:     ProposedMinistryTag[]
-  reporting_tags?:    ProposedReportingTag[]
-  service_templates?: Array<{ display_name: string; service_code?: string; primary_tag?: string; primary_tag_reasoning?: string; day_of_week?: number; start_time?: string | null }>
-  metrics?:           ProposedMetric[]
 }
 interface MonthlyRow {
   month: string
