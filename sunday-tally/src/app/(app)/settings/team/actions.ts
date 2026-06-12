@@ -20,6 +20,7 @@
 // ─────────────────────────────────────────────────────────────────────────
 
 import { createClient, createServiceRoleClient } from '@/lib/supabase/server'
+import { resolveMember, isOwnerAdmin } from '@/lib/supabase/auth-helpers'
 import { newInviteToken, inviteExpiry, sendInviteEmail } from '@/lib/invites'
 import { revalidatePath } from 'next/cache'
 
@@ -72,22 +73,14 @@ export interface TeamData {
 type Caller = { userId: string; churchId: string; role: TeamRole }
 
 async function resolveCaller(): Promise<Caller | { error: string }> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: 'Not signed in.' }
-  const { data: membership } = await supabase
-    .from('church_memberships')
-    .select('church_id, role')
-    .eq('user_id', user.id)
-    .eq('is_active', true)
-    .single()
-  if (!membership) return { error: 'No active membership.' }
-  return { userId: user.id, churchId: membership.church_id, role: membership.role as TeamRole }
+  const auth = await resolveMember()
+  if (!auth.ok) {
+    return { error: auth.reason === 'unauthenticated' ? 'Not signed in.' : 'No active membership.' }
+  }
+  return { userId: auth.member.userId, churchId: auth.member.churchId, role: auth.member.role as TeamRole }
 }
 
-function isWriter(role: TeamRole) {
-  return role === 'owner' || role === 'admin'
-}
+const isWriter = isOwnerAdmin
 
 // ── READ: full team payload ─────────────────────────────────────────────────
 export async function getTeamData(): Promise<TeamData | null> {

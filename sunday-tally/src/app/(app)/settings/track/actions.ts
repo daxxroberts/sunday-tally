@@ -12,6 +12,7 @@
 // ─────────────────────────────────────────────────────────────────────────
 
 import { createClient } from '@/lib/supabase/server'
+import { resolveMember, isOwnerAdmin } from '@/lib/supabase/auth-helpers'
 
 // ── Types ────────────────────────────────────────────────────────────────
 
@@ -30,7 +31,7 @@ export interface ActionResult<T = void> {
 
 // ── Helpers ──────────────────────────────────────────────────────────────
 
-/** Slug a display name into an UPPERCASE code; mirrors tags/page.tsx */
+/** Slug a display name into an UPPERCASE code */
 function slugifyCode(name: string): string {
   return name
     .toUpperCase()
@@ -40,18 +41,12 @@ function slugifyCode(name: string): string {
 
 /** Assert caller is owner or admin for the given church. Returns churchId or throws. */
 async function requireOwnerAdmin(supabase: Awaited<ReturnType<typeof createClient>>): Promise<string> {
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Not authenticated')
-
-  const { data: membership } = await supabase
-    .from('church_memberships')
-    .select('role, church_id')
-    .eq('user_id', user.id)
-    .eq('is_active', true)
-    .single()
-  if (!membership) throw new Error('No membership found')
-  if (membership.role !== 'owner' && membership.role !== 'admin') throw new Error('Forbidden')
-  return membership.church_id as string
+  const auth = await resolveMember(supabase)
+  if (!auth.ok) {
+    throw new Error(auth.reason === 'unauthenticated' ? 'Not authenticated' : 'No membership found')
+  }
+  if (!isOwnerAdmin(auth.member.role)) throw new Error('Forbidden')
+  return auth.member.churchId
 }
 
 /**
@@ -253,7 +248,7 @@ export async function createMinistry(params: {
     const name = params.name.trim()
     if (!name) return { ok: false, error: 'Name is required' }
 
-    // Generate a unique code per church (mirror tags/page.tsx slugifyCode logic)
+    // Generate a unique code per church via slugifyCode
     const base = slugifyCode(name) || 'MINISTRY'
     const { data: existingCodes } = await supabase
       .from('service_tags')

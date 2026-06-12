@@ -10,6 +10,7 @@
 // ─────────────────────────────────────────────────────────────────────────
 
 import { createClient } from '@/lib/supabase/server'
+import { resolveMember, isOwnerAdmin } from '@/lib/supabase/auth-helpers'
 import { revalidatePath } from 'next/cache'
 
 export interface CreateServiceInput {
@@ -33,22 +34,16 @@ export async function createServiceAction(
   input: CreateServiceInput,
 ): Promise<{ templateIds?: string[]; error?: string }> {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: 'Not authenticated' }
-
   // Role gate — owner or admin only
-  const { data: membership } = await supabase
-    .from('church_memberships')
-    .select('church_id, role')
-    .eq('user_id', user.id)
-    .eq('is_active', true)
-    .single()
-  if (!membership) return { error: 'No active church membership found.' }
-  if (membership.role !== 'owner' && membership.role !== 'admin') {
+  const auth = await resolveMember(supabase)
+  if (!auth.ok) {
+    return { error: auth.reason === 'unauthenticated' ? 'Not authenticated' : 'No active church membership found.' }
+  }
+  if (!isOwnerAdmin(auth.member.role)) {
     return { error: 'Only owners and admins can add services.' }
   }
 
-  const churchId: string = membership.church_id
+  const churchId: string = auth.member.churchId
   const displayName = input.display_name.trim()
   if (!displayName) return { error: 'Service name is required.' }
   if (!input.primary_tag_id) return { error: 'Primary tag is required.' }
@@ -168,18 +163,10 @@ export async function getServiceEditData(templateId: string): Promise<{
   extrasSupported: boolean
 } | null> {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
-
-  const { data: membership } = await supabase
-    .from('church_memberships')
-    .select('church_id, role')
-    .eq('user_id', user.id)
-    .eq('is_active', true)
-    .single()
-  if (!membership) return null
-  if (membership.role !== 'owner' && membership.role !== 'admin') return null
-  const churchId: string = membership.church_id
+  const auth = await resolveMember(supabase)
+  if (!auth.ok) return null
+  if (!isOwnerAdmin(auth.member.role)) return null
+  const churchId: string = auth.member.churchId
 
   // Try the post-migration shape first; fall back to the base columns.
   let tmpl: Record<string, unknown> | null = null
@@ -263,20 +250,14 @@ export async function createServiceGroupAction(
   name: string,
 ): Promise<{ group?: { id: string; name: string; code: string }; error?: string }> {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: 'Not authenticated' }
-
-  const { data: membership } = await supabase
-    .from('church_memberships')
-    .select('church_id, role')
-    .eq('user_id', user.id)
-    .eq('is_active', true)
-    .single()
-  if (!membership) return { error: 'No active church membership found.' }
-  if (membership.role !== 'owner' && membership.role !== 'admin') {
+  const auth = await resolveMember(supabase)
+  if (!auth.ok) {
+    return { error: auth.reason === 'unauthenticated' ? 'Not authenticated' : 'No active church membership found.' }
+  }
+  if (!isOwnerAdmin(auth.member.role)) {
     return { error: 'Only owners and admins can manage reporting groups.' }
   }
-  const churchId: string = membership.church_id
+  const churchId: string = auth.member.churchId
 
   const trimmed = name.trim()
   if (!trimmed) return { error: 'Group name is required.' }
@@ -330,20 +311,14 @@ export async function updateServiceAction(
   input: UpdateServiceInput,
 ): Promise<{ ok?: boolean; error?: string }> {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: 'Not authenticated' }
-
-  const { data: membership } = await supabase
-    .from('church_memberships')
-    .select('church_id, role')
-    .eq('user_id', user.id)
-    .eq('is_active', true)
-    .single()
-  if (!membership) return { error: 'No active church membership found.' }
-  if (membership.role !== 'owner' && membership.role !== 'admin') {
+  const auth = await resolveMember(supabase)
+  if (!auth.ok) {
+    return { error: auth.reason === 'unauthenticated' ? 'Not authenticated' : 'No active church membership found.' }
+  }
+  if (!isOwnerAdmin(auth.member.role)) {
     return { error: 'Only owners and admins can edit services.' }
   }
-  const churchId: string = membership.church_id
+  const churchId: string = auth.member.churchId
 
   const displayName = input.display_name.trim()
   if (!displayName) return { error: 'Service name is required.' }
@@ -435,17 +410,11 @@ export async function deactivateServiceAction(
   templateId: string,
 ): Promise<{ ok?: boolean; error?: string }> {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: 'Not authenticated' }
-
-  const { data: membership } = await supabase
-    .from('church_memberships')
-    .select('church_id, role')
-    .eq('user_id', user.id)
-    .eq('is_active', true)
-    .single()
-  if (!membership) return { error: 'No active church membership found.' }
-  if (membership.role !== 'owner' && membership.role !== 'admin') {
+  const auth = await resolveMember(supabase)
+  if (!auth.ok) {
+    return { error: auth.reason === 'unauthenticated' ? 'Not authenticated' : 'No active church membership found.' }
+  }
+  if (!isOwnerAdmin(auth.member.role)) {
     return { error: 'Only owners and admins can retire services.' }
   }
 
@@ -453,7 +422,7 @@ export async function deactivateServiceAction(
     .from('service_templates')
     .update({ is_active: false })
     .eq('id', templateId)
-    .eq('church_id', membership.church_id)
+    .eq('church_id', auth.member.churchId)
     .select('id')
     .maybeSingle()
   if (error) return { error: error.message }
@@ -470,19 +439,11 @@ export async function getNewServiceFormData(): Promise<{
   isMultiCampus: boolean
 } | null> {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
+  const auth = await resolveMember(supabase)
+  if (!auth.ok) return null
+  if (!isOwnerAdmin(auth.member.role)) return null
 
-  const { data: membership } = await supabase
-    .from('church_memberships')
-    .select('church_id, role')
-    .eq('user_id', user.id)
-    .eq('is_active', true)
-    .single()
-  if (!membership) return null
-  if (membership.role !== 'owner' && membership.role !== 'admin') return null
-
-  const churchId: string = membership.church_id
+  const churchId: string = auth.member.churchId
 
   const [locRes, tagRes] = await Promise.all([
     supabase
