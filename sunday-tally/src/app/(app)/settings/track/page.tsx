@@ -28,6 +28,7 @@ import {
 import MaybeLayout from '@/components/layouts/MaybeLayout'
 import InlineEditField from '@/components/shared/InlineEditField'
 import { createClient } from '@/lib/supabase/client'
+import { fetchActiveServiceTags } from '@/lib/service-tags'
 import { Ico, roleLabel } from '@/app/(app)/entries/ui'
 import { buildGroupColorMap, type GroupColor } from '@/components/history-grid/group-colors'
 import type { UserRole } from '@/types'
@@ -138,30 +139,10 @@ export function TrackPanel({ embedded = false }: { embedded?: boolean }) {
   // ── Load ────────────────────────────────────────────────────────────────
 
   const load = useCallback(async (cid: string) => {
-    // color is 0040 — selecting it pre-apply errors, so fall back without it.
-    let tagRows: Ministry[] | null = null
-    const withColor = await supabase
-      .from('service_tags')
-      .select('id, code, name, tag_role, parent_tag_id, display_order, is_active, color')
-      .eq('church_id', cid)
-      .eq('is_active', true)
-      // created_at tiebreaker — keeps the positional palette identical across
-      // track / dashboard / History when display_order values tie.
-      .order('display_order', { ascending: true })
-      .order('created_at', { ascending: true })
-    if (!withColor.error) {
-      tagRows = (withColor.data ?? []) as Ministry[]
-    } else {
-      const base = await supabase
-        .from('service_tags')
-        .select('id, code, name, tag_role, parent_tag_id, display_order, is_active')
-        .eq('church_id', cid)
-        .eq('is_active', true)
-        .order('display_order', { ascending: true })
-        .order('created_at', { ascending: true })
-      tagRows = (base.data ?? []) as Ministry[]
-    }
-    const mins = tagRows
+    // Canonical palette order (incl. the 0040 color fallback) lives in
+    // fetchActiveServiceTags — keeps track / dashboard / History identical.
+    const { rows } = await fetchActiveServiceTags(supabase, cid)
+    const mins = rows as unknown as Ministry[]
     setMinistries(mins)
 
     const { data: rtRows } = await supabase

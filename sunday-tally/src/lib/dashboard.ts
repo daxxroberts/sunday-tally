@@ -9,6 +9,7 @@
 import { createClient } from '@/lib/supabase/client'
 import { computeRollups } from '@/lib/rollups'
 import { weekStartOf, shiftDays, weekOf } from '@/lib/date-window'
+import { fetchActiveServiceTags } from '@/lib/service-tags'
 
 // Re-export so existing consumers (dashboardDrilldown, rollups) keep importing
 // the week math from here; the implementations live in lib/date-window.ts.
@@ -314,20 +315,10 @@ export async function fetchDashboardData(
   const b = buildBoundaries(asOf ?? new Date())
 
   // ── Tags (ministry axis) — group sections by these; tag_role drives the
-  //    audience pivot. (Old tag_code/tag_name renamed → code/name; tag_role new.)
-  const { data: tagsData, error: tagsErr } = await supabase
-    .from('service_tags')
-    .select('id, code, name, tag_role, parent_tag_id, display_order, color')
-    .eq('church_id', churchId)
-    .eq('is_active', true)
-    // created_at tiebreaker: display_order ties (common — many tags sit at 0) come
-    // back in ARBITRARY per-query order from Postgres, which shuffles the
-    // positional color palette between surfaces. Every palette-feeding fetch
-    // (here, track page, History derive) must sort identically.
-    .order('display_order', { ascending: true })
-    .order('created_at', { ascending: true })
+  //    audience pivot. Canonical palette order lives in fetchActiveServiceTags.
+  const { rows: tagsData, error: tagsErr } = await fetchActiveServiceTags(supabase, churchId)
   if (tagsErr) console.error('[dashboard] service_tags fetch failed:', tagsErr)
-  const tags: TagRow[] = (tagsData ?? []) as TagRow[]
+  const tags: TagRow[] = tagsData as unknown as TagRow[]
   const tagByIdCode = new Map<string, string>()
   for (const t of tags) tagByIdCode.set(t.id, t.code)
 

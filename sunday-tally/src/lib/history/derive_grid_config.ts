@@ -24,6 +24,7 @@
  * them (service_template_tags), falling back to the primary tag's root.
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { fetchActiveServiceTags } from '@/lib/service-tags'
 import type {
   GridConfig,
   DataColumn,
@@ -113,15 +114,9 @@ export async function deriveGridConfigFromSchema(
       .eq('church_id', churchId)
       .eq('is_active', true)
       .order('sort_order', { ascending: true }),
-    supabase
-      .from('service_tags')
-      .select('id, code, name, tag_role, parent_tag_id, display_order')
-      .eq('church_id', churchId)
-      .eq('is_active', true)
-      // created_at tiebreaker — group order feeds the positional color palette,
-      // which must sort identically to the track page + dashboard.
-      .order('display_order', { ascending: true })
-      .order('created_at', { ascending: true }),
+    // Canonical palette order lives in fetchActiveServiceTags — group order
+    // feeds the positional color palette shared with track page + dashboard.
+    fetchActiveServiceTags(supabase, churchId),
     supabase
       .from('reporting_tags')
       .select('id, code, name, unit_kind, agg_default')
@@ -140,7 +135,7 @@ export async function deriveGridConfigFromSchema(
 
   const church    = churchRes.data as ChurchRow | null
   const templates = (tmplRes.data    ?? []) as TemplateRow[]
-  const tags      = (tagsRes.data    ?? []) as ServiceTagRow[]
+  const tags      = tagsRes.rows as unknown as ServiceTagRow[]
   const repTags   = (repRes.data     ?? []) as ReportingTagRow[]
   const metrics   = (metricsRes.data ?? []) as MetricRow[]
   const links     = (linksRes.data   ?? []) as LinkRow[]
