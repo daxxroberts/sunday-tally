@@ -55,10 +55,12 @@ export function MetricRowItem({
             <div className="flex overflow-hidden rounded-lg border border-slate-200 text-[11px] font-semibold">
               <button
                 onClick={() => onSetMode('entry')}
+                title="Entry — a number you type each week. It belongs to this group and stays here unless you point it to a roll-up above."
                 className={`px-2 py-1 transition-colors ${!isRollup ? 'bg-[#4F6EF7] text-white' : 'bg-white text-slate-500 hover:bg-slate-50'}`}
               >Entry</button>
               <button
                 onClick={() => onSetMode('rollup', metric.rollup_op ?? 'sum')}
+                title="Roll up sub-entries — this count calculates automatically by adding up (or averaging) entries that point to it from below. You never type it directly."
                 className={`whitespace-nowrap px-2 py-1 transition-colors ${isRollup ? 'bg-[#4F6EF7] text-white' : 'bg-white text-slate-500 hover:bg-slate-50'}`}
               >Roll up sub-entries</button>
             </div>
@@ -77,35 +79,37 @@ export function MetricRowItem({
         )}
       </div>
 
-      {/* second line: period → plain note; entry → rolls up into; rollup → op + children */}
-      <div className="mt-1.5 flex flex-wrap items-center gap-2 pl-0 text-[12px] text-slate-500">
-        {isPeriod ? (
-          <span className="text-slate-400">
-            How often this is counted is set on its schedule in Services and Occurrences.
-          </span>
-        ) : isRollup ? (
-          <>
-            <span className="text-slate-400">Combines its children:</span>
-            {write ? (
-              <select value={metric.rollup_op ?? 'sum'} onChange={e => onSetOp(e.target.value as RollupOp)} aria-label="Roll-up operation" className="rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[12px] text-slate-700 outline-none focus:border-[#4F6EF7]">
-                {(['sum', 'avg', 'max'] as RollupOp[]).map(op => <option key={op} value={op}>{OP_LABEL[op]}</option>)}
-              </select>
-            ) : (
-              <span className="font-medium text-slate-600">{OP_LABEL[metric.rollup_op ?? 'sum']}</span>
-            )}
-            {unreferenced ? (
-              <span className="rounded-md bg-[#F59E0B]/10 px-1.5 py-0.5 text-[11px] font-semibold text-[#B45309]">⚠ Nothing points up to this yet</span>
-            ) : (
-              <span className="font-num text-[11px] text-slate-400">{childCount} pointing up</span>
-            )}
-          </>
-        ) : (
-          <>
-            <span className="text-slate-400">Rolls up into:</span>
-            {write ? (
-              eligibleParents.length > 0 ? (
+      {/* second line — only shown when there's something meaningful to display:
+          period → schedule note; rollup → op + child count; entry + parent set → rolls up into.
+          Plain entry with no parent chosen: row stays collapsed (no second line). */}
+      {(isPeriod || isRollup || metric.parent_metric_id || (write && !isRollup && eligibleParents.length > 0 && metric.parent_metric_id)) && (
+        <div className="mt-1.5 flex flex-wrap items-center gap-2 pl-0 text-[12px] text-slate-500">
+          {isPeriod ? (
+            <span className="text-slate-400">
+              How often this is counted is set on its schedule in Services and Occurrences.
+            </span>
+          ) : isRollup ? (
+            <>
+              <span className="text-slate-400">Combines its children:</span>
+              {write ? (
+                <select value={metric.rollup_op ?? 'sum'} onChange={e => onSetOp(e.target.value as RollupOp)} aria-label="Roll-up operation" className="rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[12px] text-slate-700 outline-none focus:border-[#4F6EF7]">
+                  {(['sum', 'avg', 'max'] as RollupOp[]).map(op => <option key={op} value={op}>{OP_LABEL[op]}</option>)}
+                </select>
+              ) : (
+                <span className="font-medium text-slate-600">{OP_LABEL[metric.rollup_op ?? 'sum']}</span>
+              )}
+              {unreferenced ? (
+                <span className="rounded-md bg-[#F59E0B]/10 px-1.5 py-0.5 text-[11px] font-semibold text-[#B45309]">⚠ Nothing points up to this yet</span>
+              ) : (
+                <span className="font-num text-[11px] text-slate-400">{childCount} pointing up</span>
+              )}
+            </>
+          ) : metric.parent_metric_id ? (
+            <>
+              <span className="text-slate-400">Rolls up into:</span>
+              {write ? (
                 <select
-                  value={metric.parent_metric_id ?? ''}
+                  value={metric.parent_metric_id}
                   onChange={e => onSetParent(e.target.value || null)}
                   aria-label="Rolls up into"
                   className="rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[12px] text-slate-700 outline-none focus:border-[#4F6EF7]"
@@ -114,16 +118,14 @@ export function MetricRowItem({
                   {eligibleParents.map(p => <option key={p.id} value={p.id}>{parentLabel(p)}</option>)}
                 </select>
               ) : (
-                <span className="text-slate-400">— stays local (make a roll-up on a parent first)</span>
-              )
-            ) : (
-              <span className="font-medium text-slate-600">
-                {metric.parent_metric_id ? (() => { const p = eligibleParents.find(x => x.id === metric.parent_metric_id); return p ? parentLabel(p) : 'a parent roll-up' })() : 'stays local'}
-              </span>
-            )}
-          </>
-        )}
-      </div>
+                <span className="font-medium text-slate-600">
+                  {(() => { const p = eligibleParents.find(x => x.id === metric.parent_metric_id); return p ? parentLabel(p) : 'a parent roll-up' })()}
+                </span>
+              )}
+            </>
+          ) : null}
+        </div>
+      )}
     </li>
   )
 }
