@@ -12,6 +12,7 @@
 // ─────────────────────────────────────────────────────────────────────────
 
 import { createClient } from '@/lib/supabase/server'
+import { resolveMember, isOwnerAdmin } from '@/lib/supabase/auth-helpers'
 
 // ── Types ────────────────────────────────────────────────────────────────
 
@@ -40,18 +41,12 @@ function slugifyCode(name: string): string {
 
 /** Assert caller is owner or admin for the given church. Returns churchId or throws. */
 async function requireOwnerAdmin(supabase: Awaited<ReturnType<typeof createClient>>): Promise<string> {
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Not authenticated')
-
-  const { data: membership } = await supabase
-    .from('church_memberships')
-    .select('role, church_id')
-    .eq('user_id', user.id)
-    .eq('is_active', true)
-    .single()
-  if (!membership) throw new Error('No membership found')
-  if (membership.role !== 'owner' && membership.role !== 'admin') throw new Error('Forbidden')
-  return membership.church_id as string
+  const auth = await resolveMember(supabase)
+  if (!auth.ok) {
+    throw new Error(auth.reason === 'unauthenticated' ? 'Not authenticated' : 'No membership found')
+  }
+  if (!isOwnerAdmin(auth.member.role)) throw new Error('Forbidden')
+  return auth.member.churchId
 }
 
 /**
