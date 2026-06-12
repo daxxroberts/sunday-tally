@@ -74,8 +74,8 @@ export function DetailPanel({
             <span
               className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 cursor-help"
               title={ministry.parent_tag_id
-                ? 'A group lives inside a ministry. It can hold its own groups and counts, and roll its numbers up into its parent.'
-                : 'A ministry is a top-level group. It reports on its own and can hold groups inside it. Everything you track lives under a ministry.'}
+                ? 'This sits inside another ministry. You count it separately in Entries, but it adds up under the parent on the dashboard.'
+                : 'This is top-level — it gets its own dashboard card with its own color. Everything inside it rolls up here.'}
             >
               {ministry.parent_tag_id ? 'Group' : 'Ministry'}
             </span>
@@ -101,7 +101,7 @@ export function DetailPanel({
                       type="color"
                       value={ministry.color ?? (color?.strong ?? '#4F6EF7')}
                       onChange={e => void onColorChange(e.target.value)}
-                      title="Pick this ministry's color. It shows everywhere this ministry appears."
+                      title="This color follows the ministry everywhere — dashboard, Entries, History."
                       className="h-6 w-7 cursor-pointer rounded border border-slate-200 bg-white p-0.5"
                     />
                     {ministry.color && (
@@ -145,7 +145,7 @@ export function DetailPanel({
             {write && (
               <div className="border-t border-slate-100 px-5 py-2.5">
                 {!addingGroup ? (
-                  <button onClick={() => { setAddingGroup(true); setGRole(ministry.tag_role) }} title={`Add a group inside ${ministry.name}. Groups are breakdowns within a ministry — same services, same audience, just tracked separately. Their numbers roll up to ${ministry.name} on the dashboard so you see one combined total, but you enter each group's counts individually in Entries. Use this when you want the detail without a separate dashboard card.`} className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-[13px] font-semibold text-[#3D5BD4] transition-colors hover:bg-slate-50">
+                  <button onClick={() => { setAddingGroup(true); setGRole(ministry.tag_role) }} title={`A group is a breakdown inside ${ministry.name}. You count each one separately in Entries, but the dashboard adds them all up under ${ministry.name} as one number. Use this when you want the detail without a separate dashboard card.`} className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-[13px] font-semibold text-[#3D5BD4] transition-colors hover:bg-slate-50">
                     <Ico.plus className="h-4 w-4" /> Add a group inside {ministry.name}
                   </button>
                 ) : (

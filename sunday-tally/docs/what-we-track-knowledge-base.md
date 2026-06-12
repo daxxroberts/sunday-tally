@@ -1,245 +1,204 @@
-# What We Track — Setup Knowledge Base
+# What We Track — Setup Guide
 
-> This document is the source of truth for end-user onboarding, in-app tooltips, and help content on the **What we track** screen. Every rule here should eventually have a home in the UI (tooltip, onboarding step, or inline hint).
-
----
-
-## 1. The Tree — Ministries, Groups, and Why It Matters
-
-### What is a top-level node?
-
-A top-level node is anything that sits at the root of the tree (not nested inside anything else). It gets its **own card on the dashboard**, its **own color**, and its **own trend line**. It reports independently.
-
-You can set the role of a top-level node to Ministry, Adults, Kids, Youth, or Other — the role is metadata about the audience, not what determines whether it shows up as its own dashboard card. Tree position determines that.
-
-> **90% rule:** Most top-level nodes are set to "Ministry." Giving and similar church-wide trackers are often set to "Other." Both get their own dashboard card.
-
-### What is a group?
-
-A group is a node nested inside another node. Groups can hold their own sub-groups and their own counts. Their numbers flow up to the parent when the dashboard totals things.
-
-You enter group counts separately in Entries — you can see the breakdown week to week — but the dashboard rolls everything up to the top-level ministry card.
-
-### When do you make a top-level node vs a group?
-
-**Make it top-level if:**
-- It should have its own dashboard card with its own color and trend line
-- It belongs to a different service than the ministry you might put it under
-- It is measured at a different cadence (weekly church-wide vs per-service)
-- Two or more ministries share the same count — it belongs to neither of them, so give it its own node
-
-**Make it a group (nested) if:**
-- It is a breakdown *within* a ministry — same audience, same services, you just want separate tracking rows in Entries
-- You want to see the split in Entries but one combined total on the dashboard
-- It would never make sense as a standalone dashboard card
-
-> **Example:** Life Groups → Tabors, Roberts. Both campuses of the same ministry. You enter Tabors attendance and Roberts attendance separately each week, but the dashboard shows one "Life Groups" card with the combined total. Neither Tabors nor Roberts needs its own dashboard card.
-
-> **Counter-example:** Experience and LifeKids are separate top-level ministries even though they're both weekend services — they have different audiences, different counts, and a pastor wants to see each one independently on the dashboard.
+> Source of truth for onboarding, tooltips, and help content on the What we track screen.
 
 ---
 
-## 2. The Four Reporting Types
+## Ministries, Groups, and Where Things Live
 
-Every count you add belongs to one of four reporting types. The type tells the dashboard how to handle the number. You cannot change a count's type after you create it — choose carefully.
+### Top-level vs. nested — what's the difference?
+
+Anything at the top of the tree gets its own card on the dashboard. Its own color. Its own numbers. It stands alone.
+
+Anything nested inside something else is a group. Groups roll their numbers up to the parent — you count them separately in Entries, but the dashboard shows one combined total for the parent.
+
+The role label (Ministry, Adults, Kids, Youth, Other) is just there to describe the audience. It doesn't change how the dashboard treats it. What matters is where it sits in the tree.
+
+### So when do you make something top-level?
+
+Make it top-level when it deserves its own dashboard card. Some good signs:
+- It's a whole service — Experience, LifeKids, Switch
+- It's something church-wide that doesn't belong to any one service — like Giving
+- You want to see it on the dashboard as its own thing, tracked over time, with its own color
+- Two or more ministries share the same number — if nobody owns it, give it its own home
+
+### When do you nest it as a group instead?
+
+Nest it when it's a breakdown of something that already exists. A few good signs:
+- Same services, same audience, you just want to count it separately
+- You want to see the detail in Entries but one combined total on the dashboard
+- It would feel weird as its own standalone dashboard card
+
+**Example:** Life Groups has two campuses — Tabors and Roberts. You want to see each one's attendance separately when you're entering numbers. But on the dashboard, you just want one "Life Groups" card. So Tabors and Roberts are groups inside Life Groups, not separate top-level ministries.
+
+**The flip side:** Experience and LifeKids are both weekend services. Same morning, different audiences. Each one gets its own dashboard card because a pastor needs to see them separately. They're both top-level.
+
+---
+
+## The Four Types — Attendance, Volunteers, Stats, Giving
+
+Every count you add belongs to one of these four. The type tells the dashboard what kind of number it is and how to handle it. You can't change the type after you create the count, so pick the right one up front.
 
 ### Attendance
 
-**What it is:** A headcount of people present at a service or gathering.
+People in the room. Headcount.
 
-**Dashboard behavior:**
-- Shows as a people count on the ministry card
-- Week-over-week and year-over-year comparisons are available
-- Averages are calculated correctly: weeks where the service did not meet are excluded (see the NULL rule below)
-- Multiple attendance counts under the same ministry add together for the ministry total
+The dashboard shows it as a people count and tracks it week over week, month over month, year over year. Averages automatically exclude weeks where the service didn't run — as long as you leave those weeks blank instead of entering zero. (More on that below.)
 
-**Setup guidance:**
-- One attendance count per service occurrence is standard (e.g., "Experience Adult Attendance")
-- If you track multiple rooms or venues that combine into one total, use Entry counts on each and a Roll-up on the parent
+If you track multiple rooms or two service times, add an Entry for each one. The dashboard adds them up.
 
 ### Volunteers
 
-**What it is:** A headcount of people serving at a service.
+People serving. Headcount, but separate from attendance.
 
-**Dashboard behavior:**
-- Shows as a people count, separate from attendance
-- The dashboard always calculates the volunteer total — it is never stored as a single number
-- Multiple volunteer counts under the same ministry add together automatically
+Add one count per role — Band, Ushers, Greeters, whatever you track. The dashboard totals them automatically.
 
-**Setup guidance:**
-- Add one count per volunteer role (Band, Ushers, Greeters, etc.)
-- **Never create a "Total Volunteers" entry count.** If you enter individual roles AND a manual total, the dashboard double-counts. The system adds the roles for you.
+Don't create a "Total Volunteers" count. If you enter individual roles and also a manual total, the dashboard counts everyone twice. You don't need the total — the system does the math.
 
 ### Stats
 
-**What it is:** Any number that is not a headcount — baptisms, salvations, hands raised, first-time guests, parking cars, connection cards, anything numeric that doesn't fit Attendance or Volunteers.
+Everything that's a number but not a headcount. Baptisms, salvations, hands raised, first-time guests, parking cars, connection cards — anything you count that doesn't fit neatly into "people attending" or "people serving."
 
-**Dashboard behavior:**
-- Reported as raw numbers
-- Summed across all stat counts for the ministry
-- Compared week-over-week and year-over-year
-
-**Setup guidance:**
-- Use Stats for anything you count but that is not "how many people were there" or "how many people served"
-- Stats counts can be zero in a given week without the same implications as a zero attendance count (see NULL rule below)
+Stats are reported as raw numbers and compared week over week and year over year.
 
 ### Giving
 
-**What it is:** Dollar amounts collected at or attributed to a service or week.
+Dollar amounts. Everything tagged as Giving adds up automatically — no matter which ministry or group it's under.
 
-**Dashboard behavior:**
-- All giving metrics — regardless of which ministry or group they sit under — sum together for the total Giving KPI on the dashboard
-- Giving from multiple collection sources (app, bucket, online, cash) all add up automatically
-- Giving is most commonly tracked church-wide (one total per week) rather than per-service
+Add one count per collection method: Giving App, Giving Bucket, Online, Cash, whatever you use. The dashboard totals them.
 
-**Setup guidance:**
-- Add one count per collection method (Giving App, Giving Bucket, Online, etc.)
-- **Never create a "Total Giving" entry count.** If you enter individual sources AND a manual total, the dashboard double-counts. The system adds the sources for you.
-- If giving is one church-wide number (not split by service), the Giving node needs to be its own top-level node — see the Scope Rule below.
+Don't create a "Total Giving" count. Same reason as volunteers — if you enter the pieces and a manual total, you've doubled the number.
+
+Giving is almost always a church-wide, once-per-week number. That means it needs its own top-level node — see the next section for why.
 
 ---
 
-## 3. Entry vs Roll-up
+## The Scope Rule — One of the Most Important Things to Get Right
 
-Every count is either an **Entry** or a **Roll-up**. This is the most important individual count setting.
+> If something is counted once for the whole week, it doesn't belong under a service-specific ministry.
 
-### Entry
+Here's the problem: Experience runs two services — 9am and 11am. Every count under Experience gets entered once per service, every time a service runs. Attendance, volunteers, stats — all per service.
 
-A number you type each week. It belongs to the group it is attached to and stays there unless you explicitly point it to a roll-up above.
+If you put Giving under Experience, the system expects you to enter giving for the 9am service and again for the 11am service. That's not how giving works. You have one total for the weekend.
 
-Use Entry for every real count you collect — attendance at each service, each volunteer role, each giving source, each stat.
+The test: *"Would I enter this separately for each service, or once for the whole week?"*
 
-### Roll-up
+- Once per service → put it under the ministry that runs those services
+- Once per week for the whole church → it needs its own top-level node
 
-A count that calculates automatically by combining (adding, averaging, or taking the max of) entries that point up to it. You never type a roll-up directly — the system fills it in.
-
-Use Roll-up when you want a calculated total across entries that already exist. For example: a "Total Weekend Attendance" count on a top-level ministry that sums Experience 1 + Experience 2 attendance.
-
-> **Rule:** Never create a Roll-up for something you are also entering manually. Never create a manual Entry for something the system can calculate. Pick one.
-
-### When would you use a Roll-up?
-
-- You run two services (9am and 11am) and want the dashboard to show a combined total automatically
-- You track multiple volunteer roles and want a "Total Volunteers" roll-up for reporting (though the dashboard handles this automatically for the Volunteers type — roll-ups are more useful for Stats)
-- You have a parent ministry that should show the sum of its groups' attendance
+If a number belongs to nobody in particular — total weekend giving, total parking across all services — give it its own home. Don't force it under a ministry it doesn't belong to.
 
 ---
 
-## 4. The Scope Rule — When a Count Needs Its Own Top-Level Node
+## Entry vs. Roll-up
 
-This is one of the most important rules for getting your setup right.
+Every count is one or the other.
 
-> **Rule:** If a count is measured at a different scope or cadence than the services under a ministry, it needs its own top-level node.
+**Entry** means you type it. Every week, you open Entries and put a number in. That's it.
 
-### Service-bound counts
+**Roll-up** means the math is done for you. You set it up to combine other entries — adding them, averaging them, or taking the highest — and you never type it directly.
 
-A count is service-bound when it belongs to a specific service occurrence — you enter it once per service, every time that service runs. Attendance at the 9am service, volunteers serving that morning, hands raised during that service. These counts go under the ministry whose services they belong to.
+Use Entry for every real number you count. Attendance, each volunteer role, each giving source, each stat.
 
-### Church-wide / weekly counts
+Use Roll-up when you want a calculated total across entries that already exist. Like a "Total Weekend Attendance" that adds Experience 1 and Experience 2 automatically.
 
-A count is church-wide when it is one number per week, not tied to which service ran — total weekend giving, total first-time guests across all services, baptisms for the month. These counts belong to their own top-level node.
-
-### Why it matters
-
-If you put a giving count under Experience, the system expects a giving entry on every Experience service occurrence. If Experience runs two services per week, the system asks you to enter giving twice — once for each service. That is not how giving works. One weekly total split across service occurrences would either under-report or require manual division.
-
-> **Example:** Giving is one weekly total for the whole church. It does not belong under Experience (which runs per-service) or under LifeKids. It belongs to its own top-level Giving node with weekly church-wide scope.
-
-> **Test question:** "Would I enter this number separately for each service that runs, or once for the whole week?" If once for the whole week — it needs its own top-level node.
-
-### A shared count belongs to neither ministry
-
-If a number spans two ministries — giving collected across the whole morning, total parking regardless of which service — it does not belong under either ministry. Give it its own top-level node so the ownership is clear and the entry is not duplicated.
+The rule is simple: don't do both. Don't create a Roll-up for something you're also typing manually. Don't create a manual Entry for something the system can calculate. Pick one and let the other one go.
 
 ---
 
-## 5. The NULL Rule — Blank Is Not Zero
+## Blank Is Not Zero
 
-> **Rule:** If a service did not meet that week, leave the count blank. Do not enter zero.
+> If a service didn't meet, leave it blank. Don't enter zero.
 
-### Why it matters
+This one matters more than it sounds.
 
-Blank (NULL) means "this service did not run." Zero means "this service ran and nobody came."
+Blank means "we didn't have this service." Zero means "we had it and nobody showed up."
 
-The dashboard calculates averages, year-over-year comparisons, and trend lines. When it averages attendance over 52 weeks:
-- A blank week is excluded from the average — it does not count as a data point
-- A zero week is included — it pulls the average down as if the service ran with zero people
+When the dashboard calculates your weekly average or year-over-year comparison, blank weeks are skipped. Zero weeks are counted. If your church takes two weeks off for Christmas and you enter zeros, those zeros pull your annual average down as though you held services with empty rooms.
 
-A church that takes two weeks off for Christmas and enters zero instead of leaving it blank will show a permanently lower attendance average for the year.
-
-### The practical rule
-
-- Service did not meet → leave blank
-- Service met, nobody came (rare, but possible) → enter 0
-- You forgot to enter last week → go back and enter the real number, or leave it blank if you genuinely do not know
+- Service didn't meet → leave it blank
+- Service met, nobody came (rare, but it happens) → enter 0
+- You forgot to enter last week → go back and fill it in, or leave it blank if you don't know
 
 ---
 
-## 6. Colors and Display Order
+## Colors and Order
 
-> **Rule:** The order ministries appear in the tree determines their color. First ministry gets color 1, second gets color 2, and so on. That color follows the ministry to the dashboard, Entries, and History.
+The order ministries appear in the tree sets their color. First one gets color 1, second gets color 2, and so on. That color follows the ministry everywhere — the dashboard, Entries, and History all use it.
 
-### What this means
+If you move ministries around, colors shift. Set your order intentionally before you start entering data. If you want Experience to always be blue, keep it first.
 
-If you reorder the tree, ministry colors shift. The dashboard, Entries page, and History grid all use the same positional color palette. Moving a ministry up or down in the tree changes which color it gets everywhere.
-
-Ties in display order (two ministries with the same position number) are broken by creation date — the older ministry gets the earlier color.
-
-### Practical guidance
-
-- Set your display order intentionally before you start entering data
-- If you want Experience to always be blue, make sure it stays in the first position
-- Custom color overrides (the color picker on each ministry) lock a ministry to a specific color regardless of position
+You can also set a custom color on any ministry using the color picker. A custom color sticks no matter where the ministry sits in the order.
 
 ---
 
-## 7. Quick Reference — Common Setup Questions
+## Quick Answers
 
-| Question | Answer |
-|---|---|
-| Ministry or group? | Top-level = own dashboard card. Nested = rolls up to parent. |
-| When to subgroup? | Same audience, same services, want separate Entries rows but one combined dashboard card. |
-| Two collection methods for giving? | Two Entry counts under the same Giving node. No manual total. |
-| Giving under Experience? | No — giving is weekly church-wide, Experience is per-service. Scope mismatch → own top-level node. |
-| Forgot to enter a week? | Go back and enter the real number. If unknown, leave blank. Never enter 0 for a week you simply forgot. |
-| Total Volunteers count? | Don't create one. The system totals the roles you enter. |
-| Total Giving count? | Don't create one. The system totals the sources you enter. |
-| Two services, want combined attendance? | Entry counts on each service, Roll-up on the parent ministry. |
-| Service didn't meet this week? | Leave blank, not 0. |
-| Changed display order and colors shifted? | Expected behavior — order drives color. Reorder intentionally or use the color override. |
+**Should I make this a ministry or a group?**
+If it needs its own dashboard card — make it top-level. If it's a breakdown of something that already exists — nest it.
+
+**When do I add a group inside a ministry?**
+When you want to count something separately in Entries but you don't need it to show up as its own dashboard card.
+
+**I have two giving sources. Do I need two top-level nodes?**
+No. Add two Entry counts under one Giving node. The dashboard totals them.
+
+**Can I put Giving under Experience?**
+No. Giving is once per week for the whole church. Experience counts per service. Different scope — Giving needs its own top-level node.
+
+**Do I need a "Total Volunteers" count?**
+No. Add the individual roles. The system adds them up.
+
+**Do I need a "Total Giving" count?**
+No. Same reason.
+
+**I run two services and want one combined attendance number.**
+Add an Entry count per service, then add a Roll-up count on the parent ministry. The Roll-up does the math.
+
+**The service didn't meet this week. What do I enter?**
+Nothing. Leave it blank.
+
+**I moved ministries around and the colors changed.**
+That's how it works — order drives color. Set the order before you start counting, or use a custom color override.
 
 ---
 
-## 8. Tooltip Source Text
+## Tooltip Copy
 
-*These are the one-sentence versions for use in `title` attributes and inline help chips throughout the UI.*
+*One-liners for title attributes and inline help chips.*
 
-**Ministry / top-level node:**
-A top-level node gets its own card on the dashboard. Set the role to Ministry, Kids, Youth, or Other based on the audience — role is just metadata; tree position is what determines the dashboard card.
+**Add ministry or group (top-level button):**
+Start something new at the top level. It gets its own dashboard card, its own color, its own trend line. Good for a whole service, a campus, or something church-wide like Giving. If it's a breakdown of something that already exists, click that ministry first and use "Add a group inside" instead.
 
-**Group:**
-A group lives inside a ministry or another group. It can hold its own sub-groups and counts. Its numbers roll up to the parent on the dashboard, but you enter and track them separately in Entries.
+**Add a group inside [X]:**
+A group is a breakdown inside [X]. You count each one separately in Entries, but the dashboard adds them all up under [X] as one number. Use this when you want the detail without a separate dashboard card.
 
-**Attendance reporting type:**
-Headcount of people present. Averages exclude weeks the service did not meet — leave it blank, not 0, for services that did not run.
+**Ministry label (top-level node):**
+This is top-level — it gets its own dashboard card with its own color. Everything inside it rolls up here.
 
-**Volunteers reporting type:**
-Headcount of people serving. Add individual role counts; the system totals them. Never add a manual "Total Volunteers" entry — it double-counts.
+**Group label (nested node):**
+This sits inside another ministry. You count it separately in Entries, but it adds up under the parent on the dashboard.
 
-**Stats reporting type:**
-Any numeric count that is not a headcount — baptisms, salvations, hands raised, parking, connection cards. Reported as raw numbers.
+**Attendance:**
+People in the room. Averages skip weeks the service didn't run — leave blank, not 0, for weeks you didn't meet.
 
-**Giving reporting type:**
-Dollar amounts. All giving counts sum together automatically. Never add a manual "Total Giving" entry — it double-counts.
+**Volunteers:**
+People serving. Add each role separately and the system totals them. Don't add a "Total Volunteers" count — it double-counts.
 
-**Entry:**
-A number you type each week. It belongs to this group and stays here unless you point it to a roll-up above.
+**Stats:**
+Numbers that aren't headcounts — baptisms, salvations, hands raised, parking, connection cards.
 
-**Roll up sub-entries:**
-This count calculates automatically by adding up (or averaging) entries that point to it from below. You never type it directly.
+**Giving:**
+Dollar amounts. All your giving sources add up automatically. Don't add a "Total Giving" count — it double-counts.
+
+**Entry button:**
+You count this and type it in every week.
+
+**Roll up sub-entries button:**
+The math is done for you. This one adds up other counts automatically — you never type it.
 
 **Weekly · church-wide badge:**
-This count is one total per week for the whole church — not entered per service. How often it is collected is set in Services and Occurrences.
+One number for the whole church, once a week. Not entered per service.
 
-**NULL / blank attendance:**
-Leave blank if the service did not meet. Blank weeks are excluded from averages. A zero is counted as a week where the service ran with nobody present.
+**Blank vs. zero:**
+Blank means the service didn't run. Zero means it ran and nobody came. Leave it blank for weeks you didn't meet — zeros drag down your averages.

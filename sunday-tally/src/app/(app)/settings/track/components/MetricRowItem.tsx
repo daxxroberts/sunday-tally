@@ -42,7 +42,7 @@ export function MetricRowItem({
             <span className="text-[14px] font-medium text-slate-800">{metric.name}</span>
           )}
           {isPeriod && (
-            <span className="shrink-0 rounded-md bg-[#4F6EF7]/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#3D5BD4]" title="How often this is counted is set on its schedule in Services and Occurrences.">
+            <span className="shrink-0 rounded-md bg-[#4F6EF7]/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#3D5BD4]" title="One number for the whole church, once a week. You set the schedule in Services and Occurrences.">
               {metric.cadence === 'month' ? 'Monthly' : 'Weekly'} · church-wide
             </span>
           )}
@@ -55,12 +55,12 @@ export function MetricRowItem({
             <div className="flex overflow-hidden rounded-lg border border-slate-200 text-[11px] font-semibold">
               <button
                 onClick={() => onSetMode('entry')}
-                title="Entry — a number you type each week. It belongs to this group and stays here unless you point it to a roll-up above."
+                title="You count this and type it in every week."
                 className={`px-2 py-1 transition-colors ${!isRollup ? 'bg-[#4F6EF7] text-white' : 'bg-white text-slate-500 hover:bg-slate-50'}`}
               >Entry</button>
               <button
                 onClick={() => onSetMode('rollup', metric.rollup_op ?? 'sum')}
-                title="Roll up sub-entries — this count calculates automatically by adding up (or averaging) entries that point to it from below. You never type it directly."
+                title="The math is done for you. This one adds up other counts automatically — you never type it."
                 className={`whitespace-nowrap px-2 py-1 transition-colors ${isRollup ? 'bg-[#4F6EF7] text-white' : 'bg-white text-slate-500 hover:bg-slate-50'}`}
               >Roll up sub-entries</button>
             </div>

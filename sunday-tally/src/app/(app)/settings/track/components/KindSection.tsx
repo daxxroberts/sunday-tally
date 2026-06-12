@@ -54,7 +54,7 @@ export function KindSection({
           <h3 className="text-[13px] font-bold uppercase tracking-wider text-slate-700">{kindLabel}</h3>
           <span
             className="text-[10px] font-medium text-slate-400 cursor-help"
-            title={`"${kindLabel}" is a reporting type. It tells the dashboard how to handle these numbers. The counts you add here all report as ${kindLabel}.`}
+            title={`Everything in this section shows up as ${kindLabel} on the dashboard.`}
           >
             reporting type
           </span>
