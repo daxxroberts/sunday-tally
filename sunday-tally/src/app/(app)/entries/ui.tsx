@@ -2,7 +2,6 @@
 
 // ─────────────────────────────────────────────────────────────────────────
 // Entries screen — shared UI primitives (DS-1..DS-25, IRIS_ENTRIES_ELEMENT_MAP)
-// Lifted from /mockup/weekly-entry and wired to real autosave behaviour.
 // SVG icons only (DS-14) · status circles (DS-6/E-50) · tabular numerals (DS-4).
 // ─────────────────────────────────────────────────────────────────────────
 

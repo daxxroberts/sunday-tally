@@ -30,7 +30,7 @@ export interface ActionResult<T = void> {
 
 // ── Helpers ──────────────────────────────────────────────────────────────
 
-/** Slug a display name into an UPPERCASE code; mirrors tags/page.tsx */
+/** Slug a display name into an UPPERCASE code */
 function slugifyCode(name: string): string {
   return name
     .toUpperCase()
@@ -253,7 +253,7 @@ export async function createMinistry(params: {
     const name = params.name.trim()
     if (!name) return { ok: false, error: 'Name is required' }
 
-    // Generate a unique code per church (mirror tags/page.tsx slugifyCode logic)
+    // Generate a unique code per church via slugifyCode
     const base = slugifyCode(name) || 'MINISTRY'
     const { data: existingCodes } = await supabase
       .from('service_tags')

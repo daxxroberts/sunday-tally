@@ -3,7 +3,6 @@
 // ─────────────────────────────────────────────────────────────────────────
 // ENTRIES — /(app)/entries — task #36 weekly/period data entry hub.
 // Build spec: IRIS_ENTRIES_ELEMENT_MAP.md (E-1..E-50).  UI rules: DESIGN_SYSTEM.md.
-// Visual reference (NOT wired): src/app/mockup/weekly-entry/page.tsx.
 //
 // Everything is schema/config driven — no hardcoded ministries or metrics.
 // Flow: user → membership(role, church, default_location) → active campus →
