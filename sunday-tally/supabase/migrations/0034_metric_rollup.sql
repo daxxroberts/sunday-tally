@@ -1,5 +1,6 @@
 -- ============================================================
--- 0034 — Metric roll-up (explicit child→parent)  (NEEDS-APPROVAL — NOT APPLIED)
+-- 0034 — Metric roll-up (explicit child→parent)
+-- STATUS: APPLIED — verified in supabase_migrations.schema_migrations on 2026-06-15. (Header previously marked NEEDS-APPROVAL in error; do not re-apply.)
 -- ============================================================
 -- WHY
 -- The "What we track" overhaul lets a parent node hold a ROLL-UP metric whose

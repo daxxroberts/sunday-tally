@@ -267,21 +267,27 @@ export default function NewServicePage() {
                 </div>
               )}
 
-              {/* Primary tag — E2e */}
+              {/* Primary ministry — E2e. Copy steers toward reusing ONE ministry
+                  across multiple service times so the dashboard combines them —
+                  prevents the "Experience 1 / Experience 2" duplicate trap. */}
               <div>
                 <label htmlFor="primary_tag" className={labelCls}>
-                  Which tag best describes this service?{' '}
-                  <span className="text-slate-400 font-normal">This groups it in your dashboard.</span>
+                  Which ministry is this service part of?{' '}
+                  <span className="text-slate-400 font-normal">
+                    Services that share a ministry add up together on your dashboard — so if this is
+                    another time of something you already run (like a 9am and an 11am Experience), pick
+                    the same one and they combine into one number.
+                  </span>
                 </label>
                 {primaryTagOptions.length === 0 ? (
                   <p className="text-[12px] text-[#B45309]">
-                    No tags yet.{' '}
+                    No ministries yet.{' '}
                     <button
                       type="button"
                       onClick={() => router.push('/settings/setup?tab=track')}
                       className="font-semibold text-[#3D5BD4] hover:underline"
                     >
-                      Create a ministry first →
+                      Create one first →
                     </button>
                   </p>
                 ) : (
@@ -293,7 +299,7 @@ export default function NewServicePage() {
                     disabled={isPending}
                     className={inputCls}
                   >
-                    <option value="">Select a tag</option>
+                    <option value="">Select a ministry</option>
                     {primaryTagOptions.map(t => (
                       <option key={t.id} value={t.id}>{t.name} · {roleLabel(t.tag_role)}</option>
                     ))}

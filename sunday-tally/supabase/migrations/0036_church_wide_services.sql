@@ -1,7 +1,6 @@
 -- ============================================================
 -- Migration 0036 — church-wide services + entries visibility
--- STATUS: NEEDS-APPROVAL — file only, NOT applied. Apply requires
--- explicit per-file Builder authorization.
+-- STATUS: APPLIED — verified in supabase_migrations.schema_migrations on 2026-06-15. (Header previously marked NEEDS-APPROVAL in error; do not re-apply.)
 -- Dependencies: none (first of the 0036–0039 restructure set).
 -- Spec: IRIS_SERVICES_RESTRUCTURE_ELEMENT_MAP.md · BUILD_FLAGS
 --       "Services / What-We-Track Restructure".

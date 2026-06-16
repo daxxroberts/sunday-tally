@@ -1,7 +1,6 @@
 -- ============================================================
 -- Migration 0039 — split dashboard prefs out of grid_config
--- STATUS: NEEDS-APPROVAL — file only, NOT applied. Apply requires
--- explicit per-file Builder authorization.
+-- STATUS: APPLIED — verified in supabase_migrations.schema_migrations on 2026-06-15. (Header previously marked NEEDS-APPROVAL in error; do not re-apply.)
 -- Dependencies: none. App code (P2) ships read-fallback FIRST, so
 -- either DB state stays green.
 -- ============================================================

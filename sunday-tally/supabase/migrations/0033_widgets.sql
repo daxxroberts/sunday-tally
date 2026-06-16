@@ -1,5 +1,6 @@
 -- ============================================================
--- Migration 0033 — AI widgets  (NEEDS-APPROVAL — do not apply without BOT gate)
+-- Migration 0033 — AI widgets
+-- STATUS: APPLIED — verified in supabase_migrations.schema_migrations on 2026-06-15. (Header previously marked NEEDS-APPROVAL in error; do not re-apply.)
 -- ============================================================
 -- Decisions D-100..D-106 (see CONCEPT_AI_WIDGETS.md).
 -- Additive: 3 new tables, no god-node change (does NOT alter

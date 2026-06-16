@@ -21,11 +21,6 @@
 
 import { useCallback, useEffect, useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import {
-  DndContext, DragOverlay, closestCenter,
-  PointerSensor, KeyboardSensor, useSensor, useSensors,
-  type DragEndEvent, type DragStartEvent,
-} from '@dnd-kit/core'
 import MaybeLayout from '@/components/layouts/MaybeLayout'
 import { createClient } from '@/lib/supabase/client'
 import { fetchActiveServiceTags } from '@/lib/service-tags'
@@ -51,7 +46,6 @@ import {
 } from './types'
 import { WhereCountedModal } from './components/WhereCountedModal'
 import { AddNodeForm } from './components/AddNodeForm'
-import { RootDropZone } from './components/RootDropZone'
 import { MinistryTreeNode } from './components/MinistryTreeNode'
 import { DetailPanel } from './components/DetailPanel'
 
@@ -175,18 +169,6 @@ export function TrackPanel({ embedded = false }: { embedded?: boolean }) {
   const childrenOf = useCallback((parentId: string | null) =>
     ministries.filter(m => m.parent_tag_id === parentId), [ministries])
 
-  const descendantIds = useCallback((id: string): Set<string> => {
-    const result = new Set<string>()
-    const stack = [id]
-    while (stack.length) {
-      const cur = stack.pop()!
-      for (const m of ministries) {
-        if (m.parent_tag_id === cur && !result.has(m.id)) { result.add(m.id); stack.push(m.id) }
-      }
-    }
-    return result
-  }, [ministries])
-
   const ancestorIds = useCallback((id: string): Set<string> => {
     const out = new Set<string>()
     const byId = new Map(ministries.map(m => [m.id, m] as const))
@@ -194,11 +176,6 @@ export function TrackPanel({ embedded = false }: { embedded?: boolean }) {
     while (cur && !out.has(cur)) { out.add(cur); cur = byId.get(cur)?.parent_tag_id ?? null }
     return out
   }, [ministries])
-
-  const validParentsFor = useCallback((min: Ministry): Ministry[] => {
-    const blocked = descendantIds(min.id)
-    return ministries.filter(m => m.id !== min.id && !blocked.has(m.id))
-  }, [ministries, descendantIds])
 
   // Root-ancestor color, reusing the History palette so the two views match.
   const rootAncestorId = useCallback((id: string): string => {
@@ -319,13 +296,6 @@ export function TrackPanel({ embedded = false }: { embedded?: boolean }) {
     if (!res.ok) { alert(res.error ?? 'Could not save the color (is migration 0040 applied?)'); return }
     setMinistries(prev => prev.map(m => m.id === id ? { ...m, color: colorHex } : m))
   }
-  async function handleReparent(id: string, parentId: string | null) {
-    setMinistries(prev => prev.map(m => m.id === id ? { ...m, parent_tag_id: parentId } : m))
-    await updateMinistry(id, { parent_tag_id: parentId })
-    // Always reload: applies the move authoritatively and picks up any roll-up
-    // links the server self-healed (a node dragged out of its roll-up's subtree).
-    if (churchId) await load(churchId)
-  }
   async function handleDeactivateMinistry(id: string) {
     if (!confirm('Remove this ministry? This cannot be undone.')) return
     const result = await deactivateMinistry(id)
@@ -382,23 +352,6 @@ export function TrackPanel({ embedded = false }: { embedded?: boolean }) {
     }
   }
 
-  // ── DnD ───────────────────────────────────────────────────────────────────
-  const [activeDragId, setActiveDragId] = useState<string | null>(null)
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor),
-  )
-  function onDragEnd(e: DragEndEvent) {
-    const activeId = String(e.active.id)
-    const overId = e.over ? String(e.over.id) : null
-    if (!overId) return
-    if (overId === '__root__') { if (ministries.find(m => m.id === activeId)?.parent_tag_id !== null) handleReparent(activeId, null); return }
-    if (overId === activeId) return
-    if (descendantIds(activeId).has(overId)) return
-    if (ministries.find(m => m.id === activeId)?.parent_tag_id === overId) return
-    handleReparent(activeId, overId)
-  }
-
   const rootMinistries = childrenOf(null)
   const selected = ministries.find(m => m.id === selectedId) ?? null
 
@@ -439,31 +392,24 @@ export function TrackPanel({ embedded = false }: { embedded?: boolean }) {
               {[1, 2, 3].map(i => <div key={i} className="h-16 animate-pulse rounded-2xl bg-slate-100" />)}
             </div>
           ) : (
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragStart={(e: DragStartEvent) => setActiveDragId(String(e.active.id))}
-              onDragCancel={() => setActiveDragId(null)}
-              onDragEnd={(e) => { setActiveDragId(null); onDragEnd(e) }}
-            >
-              <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
 
                 {/* Left tree */}
                 <div className="lg:w-72 lg:shrink-0">
                   {write && !addingMinistry && (
                     <button
                       onClick={() => setAddingMinistry(true)}
-                      title="This creates a brand-new dashboard card with its own color and trend line — think a whole service (Experience, LifeKids), a campus, or something church-wide like Giving. If you want to add a number that shows on an existing card — like tracking giving inside Experience — click that ministry first and use 'Add a count' there instead."
+                      title="A ministry gets its own dashboard card, color, and trend line — like Experience, LifeKids, or Giving. This is the main thing you'll set up; once it's here, add the numbers you count to it. (Want to break one ministry into smaller groups that total up? Open it and use 'Add a group inside' — most churches won't need that.)"
                       className="mb-3 flex w-full items-center justify-center gap-1.5 rounded-2xl border border-dashed border-[#4F6EF7]/40 bg-[#4F6EF7]/5 px-4 py-3 text-[14px] font-semibold text-[#3D5BD4] transition-colors duration-200 hover:bg-[#4F6EF7]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/40"
                     >
                       <Ico.plus className="h-4 w-4" />
-                      Add ministry or group
+                      Add a ministry
                     </button>
                   )}
 
                   {write && addingMinistry && (
                     <AddNodeForm
-                      title="New ministry or group"
+                      title="New ministry"
                       name={newName} setName={setNewName}
                       role={newRole} setRole={setNewRole}
                       busy={busy}
@@ -480,7 +426,6 @@ export function TrackPanel({ embedded = false }: { embedded?: boolean }) {
                       </div>
                     ) : (
                       <>
-                        {write && <RootDropZone />}
                         <ul>
                           {rootMinistries.map(m => (
                             <MinistryTreeNode
@@ -495,9 +440,6 @@ export function TrackPanel({ embedded = false }: { embedded?: boolean }) {
                               hasUnreferenced={(id) => (metricsByMinistry.get(id) ?? []).some(m2 => unreferencedRollupIds.has(m2.id))}
                               isOrphan={(id) => orphanIds.has(id)}
                               onFixOrphan={setFixTagId}
-                              write={write}
-                              onReparent={handleReparent}
-                              validParentsFor={validParentsFor}
                             />
                           ))}
                         </ul>
@@ -543,15 +485,6 @@ export function TrackPanel({ embedded = false }: { embedded?: boolean }) {
                   )}
                 </div>
               </div>
-              <DragOverlay dropAnimation={null}>
-                {activeDragId ? (
-                  <div className="flex items-center gap-2 rounded-xl border-2 border-[#4F6EF7] bg-white px-3 py-2 text-[13px] font-semibold text-slate-800 shadow-2xl">
-                    <svg viewBox="0 0 16 16" className="h-3.5 w-3.5 text-slate-400" fill="currentColor" aria-hidden><circle cx="5" cy="3" r="1.3"/><circle cx="11" cy="3" r="1.3"/><circle cx="5" cy="8" r="1.3"/><circle cx="11" cy="8" r="1.3"/><circle cx="5" cy="13" r="1.3"/><circle cx="11" cy="13" r="1.3"/></svg>
-                    {ministries.find(m => m.id === activeDragId)?.name ?? 'Moving…'}
-                  </div>
-                ) : null}
-              </DragOverlay>
-            </DndContext>
           )}
         </main>
 

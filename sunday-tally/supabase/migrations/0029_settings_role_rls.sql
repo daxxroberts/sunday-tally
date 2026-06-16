@@ -1,5 +1,6 @@
 -- ============================================================
--- 0029 — Settings role-aware RLS  (NEEDS-APPROVAL — NOT APPLIED)
+-- 0029 — Settings role-aware RLS
+-- STATUS: APPLIED — verified in supabase_migrations.schema_migrations on 2026-06-15. (Header previously marked NEEDS-APPROVAL in error; do not re-apply.)
 -- ============================================================
 -- WHY
 -- The live policies on church_memberships, church_locations and

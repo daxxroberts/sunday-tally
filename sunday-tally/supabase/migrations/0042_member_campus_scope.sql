@@ -1,5 +1,6 @@
 -- ============================================================
--- 0042 — Per-campus member restriction (RLS-enforced)   STATUS: NEEDS-APPROVAL
+-- 0042 — Per-campus member restriction (RLS-enforced)
+-- STATUS: APPLIED — verified in supabase_migrations.schema_migrations on 2026-06-15. (Header previously marked NEEDS-APPROVAL in error; do not re-apply.)
 -- ============================================================
 -- WHY: a church member could see ALL campuses' data. RLS was church-level only
 -- (church_id membership), `default_location_id` is just a view preference, and

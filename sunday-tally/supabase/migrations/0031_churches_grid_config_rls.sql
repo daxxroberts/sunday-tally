@@ -1,5 +1,6 @@
 -- ============================================================
--- 0031 — churches write policy (manager-only UPDATE)  (NEEDS-APPROVAL — NOT APPLIED)
+-- 0031 — churches write policy (manager-only UPDATE)
+-- STATUS: APPLIED — verified in supabase_migrations.schema_migrations on 2026-06-15. (Header previously marked NEEDS-APPROVAL in error; do not re-apply.)
 -- ============================================================
 -- WHY
 -- The churches table has RLS enabled (relrowsecurity = true) but only a

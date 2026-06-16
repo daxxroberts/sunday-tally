@@ -123,11 +123,13 @@ export default function OnboardingServicesPage() {
               </div>
             )}
 
-            {/* E2e — Primary tag picker (D-046: undated only) */}
+            {/* E2e — Primary ministry picker (D-046: undated only). Copy steers
+                toward reusing ONE ministry across service times so they combine
+                on the dashboard — the "Experience 1 / Experience 2" trap. */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Which tag best describes this service?{' '}
-                <span className="text-gray-400 font-normal">— this groups it in your dashboard.</span>
+                Which ministry is this service part of?{' '}
+                <span className="text-gray-400 font-normal">— services that share a ministry add up together on your dashboard.</span>
               </label>
               <select
                 value={tmpl.primary_tag_id}
@@ -135,7 +137,7 @@ export default function OnboardingServicesPage() {
                 disabled={isPending}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:opacity-50"
               >
-                <option value="">Select a tag</option>
+                <option value="">Select a ministry</option>
                 {primaryTagOptions.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
               </select>
             </div>
@@ -177,7 +179,7 @@ export default function OnboardingServicesPage() {
         {/* E4 — Add another service */}
         <button type="button" onClick={addTemplate}
           className="text-sm text-gray-500 hover:text-gray-900 transition-colors">
-          + Add another service — for each service time you run each week.
+          + Add another service — one per service time (reuse a ministry to combine them).
         </button>
 
         {error && (

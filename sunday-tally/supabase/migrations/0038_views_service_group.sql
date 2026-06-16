@@ -1,7 +1,6 @@
 -- ============================================================
 -- Migration 0038 — expose service_group_code on reporting views
--- STATUS: NEEDS-APPROVAL — file only, NOT applied. Apply requires
--- explicit per-file Builder authorization.
+-- STATUS: APPLIED — verified in supabase_migrations.schema_migrations on 2026-06-15. (Header previously marked NEEDS-APPROVAL in error; do not re-apply.)
 -- Dependencies: REQUIRES 0037 (service_groups + reporting_group_id).
 -- Spec: IRIS_SERVICES_RESTRUCTURE_ELEMENT_MAP.md §5 W1.
 -- ============================================================

@@ -236,6 +236,69 @@ async function autoLinkToNearestAncestorServices(
   }
 }
 
+/**
+ * Inherit a parent's roll-ups onto a brand-new child node. The child gets one
+ * typed ('entry') count for EVERY thing its nearest container ancestor totals,
+ * each wired to feed that roll-up. This keeps sibling groups homogeneous — they
+ * all feed the same parent totals — and prevents the drift where one group
+ * tracked extra counts the others were missing (the Roberts/Tabors case).
+ * Returns the reporting codes that were seeded so the caller can avoid
+ * double-seeding Attendance. The NEAREST ancestor with any roll-ups wins, and
+ * ALL of that ancestor's roll-ups are inherited (including two of the same Kind,
+ * e.g. two Volunteers roll-ups like "Dinner" and "Lunch").
+ */
+async function inheritRollupsFromParent(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  churchId: string,
+  node: MinistryNode,
+): Promise<Set<string>> {
+  const seeded = new Set<string>()
+  if (!node.parent_tag_id) return seeded
+
+  const { data: tagRows } = await supabase
+    .from('service_tags').select('id, parent_tag_id').eq('church_id', churchId)
+  const parentOf = new Map<string, string | null>()
+  for (const t of (tagRows ?? []) as { id: string; parent_tag_id: string | null }[]) parentOf.set(t.id, t.parent_tag_id)
+
+  const { data: rtags } = await supabase
+    .from('reporting_tags').select('id, code').eq('church_id', churchId)
+  const codeById = new Map<string, string>()
+  for (const r of (rtags ?? []) as { id: string; code: string }[]) codeById.set(r.id, r.code)
+
+  // Walk up from the parent; the first ancestor that has any active roll-ups is
+  // the recipe. Inherit every one of its roll-ups (cycle-guarded).
+  const seen = new Set<string>()
+  let cur: string | null = node.parent_tag_id
+  while (cur && !seen.has(cur)) {
+    seen.add(cur)
+    const { data: rollups } = await supabase
+      .from('metrics')
+      .select('id, reporting_tag_id, name')
+      .eq('church_id', churchId)
+      .eq('ministry_tag_id', cur)
+      .eq('mode', 'rollup')
+      .eq('is_active', true)
+    const list = (rollups ?? []) as { id: string; reporting_tag_id: string; name: string }[]
+    if (list.length > 0) {
+      for (const r of list) {
+        const code = codeById.get(r.reporting_tag_id)
+        if (!code) continue
+        // addCount validates the ancestor link + applies the C2 canonical guard.
+        const res = await addCount({
+          ministryId: node.id,
+          reportingTagCode: code,
+          name: r.name,
+          parentMetricId: r.id,
+        })
+        if (res.ok) seeded.add(code)
+      }
+      return seeded
+    }
+    cur = parentOf.get(cur) ?? null
+  }
+  return seeded
+}
+
 export async function createMinistry(params: {
   name: string
   tag_role: TagRole
@@ -247,6 +310,43 @@ export async function createMinistry(params: {
 
     const name = params.name.trim()
     if (!name) return { ok: false, error: 'Name is required' }
+
+    // ── Leaf-parent guard (creating a group INSIDE an existing ministry) ──────
+    // A ministry is either COUNTED directly or a CONTAINER that totals its groups.
+    //   • Parent already has numbers logged against its own counts → BLOCK:
+    //     turning it into a container would strand that history. Sunset it and
+    //     start a new one instead.
+    //   • Parent has its own counts but nothing logged yet → safe-convert those
+    //     counts to roll-ups so it becomes a clean container the child feeds.
+    if (params.parent_tag_id) {
+      const { data: ownEntryMetrics } = await supabase
+        .from('metrics')
+        .select('id')
+        .eq('church_id', churchId)
+        .eq('ministry_tag_id', params.parent_tag_id)
+        .eq('mode', 'entry')
+        .eq('is_active', true)
+      const ownIds = ((ownEntryMetrics ?? []) as { id: string }[]).map(m => m.id)
+      if (ownIds.length > 0) {
+        const { count } = await supabase
+          .from('metric_entries')
+          .select('id', { count: 'exact', head: true })
+          .in('metric_id', ownIds)
+        if ((count ?? 0) > 0) {
+          return {
+            ok: false,
+            error: "This ministry already has its own numbers recorded, so it can't hold groups. To split it up, remove it — its history stays in your reports — and add a new one going forward.",
+          }
+        }
+        // No data yet → flip its own counts into roll-ups so the new group can
+        // feed them (the child inherits these below).
+        await supabase
+          .from('metrics')
+          .update({ mode: 'rollup', rollup_op: 'sum', parent_metric_id: null })
+          .in('id', ownIds)
+          .eq('church_id', churchId)
+      }
+    }
 
     // Generate a unique code per church via slugifyCode
     const base = slugifyCode(name) || 'MINISTRY'
@@ -294,53 +394,24 @@ export async function createMinistry(params: {
       await autoLinkToNearestAncestorServices(supabase, churchId, node.id, node.parent_tag_id)
     }
 
-    // If an ancestor already has an active ATTENDANCE roll-up, auto-wire the
-    // new node's seeded Attendance into it (the common case needs no manual
-    // pointing; the user can still unwire it). Pick the NEAREST such ancestor.
-    let autoParentMetricId: string | null = null
-    if (node.parent_tag_id) {
-      const { data: attRt } = await supabase
-        .from('reporting_tags')
-        .select('id')
-        .eq('church_id', churchId)
-        .eq('code', 'ATTENDANCE')
-        .maybeSingle()
-      if (attRt) {
-        const ancestors = await ancestorTagIds(supabase, churchId, node.id)
-        if (ancestors.size > 0) {
-          const { data: rollups } = await supabase
-            .from('metrics')
-            .select('id, ministry_tag_id')
-            .eq('church_id', churchId)
-            .eq('reporting_tag_id', attRt.id as string)
-            .eq('mode', 'rollup')
-            .eq('is_active', true)
-            .in('ministry_tag_id', Array.from(ancestors))
-          // nearest ancestor wins — walk up from the node's parent
-          const byTag = new Map<string, string>()
-          for (const r of (rollups ?? []) as { id: string; ministry_tag_id: string }[]) byTag.set(r.ministry_tag_id, r.id)
-          if (byTag.size > 0) {
-            const { data: tagRows } = await supabase
-              .from('service_tags').select('id, parent_tag_id').eq('church_id', churchId)
-            const parentOf = new Map<string, string | null>()
-            for (const t of (tagRows ?? []) as { id: string; parent_tag_id: string | null }[]) parentOf.set(t.id, t.parent_tag_id)
-            let cur: string | null = node.parent_tag_id
-            while (cur) {
-              if (byTag.has(cur)) { autoParentMetricId = byTag.get(cur)!; break }
-              cur = parentOf.get(cur) ?? null
-            }
-          }
-        }
-      }
-    }
+    // Inherit the parent's roll-ups: the new child gets one typed count for
+    // every thing its parent totals, each wired to feed that total — so sibling
+    // groups stay identical and the parent's combined number is never missing a
+    // group. (Service links were inherited just above.)
+    const seededCodes = node.parent_tag_id
+      ? await inheritRollupsFromParent(supabase, churchId, node)
+      : new Set<string>()
 
-    // Auto-seed Attendance count via addCount (respects C2 canonical guard)
-    await addCount({
-      ministryId: node.id,
-      reportingTagCode: 'ATTENDANCE',
-      name: `${name} Attendance`,
-      parentMetricId: autoParentMetricId,
-    })
+    // Always guarantee an Attendance count (respects the C2 canonical guard) —
+    // for top-level ministries, and for children whose parent doesn't roll up
+    // Attendance.
+    if (!seededCodes.has('ATTENDANCE')) {
+      await addCount({
+        ministryId: node.id,
+        reportingTagCode: 'ATTENDANCE',
+        name: `${name} Attendance`,
+      })
+    }
 
     return { ok: true, data: node }
   } catch (e) {

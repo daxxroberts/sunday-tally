@@ -1,6 +1,6 @@
 -- ============================================================
 -- Migration 0040 — ministry color
--- STATUS: NEEDS-APPROVAL — file only until explicitly applied.
+-- STATUS: APPLIED — verified in supabase_migrations.schema_migrations on 2026-06-15. (Header previously marked NEEDS-APPROVAL in error; do not re-apply.)
 -- Dependencies: none.
 -- ============================================================
 -- WHY (Builder 2026-06-10): "I would love to specify a color … every time we

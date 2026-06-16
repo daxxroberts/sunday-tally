@@ -1,5 +1,6 @@
 -- ============================================================
--- 0030 — ai_usage_events.job_id  (NEEDS-APPROVAL — NOT APPLIED)
+-- 0030 — ai_usage_events.job_id
+-- STATUS: APPLIED — verified in supabase_migrations.schema_migrations on 2026-06-15. (Header previously marked NEEDS-APPROVAL in error; do not re-apply.)
 -- ============================================================
 -- WHY
 -- Per-import AI cost is currently un-attributable: ai_usage_events records

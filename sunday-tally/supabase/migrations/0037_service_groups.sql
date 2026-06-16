@@ -1,7 +1,6 @@
 -- ============================================================
 -- Migration 0037 — reporting groups for services
--- STATUS: NEEDS-APPROVAL — file only, NOT applied. Apply requires
--- explicit per-file Builder authorization.
+-- STATUS: APPLIED — verified in supabase_migrations.schema_migrations on 2026-06-15. (Header previously marked NEEDS-APPROVAL in error; do not re-apply.)
 -- Dependencies: none (0038 depends on THIS).
 -- Spec: IRIS_SERVICES_RESTRUCTURE_ELEMENT_MAP.md §5 · CONCEPT_AI_WIDGETS
 --       Addendum 2.

@@ -1,6 +1,6 @@
 -- ============================================================
 -- Migration 0041 — schedule frequency (cadence on the occurrence)
--- STATUS: NEEDS-APPROVAL — not yet applied.
+-- STATUS: APPLIED — verified in supabase_migrations.schema_migrations on 2026-06-15. (Header previously marked NEEDS-APPROVAL in error; do not re-apply.)
 -- ============================================================
 -- WHY: cadence is a property of the OCCURRENCE, not the metric. A service
 -- schedule is now one of three cadences set on the Services and Occurrences
