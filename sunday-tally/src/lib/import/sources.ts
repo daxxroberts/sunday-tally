@@ -24,6 +24,17 @@ export interface NormalizedSource {
 const SAMPLE_ROW_LIMIT = 10
 const SHEET_PATTERN = /docs\.google\.com\/spreadsheets\/d\/([A-Za-z0-9_-]+)/
 
+/**
+ * Strip a leading UTF-8 byte-order mark (U+FEFF). Google Sheets' CSV export
+ * always prepends one, and CSV files saved from Excel often do too. Left in
+ * place it rides along on the first column header and later blows up anything
+ * that needs a ByteString (e.g. the AI SDK's request headers) with
+ * "character at index 0 has a value of 65279 which is greater than 255".
+ */
+function stripBom(text: string): string {
+  return text.charCodeAt(0) === 0xfeff ? text.slice(1) : text
+}
+
 export async function normalizeSource(input: SourceInput): Promise<NormalizedSource> {
   try {
     if (input.kind === 'text') {
@@ -83,7 +94,7 @@ async function fetchGoogleSheetCsv(url: string): Promise<string> {
 }
 
 function parseCsv(kind: SourceKind, name: string, raw: string): NormalizedSource {
-  const parsed = Papa.parse<Record<string, string>>(raw, {
+  const parsed = Papa.parse<Record<string, string>>(stripBom(raw), {
     header: true,
     skipEmptyLines: true,
     transformHeader: (h: string) => h.trim(),
@@ -110,7 +121,7 @@ export async function getAllRows(input: SourceInput): Promise<Record<string, str
   const csv = input.kind === 'sheet_url'
     ? await fetchGoogleSheetCsv(input.value)
     : input.value
-  const parsed = Papa.parse<Record<string, string>>(csv, {
+  const parsed = Papa.parse<Record<string, string>>(stripBom(csv), {
     header: true,
     skipEmptyLines: true,
     transformHeader: (h: string) => h.trim(),

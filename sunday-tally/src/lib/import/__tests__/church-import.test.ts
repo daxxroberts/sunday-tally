@@ -660,11 +660,13 @@ describe('aggregateMonths — preview logic', () => {
     expect(months[1].month).toBe('2024-01')
   })
 
-  it('T94 handles source CSV with BOM character in first header', async () => {
+  it('T94 strips the BOM from the first header (Google Sheets CSV export prepends one)', async () => {
     // PapaParse handles BOM in UTF-8 CSVs
     const bom = '\uFEFF'
     const csv = `${bom}Date,Main,Kids,Youth\n2024-01-07,450,120,85`
     const r = await normalizeSource({ kind: 'csv', name: 'BOM', value: csv })
+    expect(r.columns[0]).toBe('Date')
+    expect(r.columns.some(c => c.charCodeAt(0) === 0xfeff)).toBe(false)
     // BOM column either trimmed or present — check no crash and data exists
     expect(r.rowCount).toBe(1)
     expect(r.error).toBeUndefined()
