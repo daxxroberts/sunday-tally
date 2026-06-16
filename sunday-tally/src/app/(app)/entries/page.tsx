@@ -30,13 +30,6 @@ const PAGE = 1000  // PostgREST cap — paginate past it (N-7)
 /* ── date helpers (client-side, browser-local is fine per task note) ────── */
 function fromDateStr(s: string) { return new Date(s + 'T12:00:00') }
 function fmtWeek(d: Date) { return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) }
-function fmtTabLabel(inst: Instance) {
-  if (inst.start_datetime) {
-    const t = new Date(inst.start_datetime)
-    return t.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
-  }
-  return inst.template_name
-}
 function firstOfMonth(d: Date) { return toDateStr(new Date(d.getFullYear(), d.getMonth(), 1)) }
 
 /* ── completion (N-6) ──────────────────────────────────────────────────── */
@@ -66,7 +59,9 @@ export default function EntriesPage() {
 
   const [bootLoading, setBootLoading] = useState(true)
   const [weekLoading, setWeekLoading] = useState(true)
-  const [tab, setTab] = useState<string>('Totals')
+  const [tab, setTab] = useState<string>('')
+  // Totals moved out of the entry tabs into a header toggle (2026-06 redesign).
+  const [showTotals, setShowTotals] = useState(false)
 
   const readOnly = role === 'viewer'
   const weekStartStr = toDateStr(weekStart)
@@ -346,10 +341,12 @@ export default function EntriesPage() {
     setEntries(nextEntries)
     setWeekLoading(false)
 
-    // keep current tab valid: if a closed occurrence tab, fall back to Totals (N-3)
+    // Default to entry (first occurrence), not a summary; keep the tab valid as
+    // the week changes. Totals is now a header toggle, not a tab.
     setTab(prev => {
-      if (prev === 'Totals' || prev === 'Stat Entries') return prev
-      return allInstances.some(i => i.id === prev) ? prev : 'Totals'
+      if (prev === 'Stat Entries') return prev
+      if (allInstances.some(i => i.id === prev)) return prev
+      return allInstances[0]?.id ?? 'Stat Entries'
     })
   }, [supabase, churchId, campus, weekStart, weekStartStr, periodMetrics])
 
@@ -530,6 +527,29 @@ export default function EntriesPage() {
 
   const statEntriesStatus = sectionStatuses[sectionStatuses.length - 1]
 
+  // Entry tabs grouped by WHEN they happen — dated services by day-of-week,
+  // church-wide + period things under "Throughout the week" (replaces the flat
+  // strip + the "Church-wide" divider).
+  const tabGroups = useMemo(() => {
+    const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+    const byDay = new Map<number, Instance[]>()
+    const weekly: Instance[] = []
+    for (const inst of instances) {
+      if (inst.church_wide) { weekly.push(inst); continue }
+      const dow = fromDateStr(inst.service_date).getDay()
+      const arr = byDay.get(dow) ?? []
+      arr.push(inst); byDay.set(dow, arr)
+    }
+    const groups: { label: string; instances: Instance[]; includeStat: boolean }[] = []
+    for (let d = 0; d < 7; d++) {
+      const list = byDay.get(d)
+      if (list && list.length) groups.push({ label: DAY_NAMES[d], instances: list, includeStat: false })
+    }
+    // Church-wide occurrences + the weekly/monthly Stat Entries live together.
+    groups.push({ label: 'Throughout the week', instances: weekly, includeStat: true })
+    return groups
+  }, [instances])
+
   if (bootLoading) {
     return (
       <AppLayout role={role}>
@@ -585,77 +605,82 @@ export default function EntriesPage() {
         </header>
 
         <main className="mx-auto max-w-3xl px-4 py-6">
-          {/* ── Zone B — completion strip (E-4) ─────────────────────────── */}
-          <div className="mb-2 flex justify-end px-1">
+          {/* ── Zone B — Week-totals toggle + completion strip ───────────── */}
+          <div className="mb-3 flex items-center justify-between gap-3 px-1">
+            <button
+              onClick={() => setShowTotals(s => !s)}
+              className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[12px] font-semibold text-slate-600 shadow-sm transition-colors duration-200 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/40"
+            >
+              {showTotals
+                ? (<><Ico.left className="h-4 w-4" />Back to entry</>)
+                : (<><Ico.grid className="h-4 w-4 text-slate-400" />Week totals</>)}
+            </button>
             <span className="text-[12px] font-medium text-slate-500"><span className="font-num font-semibold text-slate-700">{completeSections} of {totalSections}</span> complete</span>
           </div>
 
-          {/* ── Zone C — tabs (E-5/E-6/E-7, DS-12) ──────────────────────── */}
-          <div role="tablist" className="mb-6 flex flex-wrap gap-1 rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
-            <button role="tab" aria-selected={tab === 'Totals'} onClick={() => setTab('Totals')}
-              style={tab === 'Totals' ? { background: '#4F6EF7' } : undefined}
-              className={`flex cursor-pointer items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-semibold transition-colors duration-200 ${tab === 'Totals' ? 'text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800'}`}>
-              <Ico.grid className="h-4 w-4" />Totals
-            </button>
-            {instances.map((inst, i) => {
-              const active = tab === inst.id
-              // EN1 — church-wide occurrences sort last; a divider marks the boundary.
-              const firstChurchWide = inst.church_wide && (i === 0 || !instances[i - 1].church_wide)
-              return (
-                <span key={inst.id} className="contents">
-                  {firstChurchWide && (
-                    <span className="flex items-center gap-1 self-center px-1.5 text-[9px] font-semibold uppercase tracking-wider text-slate-300" aria-hidden>
-                      <span className="h-4 w-px bg-slate-200" />Church-wide
-                    </span>
-                  )}
-                  <button role="tab" aria-selected={active} onClick={() => setTab(inst.id)}
-                    style={active ? { background: '#4F6EF7' } : undefined}
-                    className={`flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-semibold transition-colors duration-200 ${active ? 'text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800'}`}>
-                    <Dot s={sectionStatuses[i]} />
-                    <span className="leading-none">{fmtTabLabel(inst)}</span>
-                  </button>
-                </span>
-              )
-            })}
-            <button role="tab" aria-selected={tab === 'Stat Entries'} onClick={() => setTab('Stat Entries')}
-              style={tab === 'Stat Entries' ? { background: '#4F6EF7' } : undefined}
-              className={`ml-1 flex cursor-pointer items-center justify-center gap-1.5 rounded-lg border-l border-slate-200 px-3 py-2 pl-3 text-[13px] font-semibold transition-colors duration-200 ${tab === 'Stat Entries' ? 'text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800'}`}>
-              <Dot s={statEntriesStatus} />
-              <span className="leading-none">Stat Entries</span>
-            </button>
-          </div>
-
-          {weekLoading ? (
-            <div className="space-y-4">{[1, 2].map(i => <div key={i} className="h-44 animate-pulse rounded-2xl bg-slate-100" />)}</div>
+          {showTotals ? (
+            /* ── Week totals — moved out of the entry tabs (review, not entry) ── */
+            <TotalsView
+              weekLabel={fmtWeek(weekStart)}
+              grandTotal={grandTotal}
+              rollups={rollups}
+              excluded={excluded}
+              readOnly={readOnly}
+              onSavePrefs={saveGridPrefs}
+            />
           ) : (
             <>
-              {/* ── Zone D — TOTALS (E-10..E-13) ──────────────────────────── */}
-              {tab === 'Totals' && (
-                <TotalsView
-                  weekLabel={fmtWeek(weekStart)}
-                  grandTotal={grandTotal}
-                  rollups={rollups}
-                  excluded={excluded}
-                  readOnly={readOnly}
-                  onSavePrefs={saveGridPrefs}
-                />
-              )}
-
-              {/* ── Zone E — OCCURRENCE (E-20..E-25) ──────────────────────── */}
-              {instances.map(inst => tab === inst.id && (
-                <OccurrenceView key={inst.id} inst={inst} entries={entries} readOnly={readOnly}
-                  onCommit={upsertInstance} onToggleDidntMeet={toggleDidntMeet} />
-              ))}
-
-              {/* ── Zone F — STAT ENTRIES (E-30..E-32) ────────────────────── */}
-              {tab === 'Stat Entries' && (
-                <StatEntriesView metrics={periodMetrics} entries={entries} weekStart={weekStart}
-                  weekStartStr={weekStartStr} readOnly={readOnly} status={statEntriesStatus} onCommit={upsertPeriod} />
-              )}
-
-              <div className="mt-6 flex items-center justify-center gap-1.5 text-[12px] text-slate-400">
-                <Ico.check className="h-3.5 w-3.5 text-[#22C55E]" /> {readOnly ? 'Read-only view' : 'Entered values save automatically'}
+              {/* ── Zone C — entry tabs, grouped by WHEN they happen ───────── */}
+              <div className="mb-6 space-y-3">
+                {tabGroups.map(group => (group.instances.length > 0 || group.includeStat) && (
+                  <div key={group.label}>
+                    <div className="mb-1 px-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400">{group.label}</div>
+                    <div role="tablist" className="flex flex-wrap gap-1 rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
+                      {group.instances.map(inst => {
+                        const active = tab === inst.id
+                        return (
+                          <button key={inst.id} role="tab" aria-selected={active} onClick={() => setTab(inst.id)}
+                            style={active ? { background: '#4F6EF7' } : undefined}
+                            className={`flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-semibold transition-colors duration-200 ${active ? 'text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800'}`}>
+                            <Dot s={instanceStatus(inst, entries)} />
+                            <span className="leading-none">{inst.template_name}</span>
+                          </button>
+                        )
+                      })}
+                      {group.includeStat && (
+                        <button role="tab" aria-selected={tab === 'Stat Entries'} onClick={() => setTab('Stat Entries')}
+                          style={tab === 'Stat Entries' ? { background: '#4F6EF7' } : undefined}
+                          className={`flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-semibold transition-colors duration-200 ${tab === 'Stat Entries' ? 'text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800'}`}>
+                          <Dot s={statEntriesStatus} />
+                          <span className="leading-none">Stat Entries</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
+
+              {weekLoading ? (
+                <div className="space-y-4">{[1, 2].map(i => <div key={i} className="h-44 animate-pulse rounded-2xl bg-slate-100" />)}</div>
+              ) : (
+                <>
+                  {/* ── Zone E — OCCURRENCE (E-20..E-25) ──────────────────────── */}
+                  {instances.map(inst => tab === inst.id && (
+                    <OccurrenceView key={inst.id} inst={inst} entries={entries} readOnly={readOnly}
+                      onCommit={upsertInstance} onToggleDidntMeet={toggleDidntMeet} />
+                  ))}
+
+                  {/* ── Zone F — STAT ENTRIES (E-30..E-32) ────────────────────── */}
+                  {tab === 'Stat Entries' && (
+                    <StatEntriesView metrics={periodMetrics} entries={entries} weekStart={weekStart}
+                      weekStartStr={weekStartStr} readOnly={readOnly} status={statEntriesStatus} onCommit={upsertPeriod} />
+                  )}
+
+                  <div className="mt-6 flex items-center justify-center gap-1.5 text-[12px] text-slate-400">
+                    <Ico.check className="h-3.5 w-3.5 text-[#22C55E]" /> {readOnly ? 'Read-only view' : 'Entered values save automatically'}
+                  </div>
+                </>
+              )}
             </>
           )}
         </main>

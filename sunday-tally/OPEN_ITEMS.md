@@ -183,3 +183,23 @@ Carry-over from the conversation/grid-update loop. Each item below is a real bug
 - **Service-occurrence row labels don't surface the parent tag.** Today: row reads "9 AM
   Service". Proposal: somehow expose the parent tag (`MORNING`, `LIFEKIDS`, etc.) on the
   occurrence row — possibly as a left-side badge, possibly as a grouping header.
+
+---
+
+## Entry-page role-gated metrics — PARKED 2026-06-16
+
+**Idea (Daxx):** let some metrics be entered only by admins, not editors — e.g. Giving
+(money) is sensitive and could be admin-only, while attendance stays editor-editable.
+
+**Why parked:** this is a role-permissions decision (the role matrix is the authority) AND a
+net-new feature. Metrics have no per-role field today, so it needs:
+- a schema flag on `metrics` (e.g. `entry_min_role` = 'editor' | 'admin'),
+- enforcement in the entry server action (reject editor writes to admin-only metrics),
+- UI gating on the entry page (hide/lock admin-only fields for editors),
+- a sensible default (existing metrics = editor-editable) + a Setup control to change it.
+
+**Decision needed before build:** which metrics default to admin-only (proposed: Giving),
+and whether the line is per-metric or per-kind.
+
+Raised during the 2026-06 entry-page redesign (group tabs by day, relocate Totals, drop the
+"Church-wide" label). That UX pass shipped without this — this is the deferred piece (#4).
