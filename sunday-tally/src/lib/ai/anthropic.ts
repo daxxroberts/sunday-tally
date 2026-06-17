@@ -8,8 +8,10 @@ let _client: Anthropic | null = null
 
 export function anthropic(): Anthropic {
   if (_client) return _client
-  const key = process.env.ANTHROPIC_API_KEY
+  let key = process.env.ANTHROPIC_API_KEY
   if (!key) throw new Error('ANTHROPIC_API_KEY is not set')
+  // Strip BOM and whitespace (fixes "Cannot convert argument to a ByteString" in Headers if copied from a UI with zero-width chars)
+  key = key.replace(/^\uFEFF/, '').trim()
   _client = new Anthropic({ apiKey: key })
   return _client
 }

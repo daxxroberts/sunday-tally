@@ -88,6 +88,7 @@ export async function POST(req: Request) {
         .eq('id', job.id)
       return NextResponse.json({ error: 'ai_budget_exhausted' }, { status: 402 })
     }
+    console.error('[stage_a]', err)
     const detail = err instanceof Error ? err.message : 'stage_a_failed'
     await supabase.from('import_jobs')
       .update({ status: 'failed', error: detail })

@@ -97,7 +97,8 @@ function parseCsv(kind: SourceKind, name: string, raw: string): NormalizedSource
   const parsed = Papa.parse<Record<string, string>>(stripBom(raw), {
     header: true,
     skipEmptyLines: true,
-    transformHeader: (h: string) => h.trim(),
+    transformHeader: (h: string) => h.replace(/\uFEFF/g, '').trim(),
+    transform: (val: string) => val.replace(/\uFEFF/g, ''),
   })
 
   if (parsed.errors.length > 0 && parsed.data.length === 0) {
@@ -124,7 +125,8 @@ export async function getAllRows(input: SourceInput): Promise<Record<string, str
   const parsed = Papa.parse<Record<string, string>>(stripBom(csv), {
     header: true,
     skipEmptyLines: true,
-    transformHeader: (h: string) => h.trim(),
+    transformHeader: (h: string) => h.replace(/\uFEFF/g, '').trim(),
+    transform: (val: string) => val.replace(/\uFEFF/g, ''),
   })
   return parsed.data
 }
