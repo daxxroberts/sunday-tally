@@ -249,16 +249,24 @@ export const WRITER_HANDLERS: ToolMap = {
   upsert_service_template: async (input, ctx) => {
     const serviceCode    = slug(String(input.service_code), 'SVC')
     const displayName    = String(input.display_name)
-    const locationCode   = slug(String(input.location_code), 'LOC')
     const primaryTagCode = slug(String(input.primary_tag_code), 'TAG')
 
-    const { data: loc } = await ctx.supabase
-      .from('church_locations')
-      .select('id')
-      .eq('church_id', ctx.churchId)
-      .eq('code', locationCode)
-      .maybeSingle()
-    if (!loc) throw new Error(`Unknown location_code "${locationCode}". Call upsert_location first.`)
+    // Church-wide template: no location_code → location_id NULL (counted once for
+    // the whole church, visible at every campus — e.g. a weekly-giving home). With
+    // a location_code, resolve the campus as before.
+    const hasLocation = input.location_code != null && String(input.location_code).trim() !== ''
+    let locationId: string | null = null
+    if (hasLocation) {
+      const locationCode = slug(String(input.location_code), 'LOC')
+      const { data: loc } = await ctx.supabase
+        .from('church_locations')
+        .select('id')
+        .eq('church_id', ctx.churchId)
+        .eq('code', locationCode)
+        .maybeSingle()
+      if (!loc) throw new Error(`Unknown location_code "${locationCode}". Call upsert_location first.`)
+      locationId = loc.id
+    }
 
     const { data: tag } = await ctx.supabase
       .from('service_tags')
@@ -268,13 +276,15 @@ export const WRITER_HANDLERS: ToolMap = {
       .maybeSingle()
     if (!tag) throw new Error(`Unknown primary_tag_code "${primaryTagCode}". Call upsert_ministry_tag first.`)
 
-    const existing = await ctx.supabase
+    // Match on (service_code, location) — IS NULL for church-wide so we reuse the
+    // single church-wide home rather than creating duplicates.
+    let existingQ = ctx.supabase
       .from('service_templates')
       .select('id')
       .eq('church_id', ctx.churchId)
-      .eq('location_id', loc.id)
       .eq('service_code', serviceCode)
-      .maybeSingle()
+    existingQ = locationId === null ? existingQ.is('location_id', null) : existingQ.eq('location_id', locationId)
+    const existing = await existingQ.maybeSingle()
 
     if (existing.data) {
       await ctx.supabase
@@ -292,7 +302,7 @@ export const WRITER_HANDLERS: ToolMap = {
       .from('service_templates')
       .insert({
         church_id:      ctx.churchId,
-        location_id:    loc.id,
+        location_id:    locationId,
         service_code:   serviceCode,
         display_name:   displayName,
         primary_tag_id: tag.id,
@@ -306,38 +316,52 @@ export const WRITER_HANDLERS: ToolMap = {
 
   upsert_service_schedule_version: async (input, ctx) => {
     const serviceCode  = slug(String(input.service_code), 'SVC')
-    const locationCode = slug(String(input.location_code), 'LOC')
-    const dayOfWeek    = Number(input.day_of_week)
-    if (!Number.isInteger(dayOfWeek) || dayOfWeek < 0 || dayOfWeek > 6) {
-      throw new Error(`upsert_service_schedule_version: day_of_week must be 0-6, got ${input.day_of_week}`)
-    }
-    // Normalize "HH:MM" → "HH:MM:00"; pass "HH:MM:SS" through.
-    const rawTime = String(input.start_time).trim()
-    const startTime = /^\d{1,2}:\d{2}$/.test(rawTime)
-      ? rawTime.padStart(5, '0') + ':00'
-      : rawTime
-    if (!/^\d{2}:\d{2}:\d{2}$/.test(startTime)) {
-      throw new Error(`upsert_service_schedule_version: start_time must be HH:MM or HH:MM:SS, got "${input.start_time}"`)
+
+    // Cadence (migration 0041): 'specific' = a set day & time (a gathering);
+    // 'weekly'/'monthly' = counted once a period, no set day/time (e.g. giving).
+    // Mirrors the cadence window's saveScheduleAction.
+    const freqRaw   = String(input.frequency ?? 'specific').toLowerCase()
+    const frequency = ['specific', 'weekly', 'monthly'].includes(freqRaw) ? freqRaw : 'specific'
+
+    // Day/time only matter for 'specific'. For weekly/monthly store placeholders.
+    let dayOfWeek = 0
+    let startTime = '00:00:00'
+    if (frequency === 'specific') {
+      dayOfWeek = Number(input.day_of_week)
+      if (!Number.isInteger(dayOfWeek) || dayOfWeek < 0 || dayOfWeek > 6) {
+        throw new Error(`upsert_service_schedule_version: day_of_week must be 0-6 for a set day/time, got ${input.day_of_week}`)
+      }
+      const rawTime = String(input.start_time).trim()
+      startTime = /^\d{1,2}:\d{2}$/.test(rawTime) ? rawTime.padStart(5, '0') + ':00' : rawTime
+      if (!/^\d{2}:\d{2}:\d{2}$/.test(startTime)) {
+        throw new Error(`upsert_service_schedule_version: start_time must be HH:MM or HH:MM:SS, got "${input.start_time}"`)
+      }
     }
     const effStart = String(
       input.effective_start_date ?? new Date().toISOString().slice(0, 10),
     )
 
-    const { data: loc } = await ctx.supabase
-      .from('church_locations')
-      .select('id')
-      .eq('church_id', ctx.churchId)
-      .eq('code', locationCode)
-      .maybeSingle()
-    if (!loc) throw new Error(`Unknown location_code "${locationCode}". Call upsert_location first.`)
-
-    const { data: tmpl } = await ctx.supabase
+    // Resolve the template. Church-wide (no location_code) → location_id IS NULL.
+    const hasLocation = input.location_code != null && String(input.location_code).trim() !== ''
+    let tmplQ = ctx.supabase
       .from('service_templates')
       .select('id')
       .eq('church_id', ctx.churchId)
-      .eq('location_id', loc.id)
       .eq('service_code', serviceCode)
-      .maybeSingle()
+    if (hasLocation) {
+      const locationCode = slug(String(input.location_code), 'LOC')
+      const { data: loc } = await ctx.supabase
+        .from('church_locations')
+        .select('id')
+        .eq('church_id', ctx.churchId)
+        .eq('code', locationCode)
+        .maybeSingle()
+      if (!loc) throw new Error(`Unknown location_code "${locationCode}". Call upsert_location first.`)
+      tmplQ = tmplQ.eq('location_id', loc.id)
+    } else {
+      tmplQ = tmplQ.is('location_id', null)
+    }
+    const { data: tmpl } = await tmplQ.maybeSingle()
     if (!tmpl) throw new Error(`Unknown service_code "${serviceCode}". Call upsert_service_template first.`)
 
     // N29: deactivate any prior active schedule version for this template
@@ -356,6 +380,7 @@ export const WRITER_HANDLERS: ToolMap = {
         service_template_id:  tmpl.id,
         day_of_week:          dayOfWeek,
         start_time:           startTime,
+        frequency,
         effective_start_date: effStart,
         effective_end_date:   null,
         is_active:            true,
@@ -363,7 +388,7 @@ export const WRITER_HANDLERS: ToolMap = {
       .select('id')
       .single()
     if (error) throw new Error(`upsert_service_schedule_version failed: ${error.message}`)
-    return { id: data!.id, day_of_week: dayOfWeek, start_time: startTime, created: true }
+    return { id: data!.id, frequency, day_of_week: dayOfWeek, start_time: startTime, created: true }
   },
 
   // REPLACES upsert_volunteer_category + upsert_response_category + upsert_giving_source.
@@ -381,6 +406,15 @@ export const WRITER_HANDLERS: ToolMap = {
     if (!['instance', 'period'].includes(scope)) {
       throw new Error(`upsert_metric: scope must be instance|period, got "${input.scope}"`)
     }
+    // Cadence is meaningful only for period metrics ('week' | 'month'). Default a
+    // period metric to 'week' so its cadence is EXPLICIT (never null-relying-on-a-
+    // default), keeping the field the screens read consistent with its church-wide
+    // weekly/monthly schedule. Instance metrics carry null (their cadence is the
+    // service occurrence).
+    const cadRaw  = input.cadence == null ? null : String(input.cadence).toLowerCase()
+    const cadence = scope === 'period'
+      ? (cadRaw === 'month' ? 'month' : 'week')
+      : null
 
     const { data: ministry } = await ctx.supabase
       .from('service_tags')
@@ -413,6 +447,7 @@ export const WRITER_HANDLERS: ToolMap = {
           ministry_tag_id:  ministry.id,
           reporting_tag_id: reporting.id,
           scope,
+          cadence,
           is_canonical:     isCanonical,
           is_active:        true,
         },

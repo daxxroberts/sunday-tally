@@ -168,22 +168,19 @@ export default function HistoryPage() {
       const ch = membership.churches as Church & { grid_config?: GridConfig | null }
       setChurch(ch)
 
-      const stored = ch.grid_config ?? null
-      // Use a stored config ONLY if it actually has grid columns. The dashboard
-      // persists its prefs (keyMetrics / excludedTotalMinistries) into the SAME
-      // grid_config column, so a prefs-only object has no columns. In that case
-      // — or when null — derive the grid from the live schema so History always
-      // reflects the current structure and never renders an empty/crashing grid.
-      const storedHasGrid = !!stored && Array.isArray(stored.columns) && stored.columns.length > 0
-      if (storedHasGrid) {
-        setConfig(dedupeConfig(stored))
-      } else {
-        const derived = await deriveGridConfigFromSchema(supabase, ch.id)
-        if (!derived) {
-          setEmptyReason('No active services with a primary tag yet. Set up your services first.')
-        }
-        setConfig(derived ? dedupeConfig(derived) : null)
+      // SINGLE SOURCE OF TRUTH (SAGE Tier 1, 2026-06-17): History ALWAYS reflects
+      // the CURRENT setup. We derive the grid live from the schema on every load
+      // and no longer read the stored grid_config snapshot for layout — a snapshot
+      // goes stale the moment setup changes (a metric renamed, a ministry added, a
+      // cadence changed) and was the reason setup edits stopped mirroring here.
+      // Past numbers are unaffected: they live in metric_entries by date; only the
+      // column LAYOUT is re-derived. (Time-versioned snapshots — "show the structure
+      // as of a past date" — is a deferred Tier-2 open item, not this behavior.)
+      const derived = await deriveGridConfigFromSchema(supabase, ch.id)
+      if (!derived) {
+        setEmptyReason('No active services with a primary tag yet. Set up your services first.')
       }
+      setConfig(derived ? dedupeConfig(derived) : null)
 
       // Ministry colors (0040): root tags with a chosen color override the
       // positional palette — same color here as everywhere that ministry shows.
