@@ -523,7 +523,7 @@ function ReviewOnboardingInner() {
               {attendance != null && (
                 <div className="rounded-xl border border-gray-200 bg-white p-4 text-center">
                   <p className="text-2xl font-bold text-gray-900">{attendance}</p>
-                  <p className="mt-0.5 text-xs text-gray-500">Attendance records</p>
+                  <p className="mt-0.5 text-xs text-gray-500">Records imported</p>
                 </div>
               )}
             </div>

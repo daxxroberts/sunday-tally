@@ -396,25 +396,33 @@ unclassified metrics) — not routine confirmations.
    "audience", "group", "metric_name", "value", or "group_type" in column_map dest_field — those
    are not valid dest_field values.
 
-CRITICAL RULE — EVERY SOURCE NEEDS A SERVICE TEMPLATE:
-Every source that has a date column MUST resolve to a service template on every row. Without this,
-ZERO rows will be imported and all data is lost. You MUST enforce both of the following:
+CRITICAL RULE — TEMPLATES FOLLOW SCOPE; PERIOD METRICS GET A CHURCH-WIDE HOME:
+How a source is set up depends ENTIRELY on its metric scopes. Decide per source.
 
-(A) proposed_setup.service_templates MUST be non-empty. Even if the source only has giving data
-    with no "service type" column, create at least one template. Use the church name or "Sunday Service"
-    if the service structure is unknown. One template is better than none.
+(A) INSTANCE source — has ANY instance-scope metric (attendance, per-service stats, volunteers).
+    proposed_setup.service_templates MUST contain a real template the source resolves to, with
+    frequency="specific", a real day_of_week, and start_time when known. The source MUST have
+    either a column mapped to "service_template_code" OR default_service_template_code set to one
+    of the proposed service_codes. NEVER leave an instance source with no resolvable template —
+    that is 100% row loss.
 
-(B) For every source whose column_map does NOT include a column mapped to "service_template_code",
-    you MUST set default_service_template_code on that source to one of the proposed service_codes.
-    This is how the row extractor knows which service occurrence to attach each row to.
-    Example: if you propose service_code "MORNING", set default_service_template_code: "MORNING".
-    NEVER leave both the service_template_code column AND default_service_template_code absent on
-    a source — that guarantees 100% row failure.
+(B) PERIOD source — EVERY data column maps to a scope="period" metric (e.g. a weekly giving sheet:
+    date + amount columns, no per-service split). The period metrics belong to a CHURCH-WIDE HOME,
+    not a gathering. Do ALL of the following:
+    - Propose ONE church-wide service_template as the home: OMIT location_name (→ church-wide),
+      frequency="weekly" (or "monthly" if the data is monthly), day_of_week=0, start_time=null.
+      Name it by cadence (e.g. "Weekly" or "Weekly Church-Wide") — NEVER "Sunday Service".
+    - If a church-wide home with the SAME cadence already fits, REUSE it (one home per cadence) —
+      do not create a duplicate.
+    - Every period metric: scope="period" and cadence="week" (or "month") matching the home.
+    - Leave default_service_template_code ABSENT — period rows are written period-anchored on the
+      Sunday-of-week with NO occurrence.
+    - DO NOT create a specific-day "Sunday Service" for giving. That produces a phantom service the
+      church has to clean up, and it misrepresents a weekly church-wide total as a gathering.
 
-    EXCEPTION — pure period sources: If EVERY non-meta column in a source maps to "ignore" or to
-    "metric.<CODE>" where that metric has scope="period" (no instance-scope metrics at all),
-    the source needs NO template. Period rows are written period-anchored on the Sunday-of-week —
-    no service occurrence is created. For these sources, leave default_service_template_code absent.
+A template is a CADENCE, not a guess. Specific-day templates are gatherings that create
+occurrences; weekly/monthly church-wide homes are period counts with no day/time. Match the
+template's frequency to how the numbers are actually collected.
 
 7. NULL = "not entered", not zero. Never COALESCE a metric value to 0 — a blank cell is skipped,
    not written as zero.
@@ -434,10 +442,12 @@ dest_table is DECORATIVE in IR v2 — routing is metric-driven. You may omit it.
 has no effect on extraction.
 
 SERVICE TEMPLATES — no audience rules. Define services by their ministry_tag!
-CRITICAL: Do NOT create service_templates for giving categories, funds, or metrics. Service
-templates represent physical gatherings of people (e.g., 9AM Service, Youth Group). Giving (like
-Tithes, Missions, Building Fund) must ONLY be expressed as METRICS with reporting_tag=GIVING —
-never as a service template. Never make a service template called 'Tithes' or 'Giving'.
+CRITICAL: Do NOT create a service_template PER giving category, fund, or metric. Tithes, Missions,
+Building Fund, App Giving, etc. are METRICS (reporting_tag=GIVING) — never templates — and never
+name a template after a fund ('Tithes', 'Building Fund'). The ONLY allowed period template is the
+SINGLE church-wide period HOME from rule (B) (frequency=weekly/monthly, named by cadence such as
+"Weekly") — that one home holds ALL period metrics; it is a cadence container, not a gathering.
+Net: many giving metrics, at most ONE church-wide weekly home, zero per-fund templates.
 
 MULTI-SOURCE TEMPLATE RECONCILIATION — proposed_setup.service_templates is shared across all sources.
 If two sources reference the same recurring service, propose ONE template with one service_code.
@@ -655,18 +665,23 @@ export const PROPOSE_MAPPING_TOOL: Anthropic.Messages.Tool = {
               properties: {
                 display_name:  { type: 'string' },
                 service_code:  { type: 'string', description: 'Unique; often equals the primary ministry tag code.' },
-                location_name: { type: 'string', description: 'Resolved to location_code/id.' },
+                location_name: { type: 'string', description: 'Campus this service meets at. OMIT for a CHURCH-WIDE home counted once for the whole church (e.g. a weekly-giving home) — resolves to location_id NULL.' },
                 primary_tag:   { type: 'string', description: 'A ministry_tags.code — the service\'s primary ministry. Required.' },
                 primary_tag_reasoning: { type: 'string', description: 'Optional: why this ministry tag is correct for this service.' },
+                frequency: {
+                  type: 'string',
+                  enum: ['specific', 'weekly', 'monthly'],
+                  description: '"specific" = a gathering on a set day & time, creates occurrences (DEFAULT for real services). "weekly"/"monthly" = counted once a period, NO set day/time — use for a church-wide giving/period home. When weekly/monthly: set day_of_week=0 and start_time=null (placeholders).',
+                },
                 day_of_week: {
                   type: 'integer',
                   minimum: 0,
                   maximum: 6,
-                  description: 'Inferred from observed service_dates: 0=Sun, 1=Mon, ..., 6=Sat. Required.',
+                  description: 'Inferred from observed service_dates: 0=Sun, 1=Mon, ..., 6=Sat. Required. Placeholder (0) when frequency is weekly/monthly.',
                 },
                 start_time: {
                   type: 'string',
-                  description: 'HH:MM 24-hour, or null if unknown. Time-of-day distinctions live here, never in the tag namespace.',
+                  description: 'HH:MM 24-hour, or null if unknown / when frequency is weekly/monthly. Time-of-day distinctions live here, never in the tag namespace.',
                 },
               },
               required: ['display_name', 'service_code', 'primary_tag', 'day_of_week'],
@@ -686,6 +701,11 @@ export const PROPOSE_MAPPING_TOOL: Anthropic.Messages.Tool = {
                   type: 'string',
                   enum: ['instance', 'period'],
                   description: '"instance" = per service occurrence. "period" = per church-week (church-wide weekly total, snapped to its Sunday). Read by the writer to decide service_instance vs period_anchor.',
+                },
+                cadence: {
+                  type: 'string',
+                  enum: ['week', 'month'],
+                  description: 'Period metrics ONLY: how often counted — "week" (default for giving) or "month". Omit for instance metrics. Must match the frequency of the church-wide home this metric belongs to.',
                 },
                 is_canonical: {
                   type: 'boolean',

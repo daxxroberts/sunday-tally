@@ -731,12 +731,14 @@ interface PsTemplate {
   location_name?: unknown; location_code?: unknown
   primary_tag?: unknown; primary_tag_code?: unknown
   day_of_week?: unknown; start_time?: unknown
+  frequency?: unknown   // 'specific' (default) | 'weekly' | 'monthly' — weekly/monthly = church-wide period home
 }
 interface PsMetric {
   metric_code?: unknown; name?: unknown
   ministry_tag?: unknown; ministry_tag_code?: unknown
   reporting_tag?: unknown; reporting_tag_code?: unknown
   scope?: unknown; is_canonical?: unknown
+  cadence?: unknown     // period metrics: 'week' | 'month'
 }
 
 function asArray<T>(v: unknown): T[] {
@@ -825,7 +827,7 @@ async function runSetupDeterministic(
 
   // ── 4. Service templates (+ remember schedule inputs for step 5) ──────────
   const templates = asArray<PsTemplate>(ps.service_templates)
-  type SchedSeed = { service_code: string; location_code: string; day_of_week: number; start_time: string }
+  type SchedSeed = { service_code: string; location_code?: string; day_of_week: number; start_time: string; frequency: string }
   const schedSeeds: SchedSeed[] = []
   let tmplCount = 0
   for (const t of templates) {
@@ -840,27 +842,37 @@ async function runSetupDeterministic(
       displayName = serviceCode
     }
 
-    // location: stageA emits location_name; tolerate location_code too. Resolve to a
-    // known location code; fall back to the sole/first location, else "MAIN".
-    const locName = str(t.location_name)
-    const locCodeRaw = str(t.location_code)
-    let locationCode =
-      (locCodeRaw && knownLocationCodes.has(setupSlug(locCodeRaw)) ? setupSlug(locCodeRaw) : '') ||
-      (locName ? (locationCodeByName.get(setupSlug(locName)) ?? '') : '') ||
-      (locCodeRaw ? setupSlug(locCodeRaw) : '') ||
-      [...knownLocationCodes][0] ||
-      'MAIN'
-    // Safety net: ensure the resolved location exists (e.g. setup had no locations[]).
-    if (!knownLocationCodes.has(locationCode)) {
-      try {
-        const res = (await H.upsert_location(
-          { name: locName || 'Main Campus', code: locationCode },
-          ctx,
-        )) as { code: string }
-        locationCode = res.code
-        knownLocationCodes.add(res.code)
-      } catch (err) {
-        errors.push(`setup upsert_location (for template "${serviceCode}"): ${errMsg(err)}`)
+    // Frequency decides the kind of template: a 'specific' gathering (campus-located,
+    // creates occurrences) vs a 'weekly'/'monthly' CHURCH-WIDE period home (no location
+    // → location_id NULL, no occurrences). Period homes hold church-wide giving/period
+    // metrics — never a phantom specific-day "Sunday Service".
+    const frequency = (str(t.frequency) || 'specific').toLowerCase()
+    const isPeriodHome = frequency === 'weekly' || frequency === 'monthly'
+
+    // Resolve a campus ONLY for specific gatherings. Church-wide period homes carry
+    // no location_code (the writer maps absent → location_id NULL).
+    let locationCode: string | undefined = undefined
+    if (!isPeriodHome) {
+      const locName = str(t.location_name)
+      const locCodeRaw = str(t.location_code)
+      locationCode =
+        (locCodeRaw && knownLocationCodes.has(setupSlug(locCodeRaw)) ? setupSlug(locCodeRaw) : '') ||
+        (locName ? (locationCodeByName.get(setupSlug(locName)) ?? '') : '') ||
+        (locCodeRaw ? setupSlug(locCodeRaw) : '') ||
+        [...knownLocationCodes][0] ||
+        'MAIN'
+      // Safety net: ensure the resolved location exists (e.g. setup had no locations[]).
+      if (!knownLocationCodes.has(locationCode)) {
+        try {
+          const res = (await H.upsert_location(
+            { name: locName || 'Main Campus', code: locationCode },
+            ctx,
+          )) as { code: string }
+          locationCode = res.code
+          knownLocationCodes.add(res.code)
+        } catch (err) {
+          errors.push(`setup upsert_location (for template "${serviceCode}"): ${errMsg(err)}`)
+        }
       }
     }
 
@@ -872,7 +884,7 @@ async function runSetupDeterministic(
         {
           service_code:     serviceCode,
           display_name:     displayName,
-          location_code:    locationCode,
+          ...(locationCode ? { location_code: locationCode } : {}),
           primary_tag_code: primaryTag,
           ...(dow != null ? { day_of_week: dow } : {}),
           ...(startTime ? { start_time: startTime } : {}),
@@ -880,24 +892,29 @@ async function runSetupDeterministic(
         ctx,
       )
       tmplCount++
-      // Collect schedule seed: replicate STAGE_B_SYSTEM — one active schedule version
-      // per template, sourced from day_of_week/start_time, defaulting to Sunday 10:00.
+      // Collect schedule seed: one active schedule version per template. For a period
+      // home the day/time are placeholders (the writer ignores them for weekly/monthly).
       const dowNum = Number.isInteger(Number(dow)) ? Number(dow) : 0
       schedSeeds.push({
         service_code:  serviceCode,
         location_code: locationCode,
         day_of_week:   dowNum >= 0 && dowNum <= 6 ? dowNum : 0,
         start_time:    startTime && startTime.length > 0 ? startTime : '10:00:00',
+        frequency,
       })
     } catch (err) {
       errors.push(`setup upsert_service_template "${serviceCode}": ${errMsg(err)}`)
     }
   }
 
-  // ── 4b. At-least-one-template safety net ─────────────────────────────────
-  // Instance-scope metrics need a service_instance → a template. If proposed_setup
-  // produced none, create the same fallback trio the old prompt mandated.
-  if (tmplCount === 0) {
+  // ── 4b. At-least-one-template safety net (INSTANCE sources only) ──────────
+  // Instance-scope metrics need a service_instance → a template. If an instance
+  // source produced none, create a fallback. A PURE-PERIOD import (giving-only
+  // weekly sheet) intentionally has no specific-day template — do NOT fabricate a
+  // phantom "Sunday Service"; its church-wide period home was created above and its
+  // period rows attach to a period_anchor, not an occurrence.
+  const setupHasInstanceMetric = asArray<PsMetric>(ps.metrics).some(m => str(m.scope) === 'instance')
+  if (tmplCount === 0 && setupHasInstanceMetric) {
     errors.push('setup: no service templates in proposed_setup — creating fallback MORNING template')
     try {
       await H.upsert_location({ name: 'Main Campus', code: 'MAIN' }, ctx)
@@ -909,7 +926,7 @@ async function runSetupDeterministic(
         ctx,
       )
       tmplCount++
-      schedSeeds.push({ service_code: 'MORNING', location_code: 'MAIN', day_of_week: 0, start_time: '10:00:00' })
+      schedSeeds.push({ service_code: 'MORNING', location_code: 'MAIN', day_of_week: 0, start_time: '10:00:00', frequency: 'specific' })
     } catch (err) {
       errors.push(`setup fallback template: ${errMsg(err)}`)
     }
@@ -919,7 +936,13 @@ async function runSetupDeterministic(
   for (const s of schedSeeds) {
     try {
       await H.upsert_service_schedule_version(
-        { service_code: s.service_code, location_code: s.location_code, day_of_week: s.day_of_week, start_time: s.start_time },
+        {
+          service_code: s.service_code,
+          ...(s.location_code ? { location_code: s.location_code } : {}),
+          day_of_week:  s.day_of_week,
+          start_time:   s.start_time,
+          frequency:    s.frequency,
+        },
         ctx,
       )
     } catch (err) {
@@ -955,6 +978,7 @@ async function runSetupDeterministic(
           ministry_tag_code:  ministry,
           reporting_tag_code: reporting,
           scope:              m.scope,
+          ...(m.cadence != null ? { cadence: m.cadence } : {}),
           is_canonical:       isCanonical,
         },
         ctx,

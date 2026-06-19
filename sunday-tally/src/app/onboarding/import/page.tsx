@@ -82,7 +82,22 @@ export default function ImportUploaderPage() {
       })
       if (res.status === 402) { setExhausted(true); return }
       const body = await res.json()
-      if (!res.ok) { setError(body.message || body.error || 'Import failed'); return }
+      if (!res.ok) {
+        // Map raw error codes to plain language. Prefer a server-provided message,
+        // then a friendly code mapping, then a safe generic fallback. Never surface
+        // a raw code like "stage_a_failed" to a church admin.
+        const friendly: Record<string, string> = {
+          stage_a_failed:      'We had trouble reading your data. Make sure the sheet is shared as "Anyone with the link can view," then try again.',
+          stage_b_failed:      'We read your data, but ran into a problem saving it. Please try again.',
+          ai_budget_exhausted: 'This period\'s setup allowance is used up. An owner can override to continue.',
+          no_sources:          'Add at least one CSV, Google Sheets link, or description first.',
+          job_create_failed:   'We could not start the import. Please try again.',
+          forbidden:           'Only an owner or admin can import data.',
+          unauthorized:        'Please sign in again to import.',
+        }
+        setError(body.message || friendly[body.error as string] || 'The import did not go through. Please try again.')
+        return
+      }
       // Persist form state so Back → import page restores correctly
       sessionStorage.setItem('sundaytally_import_form', JSON.stringify({ sheetEntries, freeText }))
       router.push(`/onboarding/import/review?job_id=${body.job_id}`)
