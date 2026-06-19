@@ -527,9 +527,9 @@ export default function EntriesPage() {
 
   const statEntriesStatus = sectionStatuses[sectionStatuses.length - 1]
 
-  // Entry tabs grouped by WHEN they happen — dated services by day-of-week,
-  // church-wide + period things under "Throughout the week" (replaces the flat
-  // strip + the "Church-wide" divider).
+  // Entry tabs grouped by WHEN they happen — dated services by day-of-week, and the
+  // church-wide period things under a CADENCE label ("Weekly", or "Monthly" when the
+  // church-wide stats are monthly). Replaces the flat strip + the "Church-wide" divider.
   const tabGroups = useMemo(() => {
     const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
     const byDay = new Map<number, Instance[]>()
@@ -545,10 +545,16 @@ export default function EntriesPage() {
       const list = byDay.get(d)
       if (list && list.length) groups.push({ label: DAY_NAMES[d], instances: list, includeStat: false })
     }
-    // Church-wide occurrences + the weekly/monthly Stat Entries live together.
-    groups.push({ label: 'Throughout the week', instances: weekly, includeStat: true })
+    // Church-wide occurrences + the period Stat Entries. Label by cadence: "Monthly"
+    // only when every church-wide stat is monthly, otherwise "Weekly" (the common case;
+    // each metric also carries its own cadence badge inside Stat Entries).
+    const cadences = new Set(periodMetrics.map(m => m.cadence ?? 'week'))
+    const periodLabel = cadences.size > 0 && cadences.has('month') && !cadences.has('week') && !cadences.has('day')
+      ? 'Monthly'
+      : 'Weekly'
+    groups.push({ label: periodLabel, instances: weekly, includeStat: true })
     return groups
-  }, [instances])
+  }, [instances, periodMetrics])
 
   if (bootLoading) {
     return (
@@ -633,9 +639,9 @@ export default function EntriesPage() {
               {/* ── Zone C — entry tabs, grouped by WHEN they happen ───────── */}
               <div className="mb-6 space-y-3">
                 {tabGroups.map(group => (group.instances.length > 0 || group.includeStat) && (
-                  <div key={group.label}>
-                    <div className="mb-1 px-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400">{group.label}</div>
-                    <div role="tablist" className="flex flex-wrap gap-1 rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
+                  <div key={group.label} className="flex items-center gap-2">
+                    <div className="w-16 shrink-0 px-1 text-right text-[11px] font-semibold uppercase tracking-wide leading-tight text-slate-400">{group.label}</div>
+                    <div role="tablist" className="flex flex-1 flex-wrap gap-1 rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
                       {group.instances.map(inst => {
                         const active = tab === inst.id
                         return (
