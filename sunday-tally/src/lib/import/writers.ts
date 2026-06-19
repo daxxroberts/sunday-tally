@@ -1,6 +1,7 @@
 import 'server-only'
 import type Anthropic from '@anthropic-ai/sdk'
 import type { ToolHandler } from '@/lib/ai/anthropic'
+import { clampScheduleEnd } from '@/lib/schedule/scheduleVersions'
 
 // Setup-only writer tools for Stage B (IR v2 — IMPORT_IR_V2.md).
 // Claude creates locations, ministry tags, custom reporting tags, templates,
@@ -367,12 +368,21 @@ export const WRITER_HANDLERS: ToolMap = {
     // N29: deactivate any prior active schedule version for this template
     // before activating the new one. Skip rows where effective_start_date == effStart
     // so the upsert below can re-activate that exact row instead of conflicting.
-    await ctx.supabase
+    // End each prior row at the LATER of effStart and its own start — never before
+    // its own start, which would create an impossible end<start range (migration 0043).
+    const { data: priorScheds } = await ctx.supabase
       .from('service_schedule_versions')
-      .update({ is_active: false, effective_end_date: effStart })
+      .select('id, effective_start_date')
       .eq('service_template_id', tmpl.id)
       .eq('is_active', true)
       .neq('effective_start_date', effStart)
+    for (const p of (priorScheds ?? []) as { id: string; effective_start_date: string }[]) {
+      const endDate = clampScheduleEnd(p.effective_start_date, effStart)
+      await ctx.supabase
+        .from('service_schedule_versions')
+        .update({ is_active: false, effective_end_date: endDate })
+        .eq('id', p.id)
+    }
 
     const { data, error } = await ctx.supabase
       .from('service_schedule_versions')

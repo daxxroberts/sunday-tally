@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { clampScheduleEnd } from '@/lib/schedule/scheduleVersions'
 
 export async function getUnscheduledTemplates() {
   const supabase = await createClient()
@@ -52,13 +53,21 @@ export async function saveScheduleAction(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
 
-  // N29: set effective_end_date on any prior active version
-  const today = new Date().toISOString().split('T')[0]
-  await supabase
+  // N29: end any prior active version when this new one begins. End at the LATER
+  // of the new start and the prior row's own start — never before its own start,
+  // which would create an impossible end<start range (see migration 0043).
+  const { data: priorVersions } = await supabase
     .from('service_schedule_versions')
-    .update({ effective_end_date: today, is_active: false })
+    .select('id, effective_start_date')
     .eq('service_template_id', templateId)
     .eq('is_active', true)
+  for (const p of (priorVersions ?? []) as { id: string; effective_start_date: string }[]) {
+    const endDate = clampScheduleEnd(p.effective_start_date, effectiveStartDate)
+    await supabase
+      .from('service_schedule_versions')
+      .update({ effective_end_date: endDate, is_active: false })
+      .eq('id', p.id)
+  }
 
   // Weekly / monthly occurrences have no clock; day_of_week + start_time stay
   // NOT NULL, so write harmless placeholders the cadence makes us ignore.

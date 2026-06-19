@@ -114,3 +114,34 @@ describe('import writers — cadence-window model', () => {
     expect(firstOp(sbI, 'metrics', 'upsert')!.cadence).toBeNull()
   })
 })
+
+describe('import writers — schedule deactivation never writes a backwards range', () => {
+  it('prior version starting AFTER the new start ends at its OWN start (not the earlier new start)', async () => {
+    const sb = makeSupabase({
+      service_templates: { id: 'tmpl1' },
+      // the neq-filtered prior active version, starting later than the incoming one
+      service_schedule_versions: [{ id: 'old1', effective_start_date: '2026-06-14' }],
+    })
+    await WRITER_HANDLERS.upsert_service_schedule_version(
+      { service_code: 'WEEKLY', frequency: 'weekly', effective_start_date: '2026-06-07' },
+      ctx(sb),
+    )
+    const upd = firstOp(sb, 'service_schedule_versions', 'update')
+    expect(upd).toBeDefined()
+    expect(upd!.is_active).toBe(false)
+    // clamped UP to the prior row's own start — pre-fix this was '2026-06-07' (end < start)
+    expect(upd!.effective_end_date).toBe('2026-06-14')
+  })
+
+  it('prior version starting BEFORE the new start ends at the new start (normal forward edit)', async () => {
+    const sb = makeSupabase({
+      service_templates: { id: 'tmpl1' },
+      service_schedule_versions: [{ id: 'old1', effective_start_date: '2026-06-01' }],
+    })
+    await WRITER_HANDLERS.upsert_service_schedule_version(
+      { service_code: 'WEEKLY', frequency: 'weekly', effective_start_date: '2026-06-10' },
+      ctx(sb),
+    )
+    expect(firstOp(sb, 'service_schedule_versions', 'update')!.effective_end_date).toBe('2026-06-10')
+  })
+})
