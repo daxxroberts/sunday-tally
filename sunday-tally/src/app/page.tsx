@@ -3,6 +3,7 @@
 import { useRef } from 'react'
 import { motion, useScroll, useTransform } from 'framer-motion'
 import Link from 'next/link'
+import Image from 'next/image'
 import { ArrowRight, BarChart3, Bot, Zap, Database, CheckCircle2 } from 'lucide-react'
 
 export default function LandingPage() {
@@ -114,33 +115,76 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Feature grid */}
-      <section className="py-24 bg-black relative border-t border-white/10">
+      {/* Bento Grid */}
+      <section className="py-32 bg-black relative border-t border-white/5">
         <div className="container mx-auto px-4 md:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-5xl font-bold text-white mb-4 tracking-tight">Math is boring. Let the AI do it.</h2>
-            <p className="text-lg text-zinc-400 max-w-2xl mx-auto">We handle the complex calculations. You lead the church.</p>
+          <div className="text-center mb-24">
+            <h2 className="text-4xl md:text-6xl font-bold text-white mb-6 tracking-tighter">Math is boring. Let the AI do it.</h2>
+            <p className="text-xl text-zinc-400 max-w-2xl mx-auto">We handle the complex calculations. You lead the church.</p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
-            <FeatureCard 
-              icon={<Bot size={24} />}
-              title="Custom Dashboards"
-              description="Tell the AI what you want to see. It builds the exact chart you need right in front of you. No pre-packaged templates required."
-              delay={0.1}
-            />
-            <FeatureCard 
-              icon={<Database size={24} />}
-              title="Instant Imports"
-              description="Give us your massive Google Sheet. Our AI reads the columns, maps the fields, and imports years of history in seconds. It never complains."
-              delay={0.2}
-            />
-            <FeatureCard 
-              icon={<Zap size={24} />}
-              title="Accurate Averages"
-              description="A week off is a blank. A bad week is a zero. Our system knows the difference. Your averages stay accurate automatically."
-              delay={0.3}
-            />
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-6 max-w-6xl mx-auto">
+            
+            {/* Bento Item 1 - Large Span */}
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }}
+              className="md:col-span-8 bg-zinc-900/20 border border-white/5 rounded-[2rem] p-8 md:p-12 hover:bg-zinc-900/40 hover:border-white/10 transition-all flex flex-col md:flex-row items-center gap-12 group overflow-hidden relative"
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="flex-1 relative z-10">
+                <div className="w-12 h-12 bg-white/5 text-white rounded-xl flex items-center justify-center mb-8 border border-white/10">
+                  <Database size={24} />
+                </div>
+                <h3 className="text-3xl font-bold text-white mb-4 tracking-tight">Instant Imports</h3>
+                <p className="text-zinc-400 text-lg leading-relaxed">
+                  Give us your massive Google Sheet. Our AI reads the columns, maps the fields, and imports years of history in seconds. It never complains.
+                </p>
+              </div>
+              <div className="w-full md:w-1/2 aspect-square relative rounded-2xl overflow-hidden border border-white/5 bg-black group-hover:scale-105 transition-transform duration-700">
+                 <Image src="/data_core.png" fill alt="Database Core" className="object-cover opacity-80" />
+              </div>
+            </motion.div>
+
+            {/* Bento Item 2 - Tall Span */}
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6, delay: 0.1 }}
+              className="md:col-span-4 md:row-span-2 bg-zinc-900/20 border border-white/5 rounded-[2rem] p-8 md:p-12 hover:bg-zinc-900/40 hover:border-white/10 transition-all flex flex-col group overflow-hidden relative"
+            >
+              <div className="absolute inset-0 bg-gradient-to-b from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="w-full aspect-square relative rounded-2xl overflow-hidden border border-white/5 bg-black mb-10 group-hover:scale-105 transition-transform duration-700">
+                 <Image src="/ai_brain.png" fill alt="AI Brain" className="object-cover opacity-80" />
+              </div>
+              <div className="relative z-10 mt-auto">
+                <div className="w-12 h-12 bg-white/5 text-white rounded-xl flex items-center justify-center mb-6 border border-white/10">
+                  <Bot size={24} />
+                </div>
+                <h3 className="text-2xl font-bold text-white mb-3 tracking-tight">AI Assistant</h3>
+                <p className="text-zinc-400 leading-relaxed">
+                  Ask complex questions about your data. The AI analyzes years of history and returns human-readable answers instantly.
+                </p>
+              </div>
+            </motion.div>
+
+            {/* Bento Item 3 - Wide bottom */}
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6, delay: 0.2 }}
+              className="md:col-span-8 bg-zinc-900/20 border border-white/5 rounded-[2rem] p-8 md:p-12 hover:bg-zinc-900/40 hover:border-white/10 transition-all flex flex-col md:flex-row-reverse items-center gap-12 group overflow-hidden relative"
+            >
+              <div className="absolute inset-0 bg-gradient-to-bl from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="flex-1 relative z-10">
+                <div className="w-12 h-12 bg-white/5 text-white rounded-xl flex items-center justify-center mb-8 border border-white/10">
+                  <BarChart3 size={24} />
+                </div>
+                <h3 className="text-3xl font-bold text-white mb-4 tracking-tight">Custom Dashboards</h3>
+                <p className="text-zinc-400 text-lg leading-relaxed">
+                  Tell the AI what you want to see. It builds the exact chart you need right in front of you. No pre-packaged templates required.
+                </p>
+              </div>
+              <div className="w-full md:w-1/2 aspect-video md:aspect-square relative rounded-2xl overflow-hidden border border-white/5 bg-black group-hover:scale-105 transition-transform duration-700">
+                 <Image src="/chart_abstract.png" fill alt="Abstract Chart" className="object-cover opacity-80" />
+              </div>
+            </motion.div>
+
           </div>
         </div>
       </section>
@@ -160,23 +204,5 @@ export default function LandingPage() {
         </div>
       </section>
     </div>
-  )
-}
-
-function FeatureCard({ icon, title, description, delay }: { icon: React.ReactNode, title: string, description: string, delay: number }) {
-  return (
-    <motion.div 
-      initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true }}
-      transition={{ duration: 0.5, delay }}
-      className="bg-zinc-900/40 border border-white/5 p-8 rounded-3xl hover:bg-zinc-900/80 hover:border-white/10 transition-all"
-    >
-      <div className="w-12 h-12 bg-blue-600/10 text-blue-400 rounded-xl flex items-center justify-center mb-6 border border-blue-500/20">
-        {icon}
-      </div>
-      <h3 className="text-xl font-bold text-white mb-3">{title}</h3>
-      <p className="text-zinc-400 leading-relaxed">{description}</p>
-    </motion.div>
   )
 }
