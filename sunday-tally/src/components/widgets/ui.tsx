@@ -95,13 +95,18 @@ function isRolling(facts: SpecExplainer | null): boolean {
   return !/^(fixed|pinned)/i.test(r.trim())
 }
 
-/** "%" suffix for ratio / percentage metric cards (yKeys includes 'ratio', or title hints %). */
-function metricSuffix(w: ReplayWidget): string {
+/** Derive prefix (currency) and suffix (%) for a widget's unit of measure. */
+function metricFormats(w: ReplayWidget): { prefix: string; suffix: string } {
+  const summing = w.explainerFacts?.summing ?? ''
+  if (/giving/i.test(w.title) || /^giving\s*[=:]/i.test(summing)) {
+    return { prefix: '$', suffix: '' }
+  }
   const viz = (w.viz_config ?? {}) as { yKeys?: unknown }
   const yKeys = Array.isArray(viz.yKeys) ? (viz.yKeys as string[]) : []
-  if (yKeys.includes('ratio')) return '%'
-  if (/%|percent|ratio|to attendance/i.test(w.title)) return '%'
-  return ''
+  if (yKeys.includes('ratio') || /%|percent|ratio|to attendance/i.test(w.title)) {
+    return { prefix: '', suffix: '%' }
+  }
+  return { prefix: '', suffix: '' }
 }
 
 /** A row carries a prior-year value (compare:'prior_year' merge added `prior`). */
@@ -127,6 +132,7 @@ export function WidgetCard({
         <span className="h-4 w-1.5 rounded-full" style={{ backgroundColor: BRAND }} />
         <h3 className="min-w-0 flex-1 truncate pl-1 text-sm font-bold text-slate-900">{w.title}</h3>
         <WindowBadge rolling={isRolling(w.explainerFacts)} />
+        {w.error && <DriftBadge error={w.error} />}
         <button
           type="button"
           onClick={() => setFlipped((f) => !f)}
@@ -177,16 +183,18 @@ export function WidgetCard({
 function WidgetBody({ w }: { w: ReplayWidget }) {
   if (w.rows.length === 0) return <Empty />
 
+  const { prefix, suffix } = metricFormats(w)
+
   if (w.kind === 'metric_card') {
     const first = (w.rows[0] ?? {}) as Record<string, unknown>
     const value = first.value
     const prior = first.prior
     const delta = first.delta
-    const suffix = metricSuffix(w)
     return (
       <div className="flex h-full flex-col items-start justify-center">
         <div className="flex items-baseline gap-2">
           <div className="font-num text-4xl font-extrabold tracking-tight text-slate-900">
+            {prefix && <span className="mr-0.5 text-2xl text-slate-500">{prefix}</span>}
             {fmtNum(value)}
             {suffix && <span className="ml-1 text-2xl text-slate-400">{suffix}</span>}
           </div>
@@ -195,7 +203,8 @@ function WidgetBody({ w }: { w: ReplayWidget }) {
         <div className="mt-1 text-xs text-slate-500">
           {prior !== undefined && prior !== null ? (
             <span className="font-num">
-              vs {fmtNum(prior)}
+              vs {prefix}
+              {fmtNum(prior)}
               {suffix} last year
             </span>
           ) : (
@@ -206,7 +215,7 @@ function WidgetBody({ w }: { w: ReplayWidget }) {
     )
   }
 
-  if (w.kind === 'pivot' || w.kind === 'grid') return <PivotTable rows={w.rows} />
+  if (w.kind === 'pivot' || w.kind === 'grid') return <PivotTable rows={w.rows} prefix={prefix} />
 
   // line / area / bar — fill the card height (no dead space). A compare widget
   // overlays a muted prior-year series.
@@ -218,7 +227,7 @@ function WidgetBody({ w }: { w: ReplayWidget }) {
   }))
   return (
     <div className="min-h-0 flex-1">
-      <TremorChart data={data} kind={w.kind} id={w.id} withPrior={withPrior} />
+      <TremorChart data={data} kind={w.kind} id={w.id} withPrior={withPrior} prefix={prefix} suffix={suffix} />
     </div>
   )
 }
@@ -257,16 +266,24 @@ function TremorChart({
   kind,
   id,
   withPrior,
+  prefix = '',
+  suffix = '',
 }: {
   data: ChartDatum[]
   kind: 'line' | 'area' | 'bar'
   id: string
   withPrior: boolean
+  prefix?: string
+  suffix?: string
 }) {
-  const tickFmt = (n: number) => (Math.abs(n) >= 1000 ? `${(n / 1000).toFixed(n % 1000 === 0 ? 0 : 1)}k` : String(n))
+  const tickFmt = (n: number) => {
+    const abs = Math.abs(n)
+    const formatted = abs >= 1000 ? `${(n / 1000).toFixed(n % 1000 === 0 ? 0 : 1)}k` : String(n)
+    return `${prefix}${formatted}${suffix}`
+  }
   const ax = { tick: { fontSize: 11, fill: '#94a3b8' }, tickLine: false, axisLine: false } as const
   const margin = { top: 6, right: 8, left: -14, bottom: 0 }
-  const fmtVal = (v: unknown, name: unknown): [string, string] => [fmtNum(v), name === 'prior' ? 'Last year' : 'This year']
+  const fmtVal = (v: unknown, name: unknown): [string, string] => [`${prefix}${fmtNum(v)}${suffix}`, name === 'prior' ? 'Last year' : 'This year']
   const gradId = `grad-${id}`
 
   return (
@@ -315,7 +332,7 @@ function TremorChart({
 
 // ─── PivotTable — a flat grid / two-dimension pivot ───────────────────────────
 
-function PivotTable({ rows }: { rows: Record<string, unknown>[] }) {
+function PivotTable({ rows, prefix = '' }: { rows: Record<string, unknown>[]; prefix?: string }) {
   // First column is the row axis (bucket for time, else the categorical field).
   const firstKey = Object.keys(rows[0] ?? {})[0] ?? 'bucket'
   const rowAxisIsTime = firstKey === 'bucket'
@@ -341,7 +358,7 @@ function PivotTable({ rows }: { rows: Record<string, unknown>[] }) {
               </td>
               {cols.map((c) => (
                 <td key={c} className="font-num px-3 py-1.5 text-right tabular-nums text-slate-900">
-                  {fmtNum(r[c])}
+                  {prefix}{fmtNum(r[c])}
                 </td>
               ))}
             </tr>
@@ -384,11 +401,30 @@ function Fact({ label, value }: { label: string; value?: string | null }) {
 
 // ─── states ───────────────────────────────────────────────────────────────────
 
+function DriftBadge({ error }: { error: string }) {
+  const tip =
+    error === 'widget_not_found'
+      ? 'Data source removed — remove this widget to clean up'
+      : 'This widget has a problem — flip for details'
+  return (
+    <span
+      title={tip}
+      className="inline-flex shrink-0 items-center rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-700"
+    >
+      !
+    </span>
+  )
+}
+
 function ErrorState({ message }: { message: string }) {
+  const friendly =
+    message === 'widget_not_found'
+      ? "This widget's data source was removed. Use the ✕ button to clean it up."
+      : `This widget can't load: ${message}`
   return (
     <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
       <span className="grid h-8 w-8 place-items-center rounded-full bg-amber-50 font-bold text-amber-600">!</span>
-      <p className="text-xs text-amber-700">This widget can&apos;t load: {message}</p>
+      <p className="text-xs text-amber-700">{friendly}</p>
     </div>
   )
 }

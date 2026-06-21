@@ -33,6 +33,7 @@ import {
 import 'react-grid-layout/css/styles.css'
 import 'react-resizable/css/styles.css'
 import { createClient } from '@/lib/supabase/client'
+import type { UserRole } from '@/types'
 import { WidgetCard, type ReplayWidget, type WidgetKind } from './ui'
 import { WidgetChat } from './WidgetChat'
 
@@ -91,7 +92,8 @@ function layoutFromWidgets(widgets: ReplayWidget[]): LayoutItem[] {
 
 // ─── component ────────────────────────────────────────────────────────────────
 
-export function DashboardCanvas() {
+export function DashboardCanvas({ role }: { role?: UserRole }) {
+  const isEditor = role !== 'viewer'
   const [dashboards, setDashboards] = useState<DashboardRow[]>([])
   const [activeId, setActiveId] = useState<string | null>(null)
   const [widgets, setWidgets] = useState<ReplayWidget[]>([])
@@ -381,35 +383,41 @@ export function DashboardCanvas() {
           </>
         )}
 
-        {/* Actions */}
-        <button
-          type="button"
-          onClick={() => setLibOpen((v) => !v)}
-          className={`rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition-colors ${
-            libOpen ? 'border-[#4F6EF7] bg-[#4F6EF7]/5 text-[#4F6EF7]' : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
-          }`}
-        >
-          Library
-        </button>
-        <button
-          type="button"
-          onClick={() => setEditMode((e) => !e)}
-          className={`rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition-colors ${
-            editMode ? 'border-[#4F6EF7] bg-[#4F6EF7] text-white' : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
-          }`}
-        >
-          {editMode ? 'Done arranging' : 'Edit layout'}
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            if (!chatOpen) setEditTarget(null) // opening fresh → build a NEW widget, not edit
-            setChatOpen((c) => !c)
-          }}
-          className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:border-slate-300"
-        >
-          {chatOpen ? 'Hide AI' : '✦ Build with AI'}
-        </button>
+        {/* Actions — editor-only controls */}
+        {isEditor && (
+          <button
+            type="button"
+            onClick={() => setLibOpen((v) => !v)}
+            className={`rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition-colors ${
+              libOpen ? 'border-[#4F6EF7] bg-[#4F6EF7]/5 text-[#4F6EF7]' : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+            }`}
+          >
+            Library
+          </button>
+        )}
+        {isEditor && (
+          <button
+            type="button"
+            onClick={() => setEditMode((e) => !e)}
+            className={`rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition-colors ${
+              editMode ? 'border-[#4F6EF7] bg-[#4F6EF7] text-white' : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+            }`}
+          >
+            {editMode ? 'Done arranging' : 'Edit layout'}
+          </button>
+        )}
+        {(isEditor || chatOpen) && (
+          <button
+            type="button"
+            onClick={() => {
+              if (!chatOpen) setEditTarget(null) // opening fresh → build a NEW widget, not edit
+              setChatOpen((c) => !c)
+            }}
+            className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:border-slate-300"
+          >
+            {chatOpen ? 'Hide AI' : '✦ Build with AI'}
+          </button>
+        )}
       </header>
 
       {/* Library (collapsible) — your whole saved collection; placed ones show "Added". */}
@@ -504,7 +512,11 @@ export function DashboardCanvas() {
                 >
                   {widgets.map((w) => (
                     <div key={w.id} className={editMode ? 'cursor-move rounded-2xl ring-2 ring-[#4F6EF7]/30' : ''}>
-                      <WidgetCard w={w} onEdit={() => editWidget(w)} onRemove={() => void removeWidget(w.id)} />
+                      <WidgetCard
+                        w={w}
+                        onEdit={isEditor ? () => editWidget(w) : undefined}
+                        onRemove={isEditor ? () => void removeWidget(w.id) : undefined}
+                      />
                     </div>
                   ))}
                 </ResponsiveGridLayout>

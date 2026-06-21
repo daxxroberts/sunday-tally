@@ -502,7 +502,7 @@ export default function AnalyticsChatPage() {
         {/* ── Dashboard view: the saved-widget grid ── */}
         {view === 'dashboard' && (
           <div className="relative flex flex-1 min-h-0 overflow-hidden">
-            <DashboardCanvas />
+            <DashboardCanvas role={role} />
           </div>
         )}
 
