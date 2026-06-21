@@ -161,9 +161,11 @@ export async function POST(req: Request) {
   // ── Edit-in-place context. If the request names a widget to edit, load its
   //    current spec (RLS + church_id scoped) so the model starts from what's there
   //    and modifies it, and pin editWidgetId so save_widget UPDATES that row rather
-  //    than cloning. A missing / cross-church id silently falls back to a fresh build.
+  //    than cloning. A missing / cross-church id is surfaced to the user (editNotFound)
+  //    and falls back to a fresh build — never a silent surprise.
   let editWidgetId: string | null = null
   let editNote = ''
+  let editNotFound = false
   if (editWidgetIdRaw) {
     const { data: editWidget } = await supabase
       .from('widgets')
@@ -178,6 +180,10 @@ export async function POST(req: Request) {
         `Below is its saved spec — apply the user's requested change on top of it (or on top of any revision you have already shown in this conversation), keeping everything they did NOT ask to change. Preview with build_widget, and when the user is happy call save_widget: the server UPDATES this same widget in place (you do not pass its id).\n\n` +
         `Current title: ${JSON.stringify((editWidget as { title: string }).title)}\n` +
         `Current spec (JSON):\n${JSON.stringify((editWidget as { query_spec: unknown }).query_spec)}`
+    } else {
+      // The widget the ✎ pointed at is gone or not in this church. Tell the user
+      // rather than silently building a brand-new widget.
+      editNotFound = true
     }
   }
 
@@ -196,6 +202,11 @@ export async function POST(req: Request) {
         placementDashboardId,
         editWidgetId,
       })
+
+      // Surface a vanished edit target before the model starts (WS1.4).
+      if (editNotFound) {
+        send('text', { delta: "I couldn't find that widget — it may have been removed. I'll start a fresh build.\n\n" })
+      }
 
       try {
         await runToolLoop({

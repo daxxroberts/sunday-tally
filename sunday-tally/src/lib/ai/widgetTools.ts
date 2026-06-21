@@ -255,6 +255,15 @@ export interface WidgetToolDeps {
   editWidgetId?: string | null
 }
 
+/** Canonical JSON (recursively sorted keys) so two specs with identical content
+ *  but different key order compare equal — used by the build-before-save gate. */
+function stableStringify(v: unknown): string {
+  if (v === null || typeof v !== 'object') return JSON.stringify(v)
+  if (Array.isArray(v)) return `[${v.map(stableStringify).join(',')}]`
+  const obj = v as Record<string, unknown>
+  return `{${Object.keys(obj).sort().map(k => `${JSON.stringify(k)}:${stableStringify(obj[k])}`).join(',')}}`
+}
+
 /**
  * Builds the runToolLoop handler map. Handlers receive (input, ctx) from
  * runToolLoop; ctx.churchId / ctx.supabase are the server-injected session
@@ -263,6 +272,12 @@ export interface WidgetToolDeps {
  */
 export function makeWidgetHandlers(deps: WidgetToolDeps) {
   const { userId, defaultScope, send, placementDashboardId, editWidgetId } = deps
+
+  // Build-before-save gate (WS1.3): the last spec that successfully PREVIEWED in
+  // this builder session, plus its row count, so save_widget can refuse to persist
+  // an un-previewed or empty widget. Per-request closure state.
+  let lastBuiltSpec: string | null = null
+  let lastBuiltRowCount = 0
 
   return {
     probe_data: async (input: Record<string, unknown>, ctx: { supabase: SupabaseClient; churchId: string }) => {
@@ -329,6 +344,10 @@ export function makeWidgetHandlers(deps: WidgetToolDeps) {
         // 'grid' event for grid / pivot / metric_card previews.
         send('grid', { kind: viz.kind, ...previewPayload })
       }
+
+      // Record this successful preview so save_widget can verify the user saw it.
+      lastBuiltSpec     = stableStringify(spec)
+      lastBuiltRowCount = rows.length
 
       // 4. Return the templated facts + the SQL so the model can explain EXACTLY
       //    what it queried (facts computed once above).
@@ -400,6 +419,22 @@ export function makeWidgetHandlers(deps: WidgetToolDeps) {
           updated:   true,
           placed:    true, // already placed; editing never moves or clones it
           explainer: explainer.narrative,
+        }
+      }
+
+      // WS1.3 build-before-save gate: never persist a spec the user hasn't seen
+      // previewed, and never persist a widget that returned zero rows. Edits are
+      // exempt (they return above). The AI must build_widget the exact spec first.
+      if (lastBuiltSpec === null || lastBuiltSpec !== stableStringify(spec)) {
+        return {
+          saved: false,
+          error: 'Preview this widget with build_widget before saving, so the numbers are verified. Build the exact spec you intend to save, then save it.',
+        }
+      }
+      if (lastBuiltRowCount === 0) {
+        return {
+          saved: false,
+          error: 'The preview returned no rows — nothing to save yet. Adjust the window or filters, rebuild, and confirm it shows data before saving.',
         }
       }
 

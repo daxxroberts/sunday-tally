@@ -214,12 +214,40 @@ export function validateSpec(
       if (f.service_template_codes !== undefined && !isStringArray(f.service_template_codes)) {
         errors.push('filters.service_template_codes must be an array of strings')
       }
-      if (f.metric_names !== undefined && !isStringArray(f.metric_names)) {
-        errors.push('filters.metric_names must be an array of strings')
+      if (f.metric_names !== undefined) {
+        if (!isStringArray(f.metric_names)) {
+          errors.push('filters.metric_names must be an array of strings')
+        } else if (f.metric_names.length === 0) {
+          errors.push('filters.metric_names, when set, must include at least one metric name')
+        }
       }
       if (f.service_group_codes !== undefined && !isStringArray(f.service_group_codes)) {
         errors.push('filters.service_group_codes must be an array of strings')
       }
+    }
+  }
+
+  // METRIC-ISOLATION GUARD (WS1.1): a RESPONSE_STAT measure on the firehose with
+  // no metric_names filter AND no per-metric dimension silently SUMS every stat in
+  // the family (Hands Raised + Parking + Rooms + …) — a wrong number. Require the
+  // stat to be isolated. (VOLUNTEERS summing is legitimate — volunteers are additive,
+  // so "volunteers by ministry" is a real total and is intentionally exempt.)
+  if (
+    input.source === 'metric_entries_readable' &&
+    isObj(input.measure) &&
+    input.measure.reporting_tag_code === 'RESPONSE_STAT'
+  ) {
+    const f = isObj(input.filters) ? input.filters : {}
+    const hasMetricNames = isStringArray(f.metric_names) && f.metric_names.length > 0
+    const hasMetricDim =
+      Array.isArray(input.dimensions) &&
+      input.dimensions.some((d) => isObj(d) && d.field === 'metric')
+    if (!hasMetricNames && !hasMetricDim) {
+      errors.push(
+        'A RESPONSE_STAT widget on metric_entries_readable must isolate the stat: set ' +
+          'filters.metric_names (e.g. ["Salvations"]) or add a {field:"metric"} dimension. ' +
+          'Without it, every stat (Hands Raised, Parking, Rooms, …) is summed together — that is wrong.',
+      )
     }
   }
 
@@ -293,6 +321,13 @@ function validateWindow(w: unknown, errors: string[]): void {
     }
     if (typeof w.end !== 'string' || !ISO_DATE.test(w.end)) {
       errors.push('filters.date.end must be YYYY-MM-DD for window=custom')
+    }
+    // WS5: a backwards range (start after end) silently returns nothing. Reject it.
+    if (
+      typeof w.start === 'string' && typeof w.end === 'string' &&
+      ISO_DATE.test(w.start) && ISO_DATE.test(w.end) && w.start > w.end
+    ) {
+      errors.push('filters.date.start must be on or before end (got a backwards range)')
     }
   }
 }
@@ -630,12 +665,13 @@ function bucketKey(ymd: string, bucket: 'week' | 'month' | 'year'): string {
 function aggregate(values: number[], agg: 'sum' | 'avg' | 'weekly_avg'): number | null {
   if (values.length === 0) return null
   const sum = values.reduce((s, x) => s + x, 0)
-  // weekly_avg is computed specially (per ISO week) in the 0-dim / categorical
-  // paths; in the per-bucket / pivot / ratio fallback it behaves like avg.
+  // weekly_avg is computed specially (per Sunday-anchored week) in the 0-dim /
+  // categorical paths; in the per-bucket / pivot / ratio fallback it behaves like avg.
   return agg === 'sum' ? sum : sum / values.length
 }
 
-/** SundayTally weekly_avg: SUM the values within each ISO week, then AVG the weekly sums. */
+/** SundayTally weekly_avg: SUM the values within each Sunday-anchored week (weekStartOf,
+ *  consistent with giving_per_week), then AVG the weekly sums. */
 function weeklyAvg(raw: Record<string, unknown>[], plan: SourcePlan): number | null {
   const byWeek = new Map<string, number>()
   for (const r of raw) {
