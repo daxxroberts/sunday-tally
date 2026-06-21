@@ -240,6 +240,22 @@ export function DashboardCanvas({ role }: { role?: UserRole }) {
     }
   }, [])
 
+  // ── delete a widget from the library (placements cascade) ──
+  const deleteWidget = useCallback(
+    async (widgetId: string) => {
+      setLibrary((lib) => lib.filter((l) => l.id !== widgetId))
+      setWidgets((ws) => ws.filter((w) => w.id !== widgetId))
+      setLayout((l) => l.filter((it) => it.i !== widgetId))
+      try {
+        const res = await fetch(`/api/widgets/${encodeURIComponent(widgetId)}`, { method: 'DELETE' })
+        if (!res.ok) await Promise.all([refreshLibrary(), replay()])
+      } catch {
+        await Promise.all([refreshLibrary(), replay()])
+      }
+    },
+    [refreshLibrary, replay],
+  )
+
   // ── place a library widget on the active dashboard ──
   const placeWidget = useCallback(
     async (widgetId: string) => {
@@ -438,33 +454,46 @@ export function DashboardCanvas({ role }: { role?: UserRole }) {
               {library.map((l) => {
                 const isPlaced = placed.has(l.id)
                 return (
-                  <button
-                    key={l.id}
-                    type="button"
-                    disabled={!!busyWidget || isPlaced}
-                    onClick={() => void placeWidget(l.id)}
-                    className={`group inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-left text-xs transition-colors disabled:cursor-default ${
-                      isPlaced
-                        ? 'border-slate-200 bg-slate-50 text-slate-400'
-                        : 'border-slate-200 bg-white text-slate-700 hover:border-[#4F6EF7] hover:bg-[#4F6EF7]/5 disabled:opacity-50'
-                    }`}
-                    title={isPlaced ? `"${l.title}" is already on this dashboard` : `Add "${l.title}" to this dashboard`}
-                  >
-                    <KindIcon kind={l.kind} />
-                    <span className="font-medium">{l.title}</span>
-                    {l.is_starter && (
-                      <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-slate-500">
-                        Starter
-                      </span>
+                  <div key={l.id} className="group/lib relative inline-flex">
+                    <button
+                      type="button"
+                      disabled={!!busyWidget || isPlaced}
+                      onClick={() => void placeWidget(l.id)}
+                      className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-left text-xs transition-colors disabled:cursor-default ${
+                        isPlaced
+                          ? 'border-slate-200 bg-slate-50 text-slate-400'
+                          : 'border-slate-200 bg-white text-slate-700 hover:border-[#4F6EF7] hover:bg-[#4F6EF7]/5 disabled:opacity-50'
+                      }`}
+                      title={isPlaced ? `"${l.title}" is already on this dashboard` : `Add "${l.title}" to this dashboard`}
+                    >
+                      <KindIcon kind={l.kind} />
+                      <span className="font-medium">{l.title}</span>
+                      {l.is_starter && (
+                        <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-slate-500">
+                          Starter
+                        </span>
+                      )}
+                      {isPlaced ? (
+                        <span className="rounded-full bg-emerald-50 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-emerald-600">
+                          Added
+                        </span>
+                      ) : (
+                        <span className="text-[#4F6EF7] opacity-0 transition-opacity group-hover/lib:opacity-100">+</span>
+                      )}
+                    </button>
+                    {isEditor && !l.is_starter && (
+                      <button
+                        type="button"
+                        onClick={() => void deleteWidget(l.id)}
+                        title={`Remove "${l.title}" from library`}
+                        className="absolute -right-1.5 -top-1.5 grid h-4 w-4 place-items-center rounded-full bg-white text-slate-300 opacity-0 ring-1 ring-slate-200 transition-all hover:bg-amber-50 hover:text-amber-600 hover:ring-amber-200 group-hover/lib:opacity-100"
+                      >
+                        <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                          <path d="M18 6 6 18M6 6l12 12" strokeLinecap="round" />
+                        </svg>
+                      </button>
                     )}
-                    {isPlaced ? (
-                      <span className="rounded-full bg-emerald-50 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-emerald-600">
-                        Added
-                      </span>
-                    ) : (
-                      <span className="text-[#4F6EF7] opacity-0 transition-opacity group-hover:opacity-100">+</span>
-                    )}
-                  </button>
+                  </div>
                 )
               })}
             </div>
