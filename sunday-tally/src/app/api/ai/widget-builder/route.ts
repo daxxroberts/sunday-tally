@@ -2,6 +2,7 @@ import 'server-only'
 import { createClient } from '@/lib/supabase/server'
 import { runToolLoop, AiBudgetExhaustedError } from '@/lib/ai/anthropic'
 import { WIDGET_BUILDER_TOOLS, makeWidgetHandlers } from '@/lib/ai/widgetTools'
+import { buildChurchContextPack } from '@/lib/ai/churchContext'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -201,6 +202,11 @@ export async function POST(req: Request) {
     }
   }
 
+  // Per-church structure + rules (ministry tree, what each tracks, church-wide
+  // giving, total-inclusion) so the model maps the pastor's own words to the right
+  // tags/metrics for THIS church (WS4). Defensive: '' on any error.
+  const churchContext = await buildChurchContextPack(supabase, churchId)
+
   const encoder = new TextEncoder()
   const stream = new ReadableStream({
     async start(controller) {
@@ -233,7 +239,7 @@ export async function POST(req: Request) {
           model:   'claude-sonnet-4-6',
           system:  [{
             type: 'text',
-            text: [SYSTEM_PROMPT, placementDashboardId ? PLACEMENT_NOTE : '', editNote].filter(Boolean).join('\n\n'),
+            text: [SYSTEM_PROMPT, churchContext, placementDashboardId ? PLACEMENT_NOTE : '', editNote].filter(Boolean).join('\n\n'),
             cache_control: { type: 'ephemeral' },
           }],
           tools:   WIDGET_BUILDER_TOOLS,
