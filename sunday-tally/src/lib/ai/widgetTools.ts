@@ -438,6 +438,26 @@ export function makeWidgetHandlers(deps: WidgetToolDeps) {
         }
       }
 
+      // Title dedup: if a widget with the same title already exists in this church's
+      // library, append " (2)", " (3)" etc. so the library stays distinguishable.
+      // Case-insensitive; only affects fresh INSERT — edits return above.
+      const baseTitle = title || viz.title
+      const { data: existingTitles } = await ctx.supabase
+        .from('widgets')
+        .select('title')
+        .eq('church_id', ctx.churchId)
+      const taken = new Set(
+        ((existingTitles ?? []) as { title: string }[]).map((w) => w.title.toLowerCase()),
+      )
+      let finalTitle = baseTitle
+      if (taken.has(baseTitle.toLowerCase())) {
+        let n = 2
+        while (taken.has(`${baseTitle} (${n})`.toLowerCase())) n++
+        finalTitle = `${baseTitle} (${n})`
+      }
+      // Rebuild the explainer with the deduplicated title so the stored narrative matches.
+      const finalExplainer = finalTitle !== baseTitle ? buildExplainer(finalTitle, viz, facts) : explainer
+
       // INSERT into `widgets`. church_id / scope / owner / created_by are all
       // server-injected from the session — NEVER from the AI. The `widgets` and
       // `dashboard_widgets` tables are live (migrations 0033 + 0035) and RLS-scoped
@@ -449,12 +469,12 @@ export function makeWidgetHandlers(deps: WidgetToolDeps) {
           church_id:     ctx.churchId,
           scope:         defaultScope,
           owner_user_id: ownerUserId,
-          title:         title || viz.title,
+          title:         finalTitle,
           kind:          viz.kind,
           query_kind:    'spec',
           query_spec:    spec,
           viz_config:    viz,
-          explainer,
+          explainer:     finalExplainer,
           is_starter:    false,
           created_by:    userId,
         })
@@ -489,7 +509,8 @@ export function makeWidgetHandlers(deps: WidgetToolDeps) {
             widget_id:    widgetId,
             placed:       false,
             placement_error: placeErr.message,
-            explainer:    explainer.narrative,
+            title:        finalTitle,
+            explainer:    finalExplainer.narrative,
           }
         }
         placement = place as { id: string }
@@ -500,7 +521,8 @@ export function makeWidgetHandlers(deps: WidgetToolDeps) {
         widget_id:  widgetId,
         placed:     !!placement,
         scope:      defaultScope,
-        explainer:  explainer.narrative,
+        title:      finalTitle,
+        explainer:  finalExplainer.narrative,
       }
     },
 

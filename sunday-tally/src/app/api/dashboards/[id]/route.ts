@@ -66,6 +66,9 @@ interface WidgetRow {
 
 // ─── Per-widget replay result ─────────────────────────────────────────────────
 
+// Safety cap: prevent huge result sets from blowing memory or slowing the page.
+const ROW_CAP = 2_000
+
 interface ReplayWidget {
   id: string
   title: string
@@ -76,6 +79,7 @@ interface ReplayWidget {
   resolved: ResolvedWindow | null
   explainerFacts: SpecExplainer | null
   error?: string
+  rowsCapped?: number   // original row count when rows were trimmed to ROW_CAP
 }
 
 export async function GET(
@@ -251,11 +255,14 @@ export async function GET(
         }
       }
 
+      const rawRows = result.rows
+      const capped = rawRows.length > ROW_CAP
       return {
         ...base,
-        rows: result.rows,
+        rows: capped ? rawRows.slice(0, ROW_CAP) : rawRows,
         resolved: result.resolved,
         explainerFacts: describeSpec(spec, result.resolved),
+        ...(capped ? { rowsCapped: rawRows.length } : {}),
       }
     } catch (err) {
       return {

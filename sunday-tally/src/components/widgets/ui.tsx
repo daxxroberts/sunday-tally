@@ -48,6 +48,7 @@ export interface ReplayWidget {
   resolved: { start: string; end: string } | null
   explainerFacts: SpecExplainer | null
   error?: string | null
+  rowsCapped?: number   // original row count when rows were trimmed server-side
 }
 
 const BRAND = '#4F6EF7'
@@ -215,7 +216,12 @@ function WidgetBody({ w }: { w: ReplayWidget }) {
     )
   }
 
-  if (w.kind === 'pivot' || w.kind === 'grid') return <PivotTable rows={w.rows} prefix={prefix} />
+  if (w.kind === 'pivot' || w.kind === 'grid') return (
+    <>
+      <PivotTable rows={w.rows} prefix={prefix} />
+      {w.rowsCapped && <CapNotice total={w.rowsCapped} />}
+    </>
+  )
 
   // line / area / bar — fill the card height (no dead space). A compare widget
   // overlays a muted prior-year series.
@@ -228,6 +234,7 @@ function WidgetBody({ w }: { w: ReplayWidget }) {
   return (
     <div className="min-h-0 flex-1">
       <TremorChart data={data} kind={w.kind} id={w.id} withPrior={withPrior} prefix={prefix} suffix={suffix} />
+      {w.rowsCapped && <CapNotice total={w.rowsCapped} />}
     </div>
   )
 }
@@ -434,6 +441,14 @@ function Empty() {
     <div className="flex h-full flex-col items-center justify-center gap-1 text-center text-slate-400">
       <span className="text-sm">No data in this window yet.</span>
     </div>
+  )
+}
+
+function CapNotice({ total }: { total: number }) {
+  return (
+    <p className="mt-1 text-center text-[10px] text-slate-400">
+      Showing first 2,000 of {total.toLocaleString()} rows
+    </p>
   )
 }
 
