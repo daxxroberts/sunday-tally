@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Mirrored Tremor v4 reference library (Apache-2.0) — copy FROM it into src/
+    // when adopting a component; not part of the app build (targets recharts v2).
+    "tremor-library/**",
   ]),
 ]);
 
