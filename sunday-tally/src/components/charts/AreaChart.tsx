@@ -92,6 +92,8 @@ export interface AreaChartProps extends React.HTMLAttributes<HTMLDivElement> {
   connectNulls?: boolean
   xAxisLabel?: string
   yAxisLabel?: string
+  /** Optional formatter for x-axis tick labels (e.g. date bucket formatting) */
+  xAxisFormatter?: (value: string) => string
 }
 
 export function AreaChart({
@@ -116,6 +118,7 @@ export function AreaChart({
   connectNulls = false,
   xAxisLabel,
   yAxisLabel,
+  xAxisFormatter,
   className,
   ...rest
 }: AreaChartProps) {
@@ -207,6 +210,7 @@ export function AreaChart({
             tickLine={false}
             axisLine={false}
             minTickGap={5}
+            tickFormatter={xAxisFormatter}
           >
             {xAxisLabel && (
               <Label position="insideBottom" offset={-20} className="fill-gray-800 text-sm font-medium dark:fill-gray-200">

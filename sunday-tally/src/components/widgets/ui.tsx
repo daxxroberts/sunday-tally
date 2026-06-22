@@ -21,8 +21,6 @@
 import { useState } from 'react'
 import {
   ResponsiveContainer,
-  AreaChart,
-  Area,
   BarChart,
   Bar,
   LineChart,
@@ -32,6 +30,7 @@ import {
   CartesianGrid,
   Tooltip,
 } from 'recharts'
+import { AreaChart as StyledAreaChart } from '@/components/charts/AreaChart'
 import type { SpecExplainer, VizConfig } from '@/lib/widgets/spec'
 
 // ─── The replay widget contract (mirrors ReplayWidget in the [id] route) ───────
@@ -291,8 +290,6 @@ function TremorChart({
   const ax = { tick: { fontSize: 11, fill: '#94a3b8' }, tickLine: false, axisLine: false } as const
   const margin = { top: 6, right: 8, left: -14, bottom: 0 }
   const fmtVal = (v: unknown, name: unknown): [string, string] => [`${prefix}${fmtNum(v)}${suffix}`, name === 'prior' ? 'Last year' : 'This year']
-  const gradId = `grad-${id}`
-
   return (
     <ResponsiveContainer width="100%" height="100%">
       {kind === 'bar' ? (
@@ -305,22 +302,20 @@ function TremorChart({
           <Bar dataKey="value" fill={BRAND} radius={[4, 4, 0, 0]} maxBarSize={26} />
         </BarChart>
       ) : kind === 'area' ? (
-        <AreaChart data={data} margin={margin}>
-          <defs>
-            <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={BRAND} stopOpacity={0.25} />
-              <stop offset="92%" stopColor={BRAND} stopOpacity={0} />
-            </linearGradient>
-          </defs>
-          <CartesianGrid stroke="#f1f5f9" vertical={false} />
-          <XAxis dataKey="bucket" tickFormatter={(v) => fmtBucket(v)} {...ax} minTickGap={16} />
-          <YAxis tickFormatter={tickFmt} width={34} {...ax} />
-          <Tooltip cursor={{ stroke: '#cbd5e1' }} contentStyle={TIP} labelFormatter={(l) => fmtBucket(l)} formatter={fmtVal} />
-          {withPrior && (
-            <Area type="monotone" dataKey="prior" stroke={PRIOR} strokeWidth={2} strokeDasharray="4 4" fill="none" connectNulls />
-          )}
-          <Area type="monotone" dataKey="value" stroke={BRAND} strokeWidth={2} fill={`url(#${gradId})`} connectNulls />
-        </AreaChart>
+        <StyledAreaChart
+          data={data as Record<string, unknown>[]}
+          index="bucket"
+          categories={withPrior ? ['prior', 'value'] : ['value']}
+          colors={withPrior ? ['gray', 'blue'] : ['blue']}
+          valueFormatter={(v) => `${prefix}${fmtNum(v)}${suffix}`}
+          xAxisFormatter={(v) => fmtBucket(v)}
+          showYAxis
+          yAxisWidth={34}
+          showLegend={false}
+          fill="gradient"
+          connectNulls
+          className="h-full w-full"
+        />
       ) : (
         <LineChart data={data} margin={margin}>
           <CartesianGrid stroke="#f1f5f9" vertical={false} />
