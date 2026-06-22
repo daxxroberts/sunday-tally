@@ -21,8 +21,6 @@
 import { useState } from 'react'
 import {
   ResponsiveContainer,
-  BarChart,
-  Bar,
   LineChart,
   Line,
   XAxis,
@@ -31,6 +29,7 @@ import {
   Tooltip,
 } from 'recharts'
 import { AreaChart as StyledAreaChart } from '@/components/charts/AreaChart'
+import { BarChart as StyledBarChart } from '@/components/charts/BarChart'
 import type { SpecExplainer, VizConfig } from '@/lib/widgets/spec'
 
 // ─── The replay widget contract (mirrors ReplayWidget in the [id] route) ───────
@@ -293,14 +292,19 @@ function TremorChart({
   return (
     <ResponsiveContainer width="100%" height="100%">
       {kind === 'bar' ? (
-        <BarChart data={data} margin={margin}>
-          <CartesianGrid stroke="#f1f5f9" vertical={false} />
-          <XAxis dataKey="bucket" tickFormatter={(v) => fmtBucket(v)} {...ax} minTickGap={16} />
-          <YAxis tickFormatter={tickFmt} width={34} {...ax} />
-          <Tooltip cursor={{ fill: '#f1f5f9' }} contentStyle={TIP} labelFormatter={(l) => fmtBucket(l)} formatter={fmtVal} />
-          {withPrior && <Bar dataKey="prior" fill={PRIOR} radius={[4, 4, 0, 0]} maxBarSize={26} />}
-          <Bar dataKey="value" fill={BRAND} radius={[4, 4, 0, 0]} maxBarSize={26} />
-        </BarChart>
+        <StyledBarChart
+          data={data as Record<string, unknown>[]}
+          index="bucket"
+          categories={withPrior ? ['prior', 'value'] : ['value']}
+          colors={withPrior ? ['gray', 'blue'] : ['blue']}
+          valueFormatter={(v) => `${prefix}${fmtNum(v)}${suffix}`}
+          xAxisFormatter={(v) => fmtBucket(v)}
+          showYAxis
+          yAxisWidth={34}
+          showLegend={false}
+          maxBarSize={26}
+          className="h-full w-full"
+        />
       ) : kind === 'area' ? (
         <StyledAreaChart
           data={data as Record<string, unknown>[]}
