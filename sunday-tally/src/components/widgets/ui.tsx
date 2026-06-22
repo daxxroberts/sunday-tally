@@ -50,7 +50,7 @@ export interface ReplayWidget {
 }
 
 const BRAND = '#4F6EF7'
-const PRIOR = '#94a3b8' // slate-400 — the prior-year overlay (muted, never red)
+const VIOLET = '#8b5cf6' // violet-500 — the prior-year (last year) overlay, matches StyledAreaChart
 // Ministry/category accents (DS-1) for pivot columns; falls back to slate.
 const PIVOT_COLORS: Record<string, string> = {
   EXPERIENCE: '#4F6EF7',
@@ -222,16 +222,43 @@ function WidgetBody({ w }: { w: ReplayWidget }) {
   )
 
   // line / area / bar — fill the card height (no dead space). A compare widget
-  // overlays a muted prior-year series.
+  // overlays a prior-year series (this year = blue, last year = violet) and gets
+  // the Tremor-style headline legend (per-series window totals + delta badge).
   const withPrior = hasPrior(w.rows)
   const data = w.rows.map((r) => ({
     bucket: String(r.bucket ?? ''),
     value: r.value === null || r.value === undefined ? null : Number(r.value),
     ...(withPrior ? { prior: r.prior === null || r.prior === undefined ? null : Number(r.prior) } : {}),
   }))
+
+  const compare = withPrior
+    ? (() => {
+        const thisTotal = data.reduce((s, r) => s + (r.value ?? 0), 0)
+        const priorTotal = data.reduce(
+          (s, r) => s + ((r as { prior?: number | null }).prior ?? 0),
+          0,
+        )
+        const delta = priorTotal
+          ? Math.round(((thisTotal - priorTotal) / priorTotal) * 1000) / 10
+          : NaN
+        return { thisTotal, priorTotal, delta }
+      })()
+    : null
+
   return (
-    <div className="min-h-0 flex-1">
-      <TremorChart data={data} kind={w.kind} id={w.id} withPrior={withPrior} prefix={prefix} suffix={suffix} />
+    <div className="flex h-full min-h-0 flex-col">
+      {compare && (
+        <CompareSummary
+          thisTotal={compare.thisTotal}
+          priorTotal={compare.priorTotal}
+          delta={compare.delta}
+          prefix={prefix}
+          suffix={suffix}
+        />
+      )}
+      <div className="min-h-0 flex-1">
+        <TremorChart data={data} kind={w.kind} id={w.id} withPrior={withPrior} prefix={prefix} suffix={suffix} />
+      </div>
       {w.rowsCapped && <CapNotice total={w.rowsCapped} />}
     </div>
   )
@@ -252,6 +279,50 @@ function DeltaBadge({ delta }: { delta: number }) {
       <span aria-hidden>{up ? '▲' : '▼'}</span>
       {Math.abs(delta)}%
     </span>
+  )
+}
+
+// ─── CompareSummary — the "This year / Last year" headline legend ─────────────
+// Mirrors Tremor's area-chart-06 block: a colored-dot legend where each series
+// shows its window total beneath the label, plus the prior-year delta badge.
+// Only rendered for compare:'prior_year' chart widgets.
+
+function CompareSummary({
+  thisTotal,
+  priorTotal,
+  delta,
+  prefix,
+  suffix,
+}: {
+  thisTotal: number
+  priorTotal: number
+  delta: number
+  prefix: string
+  suffix: string
+}) {
+  const fmt = (n: number) => `${prefix}${fmtNum(n)}${suffix}`
+  return (
+    <div className="mb-3 flex items-end gap-8">
+      <div>
+        <div className="flex items-center gap-1.5">
+          <span className="h-[3px] w-3.5 shrink-0 rounded-full bg-blue-500" aria-hidden />
+          <span className="text-xs text-slate-600">This year</span>
+        </div>
+        <p className="font-num text-lg font-semibold tabular-nums text-slate-900">{fmt(thisTotal)}</p>
+      </div>
+      <div>
+        <div className="flex items-center gap-1.5">
+          <span className="h-[3px] w-3.5 shrink-0 rounded-full bg-violet-500" aria-hidden />
+          <span className="text-xs text-slate-600">Last year</span>
+        </div>
+        <p className="font-num text-lg font-semibold tabular-nums text-slate-900">{fmt(priorTotal)}</p>
+      </div>
+      {Number.isFinite(delta) && (
+        <div className="pb-1">
+          <DeltaBadge delta={delta} />
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -296,7 +367,7 @@ function TremorChart({
           data={data as Record<string, unknown>[]}
           index="bucket"
           categories={withPrior ? ['prior', 'value'] : ['value']}
-          colors={withPrior ? ['gray', 'blue'] : ['blue']}
+          colors={withPrior ? ['violet', 'blue'] : ['blue']}
           valueFormatter={(v) => `${prefix}${fmtNum(v)}${suffix}`}
           xAxisFormatter={(v) => fmtBucket(v)}
           showYAxis
@@ -310,13 +381,13 @@ function TremorChart({
           data={data as Record<string, unknown>[]}
           index="bucket"
           categories={withPrior ? ['prior', 'value'] : ['value']}
-          colors={withPrior ? ['gray', 'blue'] : ['blue']}
+          colors={withPrior ? ['violet', 'blue'] : ['blue']}
           valueFormatter={(v) => `${prefix}${fmtNum(v)}${suffix}`}
           xAxisFormatter={(v) => fmtBucket(v)}
           showYAxis
           yAxisWidth={34}
           showLegend={false}
-          fill="gradient"
+          fill={withPrior ? 'solid' : 'gradient'}
           connectNulls
           className="h-full w-full"
         />
@@ -327,7 +398,7 @@ function TremorChart({
           <YAxis tickFormatter={tickFmt} width={34} {...ax} />
           <Tooltip cursor={{ stroke: '#cbd5e1' }} contentStyle={TIP} labelFormatter={(l) => fmtBucket(l)} formatter={fmtVal} />
           {withPrior && (
-            <Line type="monotone" dataKey="prior" stroke={PRIOR} strokeWidth={2} strokeDasharray="4 4" dot={false} connectNulls />
+            <Line type="monotone" dataKey="prior" stroke={VIOLET} strokeWidth={2} strokeDasharray="4 4" dot={false} connectNulls />
           )}
           <Line type="monotone" dataKey="value" stroke={BRAND} strokeWidth={2} dot={false} connectNulls />
         </LineChart>
