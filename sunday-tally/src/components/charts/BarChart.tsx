@@ -72,6 +72,9 @@ export interface BarChartProps extends React.HTMLAttributes<HTMLDivElement> {
   categories: string[]
   colors?: ChartColorKey[]
   valueFormatter?: (value: number) => string
+  /** Optional formatter for Y-axis tick labels (defaults to valueFormatter — use a
+   *  compact "1.2k" formatter so long numbers don't overflow a narrow axis). */
+  yAxisFormatter?: (value: number) => string
   /** Stack bars on top of each other instead of grouping side-by-side */
   stack?: boolean
   showXAxis?: boolean
@@ -98,6 +101,7 @@ export function BarChart({
   index,
   colors = defaultColors,
   valueFormatter = (v) => String(v),
+  yAxisFormatter,
   stack = false,
   showXAxis = true,
   showYAxis = true,
@@ -154,7 +158,7 @@ export function BarChart({
         >
           {showGridLines && (
             <CartesianGrid
-              className="stroke-gray-200 stroke-1 dark:stroke-gray-800"
+              className="stroke-slate-100 dark:stroke-gray-800"
               horizontal
               vertical={false}
             />
@@ -166,7 +170,7 @@ export function BarChart({
             tick={{ transform: 'translate(0, 6)' }}
             fill=""
             stroke=""
-            className="fill-gray-500 text-xs dark:fill-gray-500"
+            className="fill-slate-400 text-[11px] dark:fill-slate-500"
             tickLine={false}
             axisLine={false}
             minTickGap={5}
@@ -189,8 +193,8 @@ export function BarChart({
             tick={{ transform: 'translate(-3, 0)' }}
             fill=""
             stroke=""
-            className="fill-gray-500 text-xs dark:fill-gray-500"
-            tickFormatter={valueFormatter}
+            className="fill-slate-400 text-[11px] dark:fill-slate-500"
+            tickFormatter={yAxisFormatter ?? valueFormatter}
             allowDecimals={allowDecimals}
           >
             {yAxisLabel && (

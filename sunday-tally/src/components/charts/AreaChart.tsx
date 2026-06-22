@@ -73,6 +73,9 @@ export interface AreaChartProps extends React.HTMLAttributes<HTMLDivElement> {
   categories: string[]
   colors?: ChartColorKey[]
   valueFormatter?: (value: number) => string
+  /** Optional formatter for Y-axis tick labels (defaults to valueFormatter — use a
+   *  compact "1.2k" formatter so long numbers don't overflow a narrow axis). */
+  yAxisFormatter?: (value: number) => string
   /** Show only first + last tick on x-axis */
   startEndOnly?: boolean
   showXAxis?: boolean
@@ -102,6 +105,7 @@ export function AreaChart({
   index,
   colors = defaultColors,
   valueFormatter = (v) => String(v),
+  yAxisFormatter,
   startEndOnly = false,
   showXAxis = true,
   showYAxis = true,
@@ -187,7 +191,7 @@ export function AreaChart({
         >
           {showGridLines && (
             <CartesianGrid
-              className="stroke-gray-200 stroke-1 dark:stroke-gray-800"
+              className="stroke-slate-100 dark:stroke-gray-800"
               horizontal
               vertical={false}
             />
@@ -206,7 +210,7 @@ export function AreaChart({
             }
             fill=""
             stroke=""
-            className="fill-gray-500 text-xs dark:fill-gray-500"
+            className="fill-slate-400 text-[11px] dark:fill-slate-500"
             tickLine={false}
             axisLine={false}
             minTickGap={5}
@@ -229,8 +233,8 @@ export function AreaChart({
             tick={{ transform: 'translate(-3, 0)' }}
             fill=""
             stroke=""
-            className="fill-gray-500 text-xs dark:fill-gray-500"
-            tickFormatter={type === 'percent' ? valueToPercent : valueFormatter}
+            className="fill-slate-400 text-[11px] dark:fill-slate-500"
+            tickFormatter={type === 'percent' ? valueToPercent : (yAxisFormatter ?? valueFormatter)}
             allowDecimals={allowDecimals}
           >
             {yAxisLabel && (
@@ -279,7 +283,7 @@ export function AreaChart({
                   className={colorClass(color, 'stroke')}
                   key={category}
                   name={category}
-                  type="linear"
+                  type="monotone"
                   dataKey={category}
                   stroke=""
                   strokeWidth={2}

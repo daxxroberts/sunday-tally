@@ -369,9 +369,10 @@ function TremorChart({
           categories={withPrior ? ['prior', 'value'] : ['value']}
           colors={withPrior ? ['violet', 'blue'] : ['blue']}
           valueFormatter={(v) => `${prefix}${fmtNum(v)}${suffix}`}
+          yAxisFormatter={tickFmt}
           xAxisFormatter={(v) => fmtBucket(v)}
           showYAxis
-          yAxisWidth={34}
+          yAxisWidth={42}
           showLegend={false}
           maxBarSize={26}
           className="h-full w-full"
@@ -383,9 +384,10 @@ function TremorChart({
           categories={withPrior ? ['prior', 'value'] : ['value']}
           colors={withPrior ? ['violet', 'blue'] : ['blue']}
           valueFormatter={(v) => `${prefix}${fmtNum(v)}${suffix}`}
+          yAxisFormatter={tickFmt}
           xAxisFormatter={(v) => fmtBucket(v)}
           showYAxis
-          yAxisWidth={34}
+          yAxisWidth={42}
           showLegend={false}
           fill={withPrior ? 'solid' : 'gradient'}
           connectNulls
