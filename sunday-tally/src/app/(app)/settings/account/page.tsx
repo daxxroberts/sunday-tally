@@ -242,7 +242,7 @@ export default function AccountPage() {
         {/* ── Zone A — header (E-1/E-2) ─────────────────────────────────── */}
         <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 backdrop-blur-sm">
           <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-3.5">
-            <button onClick={() => router.push('/settings')} aria-label="Back to Settings"
+            <button onClick={() => router.push('/settings/setup')} aria-label="Back to Setup"
               className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition-colors duration-200 hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/40">
               <Ico.left className="h-5 w-5" />
             </button>

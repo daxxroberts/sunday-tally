@@ -19,15 +19,17 @@ import { TrackPanel } from '@/app/(app)/settings/track/page'
 import { LocationsPanel } from '@/app/(app)/settings/locations/page'
 import { TotalsRulesPanel } from '@/app/(app)/settings/setup/TotalsRulesPanel'
 
-type TabKey = 'services' | 'track' | 'locations' | 'totals'
+type TabKey = 'services' | 'track' | 'locations' | 'totals' | 'billing' | 'account'
 
 // Tab labels mirror the Settings hub rows exactly — same names, same pages, just
 // a tabbed way in. Order matches the hub: Services → Locations → What we track.
-const TABS: { key: TabKey; label: string }[] = [
+const TABS: { key: TabKey; label: string; href?: string }[] = [
   { key: 'services',  label: 'Services and Occurrences' },
   { key: 'locations', label: 'Locations and Team' },
   { key: 'track',     label: 'What we track' },
   { key: 'totals',    label: 'Totals' },
+  { key: 'billing',   label: 'Billing', href: '/settings/billing' },
+  { key: 'account',   label: 'Account', href: '/settings/account' },
 ]
 
 export default function SetupWorkspacePage() {
@@ -62,9 +64,13 @@ export default function SetupWorkspacePage() {
     })()
   }, [supabase])
 
-  function go(key: TabKey) {
-    setActive(key)
-    setMounted(prev => prev.has(key) ? prev : new Set(prev).add(key))
+  function go(tab: typeof TABS[0]) {
+    if (tab.href) {
+      router.push(tab.href)
+      return
+    }
+    setActive(tab.key)
+    setMounted(prev => prev.has(tab.key) ? prev : new Set(prev).add(tab.key))
   }
 
   return (
@@ -87,13 +93,7 @@ export default function SetupWorkspacePage() {
         {/* Frozen header + tabs (shrink-0 — outside the scroll region). */}
         <header className="shrink-0 border-b border-slate-200 bg-white">
           <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3.5">
-            <button
-              onClick={() => router.push('/settings')}
-              aria-label="Back to Settings"
-              className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition-colors duration-200 hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/40"
-            >
-              <Ico.left className="h-5 w-5" />
-            </button>
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl font-num text-sm font-bold text-white shadow-sm" style={{ background: '#4F6EF7' }}>ST</span>
             <div className="min-w-0 flex-1">
               {churchName && <div className="truncate text-[11px] font-semibold uppercase tracking-wider" style={{ color: '#B8860B' }}>{churchName}</div>}
               <h1 className="text-lg font-extrabold leading-tight tracking-tight" style={{ color: '#B8860B' }}>Setup</h1>
@@ -106,7 +106,7 @@ export default function SetupWorkspacePage() {
               return (
                 <button
                   key={t.key}
-                  onClick={() => go(t.key)}
+                  onClick={() => go(t)}
                   aria-current={on ? 'page' : undefined}
                   className={`relative flex-1 px-3 py-2.5 text-[13px] font-semibold transition-colors focus-visible:outline-none ${
                     on ? 'text-[#B8860B]' : 'text-slate-500 hover:text-slate-800'

@@ -78,7 +78,7 @@ const TABS: Tab[] = [
     // Data section is hidden, so editors/viewers see Account + read-only
     // church structure exactly as the hub already intends.
     label: 'Settings',
-    href: '/settings',
+    href: '/settings/setup',
     roles: ['owner', 'admin', 'editor', 'viewer'],
     icon: <SettingsIcon />,
     activeIcon: <SettingsIcon filled />,

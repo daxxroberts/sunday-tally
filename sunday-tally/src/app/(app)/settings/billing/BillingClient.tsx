@@ -63,7 +63,7 @@ export default function BillingClient({
       <div className="mx-auto w-full max-w-2xl px-5 py-8 space-y-6">
         {/* Zone A — Header (E-1, E-2) */}
         <header className="flex items-start gap-3">
-          <button onClick={() => router.push('/settings')} aria-label="Back to Settings"
+          <button onClick={() => router.push('/settings/setup')} aria-label="Back to Setup"
             className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors duration-200 hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/40">
             <Ico.left className="h-5 w-5" />
           </button>
