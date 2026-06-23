@@ -180,7 +180,7 @@ export function BarChart({
             tick={{ transform: 'translate(0, 6)' }}
             fill=""
             stroke=""
-            className="fill-slate-400 text-[13px]"
+            className="fill-slate-400 text-[11px]"
             tickLine={false}
             axisLine={false}
             minTickGap={5}
@@ -204,7 +204,7 @@ export function BarChart({
             tick={{ transform: 'translate(-3, 0)' }}
             fill=""
             stroke=""
-            className="fill-slate-400 text-[13px]"
+            className="fill-slate-400 text-[11px]"
             tickFormatter={yAxisFormatter ?? valueFormatter}
             allowDecimals={allowDecimals}
           >

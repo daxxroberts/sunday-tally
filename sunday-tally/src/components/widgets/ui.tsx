@@ -130,7 +130,9 @@ export function WidgetCard({
       <div className="flex items-center gap-1 border-b border-slate-100 px-3 py-3">
         <span className="h-4 w-1.5 rounded-full" style={{ backgroundColor: BRAND }} />
         <h3 className="min-w-0 flex-1 truncate pl-1 text-sm font-bold text-slate-900">{w.title}</h3>
-        <WindowBadge rolling={isRolling(w.explainerFacts)} />
+        {/* "Live" pill removed (unclear to users); keep only the "Fixed" warning
+            for pinned widgets that silently won't update. */}
+        {!isRolling(w.explainerFacts) && <WindowBadge rolling={false} />}
         {w.error && <DriftBadge error={w.error} />}
         <button
           type="button"
