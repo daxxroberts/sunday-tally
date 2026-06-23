@@ -14,7 +14,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { resolveWindow, validateSpec, describeSpec } from './compile'
+import { resolveWindow, validateSpec, describeSpec, weeklyAvgByBucket } from './compile'
 import type { WidgetSpec } from './spec'
 
 const NOW = new Date('2026-06-08T12:00:00Z')
@@ -332,5 +332,38 @@ describe('describeSpec', () => {
     const e = describeSpec(ratio, resolved)
     expect(e.summing).toContain('Volunteers ÷ Attendance')
     expect(e.summing).toContain('percentage')
+  })
+})
+
+describe('weeklyAvgByBucket — multi-service Sunday roll-up', () => {
+  // Minimal plan stub: value = row.v, date = row.d (other SourcePlan members unused).
+  const plan = {
+    valueOf: (r: Record<string, unknown>) => (r.v as number | null) ?? null,
+    dateOf: (r: Record<string, unknown>) => (r.d as string | null) ?? null,
+  } as unknown as Parameters<typeof weeklyAvgByBucket>[1]
+
+  it('SUMS both Sunday services within a week before averaging the weeks (not a per-occurrence avg)', () => {
+    const raw = [
+      { d: '2026-05-03', v: 243 }, { d: '2026-05-03', v: 230 }, // week total 473
+      { d: '2026-05-10', v: 269 }, { d: '2026-05-10', v: 242 }, // week total 511
+    ]
+    // Correct = avg(473, 511) = 492. The old bug averaged the 4 rows → ~246 (one service's worth).
+    expect(weeklyAvgByBucket(raw, plan, 'month')).toEqual([['2026-05', (473 + 511) / 2]])
+  })
+
+  it('does not halve a week that had a single service', () => {
+    const raw = [
+      { d: '2026-05-03', v: 243 }, { d: '2026-05-03', v: 230 }, // 473
+      { d: '2026-05-31', v: 250 },                               // 250 (one service that week)
+    ]
+    expect(weeklyAvgByBucket(raw, plan, 'month')).toEqual([['2026-05', (473 + 250) / 2]])
+  })
+
+  it('ignores null values when summing the week', () => {
+    const raw = [
+      { d: '2026-05-03', v: 243 }, { d: '2026-05-03', v: null },
+      { d: '2026-05-10', v: 200 },
+    ]
+    expect(weeklyAvgByBucket(raw, plan, 'month')).toEqual([['2026-05', (243 + 200) / 2]])
   })
 })

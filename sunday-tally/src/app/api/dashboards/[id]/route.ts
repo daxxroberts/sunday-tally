@@ -80,6 +80,7 @@ interface ReplayWidget {
   explainerFacts: SpecExplainer | null
   error?: string
   rowsCapped?: number   // original row count when rows were trimmed to ROW_CAP
+  agg?: string          // measure aggregation (sum | avg | weekly_avg) — drives headline math
 }
 
 export async function GET(
@@ -262,6 +263,7 @@ export async function GET(
         rows: capped ? rawRows.slice(0, ROW_CAP) : rawRows,
         resolved: result.resolved,
         explainerFacts: describeSpec(spec, result.resolved),
+        agg: spec.measure.agg,
         ...(capped ? { rowsCapped: rawRows.length } : {}),
       }
     } catch (err) {

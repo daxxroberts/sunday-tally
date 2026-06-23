@@ -708,6 +708,36 @@ function weeklyAvgByCode(raw: Record<string, unknown>[], plan: SourcePlan, field
   })
 }
 
+/** Per-time-bucket weekly_avg: within each bucket (e.g. each month), SUM the values per
+ *  Sunday-anchored week, then AVG the weekly sums — mirrors weeklyAvg() but grouped by the
+ *  time bucket. Without this, a monthly "weekly avg" chart averages individual occurrence
+ *  rows (so a church with two Sunday services shows ~one service's worth) instead of the
+ *  true weekly total (all services summed per Sunday). */
+export function weeklyAvgByBucket(
+  raw: Record<string, unknown>[],
+  plan: SourcePlan,
+  bucket: 'week' | 'month' | 'year',
+): [string, number][] {
+  const map = new Map<string, Map<string, number>>()
+  for (const r of raw) {
+    const v = plan.valueOf(r)
+    const d = plan.dateOf(r)
+    if (v === null || d === null) continue
+    const bk = bucketKey(d, bucket)
+    const wk = weekStartOf(new Date(d + 'T12:00:00'))
+    let inner = map.get(bk)
+    if (!inner) {
+      inner = new Map()
+      map.set(bk, inner)
+    }
+    inner.set(wk, (inner.get(wk) ?? 0) + v)
+  }
+  return [...map.entries()].map(([bk, weeks]) => {
+    const ws = [...weeks.values()]
+    return [bk, ws.length ? ws.reduce((s, x) => s + x, 0) / ws.length : 0] as [string, number]
+  })
+}
+
 function roundTidy(n: number | null): number | null {
   if (n === null) return null
   return Math.round(n * 100) / 100
@@ -918,6 +948,15 @@ export async function compileAndRun(args: {
   // 1 dimension (time OR categorical).
   if (spec.dimensions.length === 1) {
     if (timeBucket) {
+      // weekly_avg must SUM each Sunday-week before averaging — otherwise a church with
+      // multiple Sunday services shows ~one service's worth per bucket (it would average
+      // the individual occurrence rows). The 0-dim metric card already does this.
+      if (spec.measure.agg === 'weekly_avg') {
+        const rows = weeklyAvgByBucket(raw, plan, timeBucket)
+          .map(([bucket, value]) => ({ bucket, value: roundTidy(value) }))
+          .sort((a, b) => (a.bucket < b.bucket ? -1 : 1))
+        return { rows, resolved, shape: 'bucket: string; value: number (weekly avg)' }
+      }
       const byBucket = new Map<string, number[]>()
       for (const r of raw) {
         const v = plan.valueOf(r)

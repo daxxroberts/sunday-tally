@@ -47,6 +47,7 @@ export interface ReplayWidget {
   explainerFacts: SpecExplainer | null
   error?: string | null
   rowsCapped?: number   // original row count when rows were trimmed server-side
+  agg?: string          // measure aggregation (sum | avg | weekly_avg) — drives headline math
 }
 
 const BRAND = '#4F6EF7'
@@ -235,11 +236,21 @@ function WidgetBody({ w }: { w: ReplayWidget }) {
 
   const compare = withPrior
     ? (() => {
-        const thisTotal = data.reduce((s, r) => s + (r.value ?? 0), 0)
-        const priorTotal = data.reduce(
-          (s, r) => s + ((r as { prior?: number | null }).prior ?? 0),
-          0,
-        )
+        // Headline math must match the measure: SUM the buckets for a sum metric
+        // (e.g. total giving / total attendance), but AVERAGE them for an average
+        // metric (weekly_avg / avg) — otherwise a "weekly avg by month" widget would
+        // sum the monthly averages into a meaningless number.
+        const isSum = w.agg === 'sum'
+        const rollup = (pick: (r: (typeof data)[number]) => number | null | undefined) => {
+          const vals = data
+            .map(pick)
+            .filter((v): v is number => v !== null && v !== undefined)
+          if (vals.length === 0) return 0
+          const total = vals.reduce((s, x) => s + x, 0)
+          return isSum ? total : total / vals.length
+        }
+        const thisTotal = rollup((r) => r.value)
+        const priorTotal = rollup((r) => (r as { prior?: number | null }).prior)
         const delta = priorTotal
           ? Math.round(((thisTotal - priorTotal) / priorTotal) * 1000) / 10
           : NaN
