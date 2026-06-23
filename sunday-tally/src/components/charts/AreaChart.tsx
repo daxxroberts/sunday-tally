@@ -212,7 +212,7 @@ export function AreaChart({
             hide={!showXAxis}
             dataKey={index}
             interval={xAxisInterval ?? (startEndOnly ? 'preserveStartEnd' : 'equidistantPreserveStart')}
-            tick={{ transform: 'translate(0, 6)' }}
+            tick={{ transform: 'translate(0, 6)', fontSize: 14, fill: '#475569' }}
             ticks={
               startEndOnly && data.length
                 ? [data[0][index] as string, data[data.length - 1][index] as string]
@@ -240,7 +240,7 @@ export function AreaChart({
             tickLine={false}
             type="number"
             domain={yDomain}
-            tick={{ transform: 'translate(-3, 0)' }}
+            tick={{ transform: 'translate(-3, 0)', fontSize: 14, fill: '#475569' }}
             fill=""
             stroke=""
             className="fill-slate-400 text-[11px]"

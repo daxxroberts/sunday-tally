@@ -177,7 +177,7 @@ export function BarChart({
           <XAxis
             hide={!showXAxis}
             dataKey={index}
-            tick={{ transform: 'translate(0, 6)' }}
+            tick={{ transform: 'translate(0, 6)', fontSize: 14, fill: '#475569' }}
             fill=""
             stroke=""
             className="fill-slate-400 text-[11px]"
@@ -201,7 +201,7 @@ export function BarChart({
             tickLine={false}
             type="number"
             domain={yDomain}
-            tick={{ transform: 'translate(-3, 0)' }}
+            tick={{ transform: 'translate(-3, 0)', fontSize: 14, fill: '#475569' }}
             fill=""
             stroke=""
             className="fill-slate-400 text-[11px]"
