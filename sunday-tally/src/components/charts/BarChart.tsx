@@ -75,6 +75,10 @@ export interface BarChartProps extends React.HTMLAttributes<HTMLDivElement> {
   /** Optional formatter for Y-axis tick labels (defaults to valueFormatter — use a
    *  compact "1.2k" formatter so long numbers don't overflow a narrow axis). */
   yAxisFormatter?: (value: number) => string
+  /** Format the tooltip's header (the x value) — e.g. "2026-02" → "Feb '26". */
+  labelFormatter?: (label: string) => string
+  /** Display names for series keys in the tooltip/legend, e.g. { value: 'This year' }. */
+  categoryLabels?: Record<string, string>
   /** X-axis tick density: a number (show every Nth label) or a recharts preset.
    *  Pass 0 to show every label. */
   xAxisInterval?: number | 'preserveStart' | 'preserveEnd' | 'preserveStartEnd' | 'equidistantPreserveStart'
@@ -105,6 +109,8 @@ export function BarChart({
   colors = defaultColors,
   valueFormatter = (v) => String(v),
   yAxisFormatter,
+  labelFormatter,
+  categoryLabels,
   xAxisInterval,
   stack = false,
   showXAxis = true,
@@ -218,12 +224,13 @@ export function BarChart({
               offset={20}
               content={({ active, payload, label }) => {
                 const clean: PayloadItem[] = (payload ?? []).map((item: any) => ({
-                  category: item.dataKey as string,
+                  category: categoryLabels?.[item.dataKey as string] ?? (item.dataKey as string),
                   value: item.value as number,
                   color: categoryColors.get(item.dataKey as string) ?? 'gray',
                 }))
+                const shownLabel = labelFormatter ? labelFormatter(label as string) : (label as string)
                 return showTooltip && active ? (
-                  <ChartTooltip active={active} payload={clean} label={label as string} valueFormatter={valueFormatter} />
+                  <ChartTooltip active={active} payload={clean} label={shownLabel} valueFormatter={valueFormatter} />
                 ) : null
               }}
             />

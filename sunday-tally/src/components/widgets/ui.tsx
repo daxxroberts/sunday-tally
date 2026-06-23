@@ -257,7 +257,7 @@ function WidgetBody({ w }: { w: ReplayWidget }) {
         />
       )}
       <div className="min-h-0 flex-1">
-        <TremorChart data={data} kind={w.kind} id={w.id} withPrior={withPrior} prefix={prefix} suffix={suffix} />
+        <TremorChart data={data} kind={w.kind} id={w.id} withPrior={withPrior} seriesLabel={w.title} prefix={prefix} suffix={suffix} />
       </div>
       {w.rowsCapped && <CapNotice total={w.rowsCapped} />}
     </div>
@@ -342,6 +342,7 @@ function TremorChart({
   kind,
   id,
   withPrior,
+  seriesLabel,
   prefix = '',
   suffix = '',
 }: {
@@ -349,6 +350,7 @@ function TremorChart({
   kind: 'line' | 'area' | 'bar'
   id: string
   withPrior: boolean
+  seriesLabel: string
   prefix?: string
   suffix?: string
 }) {
@@ -359,7 +361,12 @@ function TremorChart({
   }
   const ax = { tick: { fontSize: 11, fill: '#94a3b8' }, tickLine: false, axisLine: false } as const
   const margin = { top: 6, right: 8, left: -14, bottom: 0 }
-  const fmtVal = (v: unknown, name: unknown): [string, string] => [`${prefix}${fmtNum(v)}${suffix}`, name === 'prior' ? 'Last year' : 'This year']
+  // Friendly series names for the tooltip/legend instead of raw spec keys
+  // ("value"/"prior"): compare → This year / Last year, single → the widget title.
+  const categoryLabels: Record<string, string> = withPrior
+    ? { value: 'This year', prior: 'Last year' }
+    : { value: seriesLabel }
+  const fmtVal = (v: unknown, name: unknown): [string, string] => [`${prefix}${fmtNum(v)}${suffix}`, categoryLabels[String(name)] ?? String(name)]
   // Adaptive x-axis density: aim for ~6 labels so the axis isn't bare (was showing
   // only first + last) but never crowded on a dense (weekly) series.
   const xInterval = Math.max(0, Math.ceil(data.length / 6) - 1)
@@ -374,6 +381,8 @@ function TremorChart({
           valueFormatter={(v) => `${prefix}${fmtNum(v)}${suffix}`}
           yAxisFormatter={tickFmt}
           xAxisFormatter={(v) => fmtBucket(v)}
+          labelFormatter={(l) => fmtBucket(l)}
+          categoryLabels={categoryLabels}
           xAxisInterval={xInterval}
           showYAxis
           yAxisWidth={42}
@@ -390,6 +399,8 @@ function TremorChart({
           valueFormatter={(v) => `${prefix}${fmtNum(v)}${suffix}`}
           yAxisFormatter={tickFmt}
           xAxisFormatter={(v) => fmtBucket(v)}
+          labelFormatter={(l) => fmtBucket(l)}
+          categoryLabels={categoryLabels}
           xAxisInterval={xInterval}
           showYAxis
           yAxisWidth={42}
