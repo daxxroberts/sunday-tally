@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { runToolLoop, AiBudgetExhaustedError } from '@/lib/ai/anthropic'
 import { WIDGET_BUILDER_TOOLS, makeWidgetHandlers } from '@/lib/ai/widgetTools'
 import { buildChurchContextPack } from '@/lib/ai/churchContext'
+import { getEntitlements } from '@/lib/billing/entitlements'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -58,6 +59,7 @@ CAPABILITY LIMITS — decline gracefully (don't fake it):
   • Grouping or filtering by ministry / metric works ONLY on metric_entries_readable.
   • Filtering by service_template CODE is not supported yet (views key service by UUID); location grouping is not supported yet; giving has no categorical axis.
   • You cannot isolate one metric on the pre-pivoted views — use metric_entries_readable + metric_names.
+  • ONE widget measures ONE thing. You CANNOT put two different measures (e.g. attendance AND volunteers, or giving AND attendance) as two series on the same chart — there is no multi-measure axis. When a request asks to combine different measures on one chart, do NOT silently drop one (that fakes it). Instead build the single most useful one, then say plainly: "I can only chart one measure per widget — here's <X>; want <Y> as a second widget right beside it?" Two legitimate multi-series shapes DO exist and you SHOULD use them: (1) a breakdown of ONE measure by ministry/metric/service (dimension on metric_entries_readable → several bars/lines), and (2) this-year-vs-last-year via compare:'prior_year'. Multi-measure overlay is the only combination that isn't supported.
 
 WORKFLOW:
   1. Call list_dimensions FIRST whenever the request names a specific ministry, service, or stat, to get the EXACT name (e.g. the real metric_name for "salvations"). Never guess a name — use what list_dimensions returns.
@@ -140,6 +142,18 @@ export async function POST(req: Request) {
   if (!membership) return new Response('no_church', { status: 403 })
   if (membership.role === 'viewer') return new Response('forbidden', { status: 403 })
 
+  // AI add-on gate (layered AFTER the role gate). Trial churches get full access
+  // to drive conversion; once paid, the widget builder requires the add-on. A
+  // gated church gets a structured upsell payload the UI turns into a prompt —
+  // not a bare 403.
+  const entitlements = await getEntitlements(supabase, membership.church_id as string)
+  if (!entitlements.aiEnabled) {
+    return Response.json(
+      { error: 'plan_does_not_include_ai', feature: 'widget_builder' },
+      { status: 402 },
+    )
+  }
+
   const body = await req.json() as {
     message?: string
     history?: { role: 'user' | 'assistant'; content: string }[]
@@ -207,6 +221,17 @@ export async function POST(req: Request) {
   // tags/metrics for THIS church (WS4). Defensive: '' on any error.
   const churchContext = await buildChurchContextPack(supabase, churchId)
 
+  // The model has no inherent sense of the current date — without this it defaults
+  // to its training-era year and mis-computes "last year" / "this year" / "Q1 this
+  // year" when it pins an absolute range for a named period (relative windows are
+  // resolved server-side against `now`, so those stay correct regardless). Stamp
+  // today's date so any absolute-year math the model does is anchored to reality.
+  const today = new Date()
+  const TODAY_NOTE =
+    `TODAY'S DATE IS ${today.toISOString().slice(0, 10)} (${today.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}). ` +
+    `Use this for ALL date math: "this year" = ${today.getFullYear()}, "last year" = ${today.getFullYear() - 1}. ` +
+    `Prefer a RELATIVE window so the widget stays live; only pin an absolute range for a fully-elapsed named period (e.g. a past calendar year), and when you do, compute the year from TODAY'S DATE above — never from memory.`
+
   const encoder = new TextEncoder()
   const stream = new ReadableStream({
     async start(controller) {
@@ -221,6 +246,7 @@ export async function POST(req: Request) {
         send,
         placementDashboardId,
         editWidgetId,
+        widgetCap: entitlements.widgetCap,
       })
 
       // Surface a vanished edit target before the model starts (WS1.4).
@@ -232,14 +258,20 @@ export async function POST(req: Request) {
         await runToolLoop({
           supabase,
           churchId,
-          // Reuse the analytics budget bucket/kind (per brief). FLAG: a dedicated
-          // 'widget_builder' kind/bucket would require a budget.ts change (out of
-          // this file scope) — see report.
-          kind:    'analytics_chat',
+          // Own usage bucket so widget-builder AI spend is attributable per
+          // feature (migration 0044 widens the request_kind check).
+          kind:    'widget_builder',
           model:   'claude-sonnet-4-6',
+          // Over the monthly ceiling we DON'T cut the church off — we keep
+          // building on the cheaper Haiku model and tell them gently. Pro tier
+          // would route to Opus for hard builds; that's a future lever.
+          fallbackModel: 'claude-haiku-4-5-20251001',
+          onFallback: () => send('text', {
+            delta: "Heads up — you've used this month's advanced AI, so I've switched to the faster model to keep going. It resets next month, or you can upgrade your plan for more.\n\n",
+          }),
           system:  [{
             type: 'text',
-            text: [SYSTEM_PROMPT, churchContext, placementDashboardId ? PLACEMENT_NOTE : '', editNote].filter(Boolean).join('\n\n'),
+            text: [SYSTEM_PROMPT, TODAY_NOTE, churchContext, placementDashboardId ? PLACEMENT_NOTE : '', editNote].filter(Boolean).join('\n\n'),
             cache_control: { type: 'ephemeral' },
           }],
           tools:   WIDGET_BUILDER_TOOLS,

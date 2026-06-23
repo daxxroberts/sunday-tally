@@ -253,6 +253,13 @@ export interface WidgetToolDeps {
    * never clones. null/undefined = a fresh build → INSERT.
    */
   editWidgetId?: string | null
+  /**
+   * Max non-starter widgets the church library may hold under its plan
+   * (src/lib/billing/entitlements.ts). A NEW church-scope save is refused once
+   * the library is full; edits and user-scope saves are exempt. Infinity = pro
+   * (unlimited). Defaults to Infinity if the route doesn't pass it.
+   */
+  widgetCap?: number
 }
 
 /** Canonical JSON (recursively sorted keys) so two specs with identical content
@@ -272,6 +279,7 @@ function stableStringify(v: unknown): string {
  */
 export function makeWidgetHandlers(deps: WidgetToolDeps) {
   const { userId, defaultScope, send, placementDashboardId, editWidgetId } = deps
+  const widgetCap = deps.widgetCap ?? Number.POSITIVE_INFINITY
 
   // Build-before-save gate (WS1.3): the last spec that successfully PREVIEWED in
   // this builder session, plus its row count, so save_widget can refuse to persist
@@ -435,6 +443,29 @@ export function makeWidgetHandlers(deps: WidgetToolDeps) {
         return {
           saved: false,
           error: 'The preview returned no rows — nothing to save yet. Adjust the window or filters, rebuild, and confirm it shows data before saving.',
+        }
+      }
+
+      // Plan widget-library cap: a NEW church-scope widget is refused once the
+      // library is full (edits return above; user-scope private widgets are
+      // exempt; pro = Infinity skips this). Counts non-starter church widgets —
+      // seeded starters don't eat the allowance.
+      if (Number.isFinite(widgetCap) && defaultScope === 'church') {
+        const { count } = await ctx.supabase
+          .from('widgets')
+          .select('id', { count: 'exact', head: true })
+          .eq('church_id', ctx.churchId)
+          .eq('scope', 'church')
+          .eq('is_starter', false)
+        if ((count ?? 0) >= widgetCap) {
+          return {
+            saved: false,
+            error:
+              `This church's widget library is full (${widgetCap} widgets on the current plan). ` +
+              `Tell the user they can delete a widget they no longer need, or upgrade their plan for a bigger library — then stop; do not save.`,
+            library_full: true,
+            widget_cap: widgetCap,
+          }
         }
       }
 

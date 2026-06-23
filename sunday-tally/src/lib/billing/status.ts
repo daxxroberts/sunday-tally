@@ -9,6 +9,7 @@ export interface BillingStatus {
   subscriptionStatus: string
   trialEndsAt: string | null
   currentPeriodEnd: string | null
+  aiAddonTier: string
 }
 
 const PAID_ACTIVE_STATES = new Set(['active', 'past_due'])
@@ -20,7 +21,7 @@ export async function getBillingStatus(
 ): Promise<BillingStatus> {
   const { data: church } = await supabase
     .from('churches')
-    .select('stripe_subscription_id, subscription_status, trial_ends_at, current_period_end')
+    .select('stripe_subscription_id, subscription_status, trial_ends_at, current_period_end, ai_addon_tier')
     .eq('id', churchId)
     .single()
 
@@ -46,6 +47,7 @@ export async function getBillingStatus(
       subscriptionStatus,
       trialEndsAt,
       currentPeriodEnd,
+      aiAddonTier: church?.ai_addon_tier ?? 'none',
     }
   }
 
@@ -63,6 +65,7 @@ export async function getBillingStatus(
       subscriptionStatus,
       trialEndsAt,
       currentPeriodEnd,
+      aiAddonTier: church?.ai_addon_tier ?? 'none',
     }
   }
 
@@ -73,6 +76,7 @@ export async function getBillingStatus(
     subscriptionStatus,
     trialEndsAt,
     currentPeriodEnd,
+    aiAddonTier: church?.ai_addon_tier ?? 'none',
   }
 }
 

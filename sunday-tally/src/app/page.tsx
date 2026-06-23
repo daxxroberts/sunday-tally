@@ -3,8 +3,42 @@
 import { useRef, useState, useEffect } from 'react'
 import { motion, useScroll, useTransform } from 'framer-motion'
 import Link from 'next/link'
-import { ArrowRight, BarChart3, Bot, Database } from 'lucide-react'
+import { ArrowRight, BarChart3, Bot, Database, CheckCircle2 } from 'lucide-react'
 import { ParticleNetwork } from '@/components/ParticleNetwork'
+
+function useCountUp(target: number, trigger: boolean, duration: number = 1000) {
+  const [count, setCount] = useState(0)
+  
+  useEffect(() => {
+    if (!trigger) {
+      setCount(0)
+      return
+    }
+    
+    let startTime: number | null = null
+    let animationFrame: number
+    
+    const animate = (timestamp: number) => {
+      if (!startTime) startTime = timestamp
+      const progress = timestamp - startTime
+      const percentage = Math.min(progress / duration, 1)
+      const easeOut = percentage === 1 ? 1 : 1 - Math.pow(2, -10 * percentage)
+      
+      setCount(Math.floor(target * easeOut))
+      
+      if (percentage < 1) {
+        animationFrame = requestAnimationFrame(animate)
+      } else {
+        setCount(target)
+      }
+    }
+    
+    animationFrame = requestAnimationFrame(animate)
+    return () => cancelAnimationFrame(animationFrame)
+  }, [target, trigger, duration])
+  
+  return count
+}
 
 
 function HoverWord({ children, baseClass = "text-stone-900" }: { children: React.ReactNode, baseClass?: string }) {
@@ -21,6 +55,12 @@ export default function LandingPage() {
   const containerRef = useRef<HTMLDivElement>(null)
   const [mousePos, setMousePos] = useState({ x: -1000, y: -1000 })
   const heroRef = useRef<HTMLDivElement>(null)
+  const [isDashboardHovered, setIsDashboardHovered] = useState(false)
+
+  const attendanceCount = useCountUp(763, isDashboardHovered, 1500)
+  const volunteersCount = useCountUp(114, isDashboardHovered, 1500)
+  const guestsCount = useCountUp(42, isDashboardHovered, 1500)
+  const decisionsCount = useCountUp(4, isDashboardHovered, 1500)
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -90,7 +130,7 @@ export default function LandingPage() {
                 <h1 className="text-6xl md:text-8xl lg:text-[110px] font-extrabold tracking-tighter text-stone-900 mb-4 pb-4 leading-[1.05] relative z-10">
                   Stop guessing.
                   <br className="hidden lg:block" />
-                  Reveal your numbers.
+                  <span className="text-stone-300">Reveal your numbers.</span>
                 </h1>
                 <h1 className="absolute inset-0 text-6xl md:text-8xl lg:text-[110px] font-extrabold tracking-tighter leading-[1.05] mb-4 pb-4 pointer-events-none select-none text-transparent bg-clip-text bg-gradient-to-r from-[#4F6EF7] via-[#06B6D4] to-[#10B981] z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
                     style={{
@@ -126,6 +166,12 @@ export default function LandingPage() {
               >
                 See how it works
               </Link>
+              <div className="text-center mt-1">
+                <span className="text-stone-500 font-medium">Already have an account? </span>
+                <Link href="/auth/login" className="text-stone-900 font-bold hover:text-[#4F6EF7] transition-colors">
+                  Log in
+                </Link>
+              </div>
             </motion.div>
           </div>
         </div>
@@ -143,10 +189,14 @@ export default function LandingPage() {
               <div className="w-3 h-3 rounded-full bg-stone-300" />
             </div>
             {/* The "Dashboard" mock */}
-            <div className="bg-[#FCFCFC] p-6 md:p-10 aspect-video relative overflow-hidden flex flex-col gap-6 rounded-b-xl border border-t-0 border-stone-200 shadow-inner group">
+            <div 
+              onMouseEnter={() => setIsDashboardHovered(true)}
+              onMouseLeave={() => setIsDashboardHovered(false)}
+              className="bg-[#FCFCFC] p-6 md:p-10 aspect-video relative overflow-hidden flex flex-col gap-6 rounded-b-xl border border-t-0 border-stone-200 shadow-inner group grayscale hover:grayscale-0 transition-all duration-700"
+            >
                <div className="flex justify-between items-center mb-2">
                  <div>
-                   <h2 className="text-xl font-bold text-stone-900 tracking-tight">Demo Church Dashboard</h2>
+                   <h2 className="text-xl font-bold text-stone-900 tracking-tight">Main Campus Dashboard</h2>
                    <p className="text-sm text-stone-500 font-medium">April 5, 2026 (Easter Sunday)</p>
                  </div>
                  <div className="h-8 px-4 py-1.5 bg-emerald-50 text-emerald-600 border border-emerald-200 font-semibold text-sm rounded-full flex items-center shadow-sm">
@@ -158,28 +208,28 @@ export default function LandingPage() {
                  <div className="p-4 bg-white rounded-xl border border-stone-200 shadow-sm flex flex-col justify-center">
                    <p className="text-sm text-stone-500 font-medium mb-1">Total Attendance</p>
                    <div className="flex items-end gap-2">
-                     <p className="text-3xl md:text-4xl font-extrabold text-[#4F6EF7] transition-colors group-hover:text-[#4F6EF7]">763</p>
+                     <p className="text-3xl md:text-4xl font-extrabold text-[#4F6EF7] transition-colors group-hover:text-[#4F6EF7]">{attendanceCount}</p>
                      <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded flex items-center mb-1 border border-emerald-100">↑ 14%</span>
                    </div>
                  </div>
                  <div className="p-4 bg-white rounded-xl border border-stone-200 shadow-sm flex flex-col justify-center">
                    <p className="text-sm text-stone-500 font-medium mb-1">Total Volunteers</p>
                    <div className="flex items-end gap-2">
-                     <p className="text-3xl md:text-4xl font-extrabold text-[#06B6D4] transition-colors group-hover:text-[#06B6D4]">114</p>
+                     <p className="text-3xl md:text-4xl font-extrabold text-[#06B6D4] transition-colors group-hover:text-[#06B6D4]">{volunteersCount}</p>
                      <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded flex items-center mb-1 border border-emerald-100">↑ 5%</span>
                    </div>
                  </div>
                  <div className="p-4 bg-white rounded-xl border border-stone-200 shadow-sm flex flex-col justify-center">
                    <p className="text-sm text-stone-500 font-medium mb-1">First Time Guests</p>
                    <div className="flex items-end gap-2">
-                     <p className="text-3xl md:text-4xl font-extrabold text-[#F59E0B] transition-colors group-hover:text-[#F59E0B]">42</p>
+                     <p className="text-3xl md:text-4xl font-extrabold text-[#F59E0B] transition-colors group-hover:text-[#F59E0B]">{guestsCount}</p>
                      <span className="text-[10px] font-bold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded flex items-center mb-1 border border-rose-100">↓ 2%</span>
                    </div>
                  </div>
                  <div className="p-4 bg-white rounded-xl border border-stone-200 shadow-sm flex flex-col justify-center">
                    <p className="text-sm text-stone-500 font-medium mb-1">Decisions / Hands</p>
                    <div className="flex items-end gap-2">
-                     <p className="text-3xl md:text-4xl font-extrabold text-[#10B981] transition-colors group-hover:text-[#10B981]">4</p>
+                     <p className="text-3xl md:text-4xl font-extrabold text-[#10B981] transition-colors group-hover:text-[#10B981]">{decisionsCount}</p>
                      <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded flex items-center mb-1 border border-emerald-100">↑ 1</span>
                    </div>
                  </div>
@@ -193,30 +243,34 @@ export default function LandingPage() {
                   <div className="flex-1 flex items-end gap-4 justify-around pb-6 pt-12 relative w-full border-b border-stone-200">
                      <div className="absolute top-0 left-0 w-full border-t border-dashed border-stone-200 h-px"></div>
                      <div className="absolute top-1/2 left-0 w-full border-t border-dashed border-stone-200 h-px"></div>
-                     <div className="w-1/4 bg-blue-100/50 hover:bg-blue-100 transition-colors rounded-t-sm relative h-[30%] border-t-2 border-blue-400">
+                     <motion.div initial={{ height: "0%" }} animate={{ height: isDashboardHovered ? "30%" : "0%" }} transition={{ duration: 1, type: "spring", delay: 0.1 }} className="w-1/4 bg-blue-100/50 hover:bg-blue-100 transition-colors rounded-t-sm relative border-t-2 border-blue-400">
                        <span className="absolute -top-8 left-1/2 -translate-x-1/2 text-xs font-bold text-stone-600 bg-white px-2 py-1 shadow-sm rounded-md border border-stone-100 opacity-0 group-hover:opacity-100 transition-opacity">220</span>
                        <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] font-semibold text-stone-400 w-max">Mar 15</span>
-                     </div>
-                     <div className="w-1/4 bg-blue-100/50 hover:bg-blue-100 transition-colors rounded-t-sm relative h-[45%] border-t-2 border-blue-400">
+                     </motion.div>
+                     <motion.div initial={{ height: "0%" }} animate={{ height: isDashboardHovered ? "45%" : "0%" }} transition={{ duration: 1, type: "spring", delay: 0.2 }} className="w-1/4 bg-blue-100/50 hover:bg-blue-100 transition-colors rounded-t-sm relative border-t-2 border-blue-400">
                        <span className="absolute -top-8 left-1/2 -translate-x-1/2 text-xs font-bold text-stone-600 bg-white px-2 py-1 shadow-sm rounded-md border border-stone-100 opacity-0 group-hover:opacity-100 transition-opacity">284</span>
                        <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] font-semibold text-stone-400 w-max">Mar 22</span>
-                     </div>
-                     <div className="w-1/4 bg-blue-100/50 hover:bg-blue-100 transition-colors rounded-t-sm relative h-[40%] border-t-2 border-blue-400">
+                     </motion.div>
+                     <motion.div initial={{ height: "0%" }} animate={{ height: isDashboardHovered ? "40%" : "0%" }} transition={{ duration: 1, type: "spring", delay: 0.3 }} className="w-1/4 bg-blue-100/50 hover:bg-blue-100 transition-colors rounded-t-sm relative border-t-2 border-blue-400">
                        <span className="absolute -top-8 left-1/2 -translate-x-1/2 text-xs font-bold text-stone-600 bg-white px-2 py-1 shadow-sm rounded-md border border-stone-100 opacity-0 group-hover:opacity-100 transition-opacity">255</span>
                        <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] font-semibold text-stone-400 w-max">Mar 29</span>
-                     </div>
-                     <div className="w-1/4 bg-blue-500/20 hover:bg-blue-500/30 transition-colors rounded-t-sm relative h-[100%] border-t-2 border-[#4F6EF7] shadow-[0_-5px_15px_rgba(79,110,247,0.1)]">
+                     </motion.div>
+                     <motion.div initial={{ height: "0%" }} animate={{ height: isDashboardHovered ? "100%" : "0%" }} transition={{ duration: 1.5, type: "spring", delay: 0.4 }} className="w-1/4 bg-blue-500/20 hover:bg-blue-500/30 transition-colors rounded-t-sm relative border-t-2 border-[#4F6EF7] shadow-[0_-5px_15px_rgba(79,110,247,0.1)]">
                        <span className="absolute -top-8 left-1/2 -translate-x-1/2 text-sm font-bold text-white bg-[#4F6EF7] px-2 py-1 shadow-md rounded-md">763</span>
                        <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-xs font-bold text-stone-900 w-max">Apr 5</span>
-                     </div>
+                     </motion.div>
                   </div>
                </div>
                
                {/* Floating AI Widget Overlay */}
                <motion.div 
                  className="absolute bottom-8 right-8 w-80 bg-white/95 border border-stone-200 rounded-2xl p-5 shadow-2xl backdrop-blur-xl"
-                 animate={{ y: [0, -10, 0] }}
-                 transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                 initial={{ x: 50, opacity: 0 }}
+                 animate={{ 
+                   x: isDashboardHovered ? 0 : 50, 
+                   opacity: isDashboardHovered ? 1 : 0,
+                 }}
+                 transition={{ duration: 1.2, type: "tween", ease: "easeOut", delay: 2.8 }}
                >
                  <div className="flex items-center gap-3 mb-4">
                    <div className="bg-stone-900 p-2 rounded-lg"><Bot size={18} className="text-white" /></div>
@@ -335,7 +389,183 @@ export default function LandingPage() {
         </div>
       </section>
       
-      {/* Final CTA */}
+      {/* Pricing Section */}
+      <section className="py-32 bg-white relative border-t border-stone-200" id="pricing">
+        <div className="container mx-auto px-4 md:px-8 max-w-6xl">
+          
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-6xl font-bold text-stone-900 mb-6 tracking-tighter">Simple pricing.</h2>
+            <p className="text-xl text-stone-500 max-w-2xl mx-auto">Start with what you need. Add AI when you're ready.</p>
+          </div>
+
+          {/* Base Tier Card */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="bg-stone-50 border border-stone-200 rounded-[2rem] p-8 md:p-12 mb-24 shadow-sm flex flex-col md:flex-row gap-12 items-center"
+          >
+            <div className="flex-1 text-center md:text-left">
+              <h3 className="text-3xl font-bold text-stone-900 mb-2">Base Platform</h3>
+              <p className="text-stone-500 text-lg mb-6 leading-relaxed">Everything you need to count what matters — attendance, volunteers, giving, salvations, baptisms — and see it week over week, month over month, and year over year.</p>
+              <ul className="text-stone-600 font-medium flex flex-col gap-3 mb-8 md:mb-0">
+                <li className="flex items-center gap-2 justify-center md:justify-start"><CheckCircle2 className="text-[#4F6EF7]" size={20} /> Unlimited manual tracking</li>
+                <li className="flex items-center gap-2 justify-center md:justify-start"><CheckCircle2 className="text-[#4F6EF7]" size={20} /> Core metric dashboards</li>
+                <li className="flex items-center gap-2 justify-center md:justify-start"><CheckCircle2 className="text-[#4F6EF7]" size={20} /> Standard reporting</li>
+              </ul>
+            </div>
+            <div className="md:w-80 bg-white p-8 rounded-3xl border border-stone-200 shadow-lg text-center shrink-0">
+              <p className="text-sm font-bold tracking-widest text-stone-400 uppercase mb-2">One price per location</p>
+              <div className="flex justify-center items-end gap-1 mb-2">
+                <span className="text-5xl font-extrabold text-stone-900">$22</span>
+                <span className="text-stone-500 font-medium pb-1">/mo</span>
+              </div>
+              <p className="text-sm text-stone-500 mb-6">Add a campus anytime for $22/mo.</p>
+              <button className="w-full bg-stone-900 hover:bg-stone-800 text-white font-bold py-4 rounded-xl transition-all shadow-md hover:shadow-xl hover:-translate-y-1">
+                Start free for 45 days
+              </button>
+              <p className="text-xs text-stone-400 mt-4 font-medium">No credit card required.</p>
+            </div>
+          </motion.div>
+
+          {/* AI Add-ons Header */}
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center justify-center p-3 bg-blue-50 text-[#4F6EF7] rounded-2xl mb-6">
+              <Bot size={32} />
+            </div>
+            <h2 className="text-3xl md:text-5xl font-bold text-stone-900 mb-6 tracking-tight">Add AI Insights & Dashboards</h2>
+            <p className="text-lg text-stone-500 max-w-3xl mx-auto leading-relaxed">
+              Ask a question in plain English — <span className="italic">"How's our average attendance this year compared to last?"</span> — and get a chart or number you can save to your dashboard forever. It refreshes itself every week. No spreadsheets, no formulas.
+            </p>
+          </div>
+
+          {/* AI Add-ons Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
+            {/* Starter */}
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+              className="bg-white border border-stone-200 rounded-3xl p-8 shadow-sm hover:shadow-md transition-shadow flex flex-col"
+            >
+              <p className="text-[#4F6EF7] font-bold tracking-widest uppercase text-sm mb-2">Starter</p>
+              <div className="flex items-baseline gap-1 mb-2">
+                <span className="text-4xl font-extrabold text-stone-900">+$15</span>
+                <span className="text-stone-500 font-medium">/mo</span>
+              </div>
+              <p className="text-sm text-stone-400 font-medium mb-6 pb-6 border-b border-stone-100">per location</p>
+              
+              <p className="text-stone-600 mb-8 leading-relaxed">Turn your numbers into 15 saved dashboard widgets you can read in five seconds. Just ask.</p>
+              
+              <ul className="flex flex-col gap-4 text-sm text-stone-600 mt-auto">
+                <li className="flex items-start gap-3"><CheckCircle2 className="text-emerald-500 shrink-0" size={18} /> <span><strong>15</strong> Saved dashboard widgets</span></li>
+                <li className="flex items-start gap-3"><CheckCircle2 className="text-emerald-500 shrink-0" size={18} /> <span>Ask AI in plain English</span></li>
+                <li className="flex items-start gap-3"><CheckCircle2 className="text-emerald-500 shrink-0" size={18} /> <span>Auto-refreshing dashboards</span></li>
+                <li className="flex items-start gap-3"><CheckCircle2 className="text-emerald-500 shrink-0" size={18} /> <span>Compare to last year & set goals</span></li>
+                <li className="flex items-start gap-3 opacity-40"><span className="w-[18px] flex justify-center text-stone-300">—</span> <span>Most capable AI models</span></li>
+              </ul>
+              <div className="mt-8 pt-6 border-t border-stone-100">
+                <p className="text-xs text-stone-500 font-medium uppercase tracking-wider text-center">Best for a single church getting started</p>
+              </div>
+            </motion.div>
+
+            {/* Plus */}
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              className="bg-white border-2 border-[#4F6EF7] rounded-3xl p-8 shadow-xl relative flex flex-col scale-105 z-10"
+            >
+              <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-[#4F6EF7] text-white text-xs font-bold uppercase tracking-widest py-1.5 px-4 rounded-full">
+                Most Popular
+              </div>
+              <p className="text-[#4F6EF7] font-bold tracking-widest uppercase text-sm mb-2">Plus</p>
+              <div className="flex items-baseline gap-1 mb-2">
+                <span className="text-4xl font-extrabold text-stone-900">+$29</span>
+                <span className="text-stone-500 font-medium">/mo</span>
+              </div>
+              <p className="text-sm text-stone-400 font-medium mb-6 pb-6 border-b border-stone-100">per church</p>
+              
+              <p className="text-stone-600 mb-8 leading-relaxed">Room to grow — 40 saved dashboard widgets across every ministry, same plain-English AI.</p>
+              
+              <ul className="flex flex-col gap-4 text-sm text-stone-600 mt-auto">
+                <li className="flex items-start gap-3"><CheckCircle2 className="text-emerald-500 shrink-0" size={18} /> <span><strong>40</strong> Saved dashboard widgets</span></li>
+                <li className="flex items-start gap-3"><CheckCircle2 className="text-emerald-500 shrink-0" size={18} /> <span>Ask AI in plain English</span></li>
+                <li className="flex items-start gap-3"><CheckCircle2 className="text-emerald-500 shrink-0" size={18} /> <span>Auto-refreshing dashboards</span></li>
+                <li className="flex items-start gap-3"><CheckCircle2 className="text-emerald-500 shrink-0" size={18} /> <span>Compare to last year & set goals</span></li>
+                <li className="flex items-start gap-3 opacity-40"><span className="w-[18px] flex justify-center text-stone-300">—</span> <span>Most capable AI models</span></li>
+              </ul>
+              <div className="mt-8 pt-6 border-t border-stone-100">
+                <p className="text-xs text-stone-500 font-medium uppercase tracking-wider text-center">Best for a growing, multi-ministry church</p>
+              </div>
+            </motion.div>
+
+            {/* Pro */}
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.3 }}
+              className="bg-stone-900 border border-stone-800 rounded-3xl p-8 shadow-sm flex flex-col"
+            >
+              <p className="text-white font-bold tracking-widest uppercase text-sm mb-2">Pro</p>
+              <div className="flex items-baseline gap-1 mb-2">
+                <span className="text-4xl font-extrabold text-white">+$49</span>
+                <span className="text-stone-400 font-medium">/mo</span>
+              </div>
+              <p className="text-sm text-stone-500 font-medium mb-6 pb-6 border-b border-stone-800">per church</p>
+              
+              <p className="text-stone-300 mb-8 leading-relaxed">Unlimited widgets and our most capable AI. Built for churches that live in their data.</p>
+              
+              <ul className="flex flex-col gap-4 text-sm text-stone-300 mt-auto">
+                <li className="flex items-start gap-3"><CheckCircle2 className="text-emerald-500 shrink-0" size={18} /> <span className="text-white"><strong>Unlimited</strong> dashboard widgets</span></li>
+                <li className="flex items-start gap-3"><CheckCircle2 className="text-emerald-500 shrink-0" size={18} /> <span className="text-white">Ask AI in plain English</span></li>
+                <li className="flex items-start gap-3"><CheckCircle2 className="text-emerald-500 shrink-0" size={18} /> <span className="text-white">Auto-refreshing dashboards</span></li>
+                <li className="flex items-start gap-3"><CheckCircle2 className="text-emerald-500 shrink-0" size={18} /> <span className="text-white">Compare to last year & set goals</span></li>
+                <li className="flex items-start gap-3"><CheckCircle2 className="text-emerald-500 shrink-0" size={18} /> <span className="text-white font-bold">Most capable AI models</span></li>
+              </ul>
+              <div className="mt-8 pt-6 border-t border-stone-800">
+                <p className="text-xs text-stone-400 font-medium uppercase tracking-wider text-center">Best for multi-campus & data-driven teams</p>
+              </div>
+            </motion.div>
+          </div>
+
+          {/* AI Banner / Callout */}
+          <div className="text-center mb-16">
+            <p className="text-stone-500 font-medium bg-stone-100 inline-block px-6 py-2 rounded-full text-sm">
+              ✨ Try the AI <span className="font-bold text-stone-900">free</span> during your 45-day trial — it's unlocked from day one.
+            </p>
+          </div>
+
+          {/* Worked Examples FAQ */}
+          <div className="max-w-3xl mx-auto bg-stone-50 border border-stone-200 rounded-3xl p-8 md:p-12">
+            <h3 className="text-xl font-bold text-stone-900 mb-6 text-center">How to calculate your total cost</h3>
+            <div className="space-y-4">
+              <div className="flex justify-between items-center py-3 border-b border-stone-200">
+                <span className="text-stone-600 font-medium">One church, just tracking</span>
+                <span className="font-bold text-stone-900">$22/mo</span>
+              </div>
+              <div className="flex justify-between items-center py-3 border-b border-stone-200">
+                <span className="text-stone-600 font-medium">One church + AI Starter <span className="text-stone-400 text-sm font-normal">($22 + $15)</span></span>
+                <span className="font-bold text-stone-900">$37/mo</span>
+              </div>
+              <div className="flex justify-between items-center py-3">
+                <div className="flex flex-col">
+                  <span className="text-stone-600 font-medium">Three campuses + AI Pro</span>
+                  <span className="text-stone-400 text-sm mt-1">($22 × 3) + $49. Unlimited widgets shared across all three.</span>
+                </div>
+                <span className="font-bold text-stone-900">$115/mo</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      {/* Final Dark CTA */}
       <section className="py-32 relative overflow-hidden bg-stone-950">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom,_var(--tw-gradient-stops))] from-blue-900/20 via-stone-950 to-stone-950 z-0"></div>
         <div className="container mx-auto px-4 text-center relative z-10 max-w-3xl">

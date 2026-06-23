@@ -1,15 +1,22 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { getBillingStatus } from '@/lib/billing/status'
+import { resolvePaidCeilingCents } from '@/lib/billing/entitlements'
 import { tokensToCents, type AiModel, type UsageTokens } from './pricing'
 
-export type AiRequestKind = 'import_stage_a' | 'import_stage_b' | 'analytics_chat'
+export type AiRequestKind =
+  | 'import_stage_a'
+  | 'import_stage_b'
+  | 'analytics_chat'
+  | 'widget_builder'
 export type AiBucket = 'setup' | 'analytics' | 'shared'
 
 const TRIAL_CAPS: Record<'setup' | 'analytics', number> = {
   setup:     100, // $1.00
   analytics:  50, // $0.50
 }
-const PAID_SHARED_CAP_CENTS = 300 // $3.00 / month
+
+/** Trial buckets: AI chat + widget builder draw from 'analytics'; imports from 'setup'. */
+const ANALYTICS_KINDS = new Set<AiRequestKind>(['analytics_chat', 'widget_builder'])
 
 export interface BucketSelection {
   bucket:     AiBucket
@@ -30,15 +37,18 @@ export async function resolveBucket(
   const billing = await getBillingStatus(supabase, churchId)
 
   if (billing.phase === 'active') {
+    // Paid pool ceiling scales with the church's AI add-on tier (+ locations for
+    // starter). Churches without the add-on keep the base pool for onboarding
+    // imports. Single source of truth: src/lib/billing/entitlements.ts.
     return {
       bucket:    'shared',
       periodKey: monthKey(new Date()),
-      capCents:  PAID_SHARED_CAP_CENTS,
+      capCents:  await resolvePaidCeilingCents(supabase, churchId),
     }
   }
 
   const trialBucket: 'setup' | 'analytics' =
-    kind === 'analytics_chat' ? 'analytics' : 'setup'
+    ANALYTICS_KINDS.has(kind) ? 'analytics' : 'setup'
 
   return {
     bucket:    trialBucket,

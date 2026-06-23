@@ -2,6 +2,30 @@ import { stripe } from '@/lib/stripe/server'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { NextResponse, type NextRequest } from 'next/server'
 import type Stripe from 'stripe'
+import type { AiAddonTier } from '@/lib/billing/entitlements'
+
+/**
+ * Maps a subscription's line items to the AI add-on tier from env-configured
+ * price IDs. Returns undefined when NO add-on price IDs are configured yet — in
+ * that case the webhook leaves churches.ai_addon_tier untouched, so the feature
+ * stays inert until the Stripe products exist. Highest tier present wins.
+ */
+function resolveAddonTier(sub: Stripe.Subscription): AiAddonTier | undefined {
+  const PRICES: Record<Exclude<AiAddonTier, 'none'>, string | undefined> = {
+    pro:     process.env.STRIPE_PRICE_AI_PRO,
+    plus:    process.env.STRIPE_PRICE_AI_PLUS,
+    starter: process.env.STRIPE_PRICE_AI_STARTER,
+  }
+  if (!PRICES.pro && !PRICES.plus && !PRICES.starter) return undefined // not configured
+
+  const priceIds = new Set(
+    (sub.items?.data ?? []).map((i) => i.price?.id).filter(Boolean) as string[],
+  )
+  if (PRICES.pro && priceIds.has(PRICES.pro)) return 'pro'
+  if (PRICES.plus && priceIds.has(PRICES.plus)) return 'plus'
+  if (PRICES.starter && priceIds.has(PRICES.starter)) return 'starter'
+  return 'none' // configured, but this subscription carries no add-on line
+}
 
 export const runtime = 'nodejs'
 
@@ -115,13 +139,20 @@ async function handleSubscriptionChange(
     ? new Date(periodEndUnix * 1000).toISOString()
     : null
 
+  // Resolve the AI add-on tier from the subscription's line items. Only include
+  // the column when add-on prices are configured, so we never clobber it to
+  // 'none' before the Stripe products exist.
+  const tier = resolveAddonTier(sub)
+  const update: Record<string, unknown> = {
+    stripe_subscription_id: sub.id,
+    subscription_status: sub.status,
+    current_period_end: periodEnd,
+  }
+  if (tier !== undefined) update.ai_addon_tier = tier
+
   await supabase
     .from('churches')
-    .update({
-      stripe_subscription_id: sub.id,
-      subscription_status: sub.status,
-      current_period_end: periodEnd,
-    })
+    .update(update)
     .eq('id', churchId)
 }
 
@@ -131,11 +162,13 @@ async function handleSubscriptionDeleted(
 ) {
   const churchId = sub.metadata?.church_id
   if (!churchId) return
+  // Subscription gone → drop the add-on too (idempotent; safe if never set).
   await supabase
     .from('churches')
     .update({
       subscription_status: 'canceled',
       stripe_subscription_id: null,
+      ai_addon_tier: 'none',
     })
     .eq('id', churchId)
 }

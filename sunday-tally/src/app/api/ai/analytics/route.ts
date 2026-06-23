@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { runToolLoop, AiBudgetExhaustedError } from '@/lib/ai/anthropic'
 import { METRICS, runMetric, type MetricId } from '@/lib/ai/metrics'
 import { probeData, type ProbeInput } from '@/lib/ai/probe'
+import { getEntitlements } from '@/lib/billing/entitlements'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -152,6 +153,16 @@ export async function POST(req: Request) {
     .maybeSingle()
   if (!membership) return new Response('no_church', { status: 403 })
   if (membership.role === 'viewer') return new Response('forbidden', { status: 403 })
+
+  // AI add-on gate (after the role gate). Trial = full access; paid requires the
+  // add-on. Structured upsell payload, not a bare 403.
+  const entitlements = await getEntitlements(supabase, membership.church_id as string)
+  if (!entitlements.aiEnabled) {
+    return Response.json(
+      { error: 'plan_does_not_include_ai', feature: 'analytics_chat' },
+      { status: 402 },
+    )
+  }
 
   const body = await req.json() as { message?: string; history?: { role: 'user' | 'assistant'; content: string }[] }
   const userMessage = String(body.message ?? '').trim()

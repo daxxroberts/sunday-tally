@@ -20,10 +20,18 @@ import { NextResponse } from 'next/server'
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-export async function GET() {
+export async function GET(req: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+
+  // Optional pagination (scale guard). Backward-compatible: with no ?limit the
+  // handler returns the full library as before. `total` is always included.
+  const url = new URL(req.url)
+  const limitRaw = url.searchParams.get('limit')
+  const offsetRaw = url.searchParams.get('offset')
+  const limit = limitRaw !== null ? Math.min(Math.max(parseInt(limitRaw, 10) || 0, 1), 200) : null
+  const offset = offsetRaw !== null ? Math.max(parseInt(offsetRaw, 10) || 0, 0) : 0
 
   const { data: membership } = await supabase
     .from('church_memberships')
@@ -40,13 +48,16 @@ export async function GET() {
   // NOT return query_spec here — the palette only needs identity + how to render a
   // thumbnail; the full spec is resolved on the replay endpoint. Starter widgets
   // sort first, then alphabetical, for a stable gallery.
-  const { data, error } = await supabase
+  let query = supabase
     .from('widgets')
-    .select('id, church_id, scope, owner_user_id, title, kind, viz_config, is_starter, created_at, updated_at')
+    .select('id, church_id, scope, owner_user_id, title, kind, viz_config, is_starter, created_at, updated_at', { count: 'exact' })
     .eq('church_id', churchId)
     .order('is_starter', { ascending: false })   // starter set first
     .order('title',      { ascending: true })
+  if (limit !== null) query = query.range(offset, offset + limit - 1)
+
+  const { data, error, count } = await query
   if (error) return NextResponse.json({ error: 'list_failed' }, { status: 500 })
 
-  return NextResponse.json({ widgets: data ?? [] })
+  return NextResponse.json({ widgets: data ?? [], total: count ?? (data?.length ?? 0) })
 }

@@ -23,7 +23,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 
 /** The three church-wide dashboard pref keys (and ONLY these — anything else
  *  in grid_config belongs to the History grid). 0039 moves exactly this set. */
-export const CHURCH_PREF_KEYS = ['keyMetrics', 'keyMetricTargets', 'excludedTotalMinistries'] as const
+export const CHURCH_PREF_KEYS = ['keyMetrics', 'keyMetricTargets', 'excludedTotalMinistries', 'totals'] as const
 
 export type ChurchPrefs = Record<string, unknown>
 

@@ -111,6 +111,13 @@ export default function SettingsHubPage() {
               writable
               loading={false}
             />
+            <HubRow
+              href="/settings/billing"
+              label="Billing & Subscriptions"
+              meta="Manage your AI tier, campuses, and Stripe subscription"
+              writable={write}
+              loading={false}
+            />
           </Section>
 
           {/* ── E-2 — Your Church ───────────────────────────────────────────

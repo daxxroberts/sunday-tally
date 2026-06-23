@@ -101,6 +101,12 @@ export function LocationsPanel({ embedded = false }: { embedded?: boolean }) {
     if (!churchId || !write) return
     const name = newCampus.trim()
     if (!name) return
+    // Each campus is billed ($22/mo). Confirm the cost before adding so a new
+    // campus is never a billing surprise.
+    if (typeof window !== 'undefined' &&
+      !window.confirm(`Adding “${name}” as a campus adds $22/month to your subscription. Add it?`)) {
+      return
+    }
     setBusy('add-campus')
     const base = slugifyCode(name) || 'CAMPUS'
     const existing = new Set(campuses.map(c => c.code))
@@ -242,6 +248,11 @@ export function LocationsPanel({ embedded = false }: { embedded?: boolean }) {
                       <Ico.plus className="h-4 w-4" />Add
                     </button>
                   </div>
+                )}
+                {write && (
+                  <p className="bg-slate-50/60 px-4 pb-3 text-[12px] text-slate-400">
+                    Each campus is $22/month, billed to your subscription.
+                  </p>
                 )}
               </div>
               {/* E-56 note: a campus can only be deactivated (never deleted) because services and entries point to it. */}

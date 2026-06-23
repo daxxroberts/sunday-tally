@@ -23,6 +23,11 @@ export class AiBudgetExhaustedError extends Error {
   }
 }
 
+/** The trial/usage bucket a kind reports against (cosmetic for the error). */
+function bucketForKind(kind: AiRequestKind): AiBucket {
+  return kind === 'import_stage_a' || kind === 'import_stage_b' ? 'setup' : 'analytics'
+}
+
 /** Throws if the relevant bucket is at or below zero cents. */
 export async function assertBudget(
   supabase: SupabaseClient,
@@ -31,9 +36,14 @@ export async function assertBudget(
 ): Promise<void> {
   const remaining = await getRemaining(supabase, churchId, kind)
   if (remaining <= 0) {
-    throw new AiBudgetExhaustedError(kind === 'analytics_chat' ? 'analytics' : 'setup')
+    throw new AiBudgetExhaustedError(bucketForKind(kind))
   }
 }
+
+// Even with a soft fallback, stop hard once a church blows this far past its
+// ceiling in a single period — a backstop against runaway/abuse ($20 of overage
+// is thousands of Haiku builds). Normal use never approaches it.
+const HARD_STOP_OVERAGE_CENTS = 2000
 
 export interface ToolHandlerContext {
   churchId:  string
@@ -57,6 +67,14 @@ export interface RunToolLoopArgs {
   /** Final tool name that terminates the loop (e.g. 'done', 'final_answer'). */
   terminateOn?: string[]
   maxTurns?:    number
+  /**
+   * Soft-fallback model. When set, exhausting the budget switches to this model
+   * (e.g. Haiku) and keeps going instead of throwing — the feature stays usable,
+   * just cheaper. `onFallback` fires once when the switch happens. A genuine
+   * runaway still hard-stops at HARD_STOP_OVERAGE_CENTS past the ceiling.
+   */
+  fallbackModel?: AiModel
+  onFallback?:    () => void
   /** Import job this loop belongs to — attributes usage events for per-import cost. */
   jobId?:       string | null
   initialUser:  string | Anthropic.Messages.ContentBlockParam[]
@@ -86,8 +104,12 @@ export async function runToolLoop(args: RunToolLoopArgs): Promise<RunToolLoopRes
   const {
     supabase, churchId, kind, model, system, tools, handlers,
     terminateOn = [], maxTurns = 12, jobId, initialUser,
-    onAssistantText, onToolResult,
+    onAssistantText, onToolResult, fallbackModel, onFallback,
   } = args
+
+  // The model in use this turn — may downgrade to fallbackModel once over budget.
+  let activeModel = model
+  let didFallback = false
 
   const messages: Anthropic.Messages.MessageParam[] = [
     {
@@ -103,10 +125,23 @@ export async function runToolLoop(args: RunToolLoopArgs): Promise<RunToolLoopRes
   let finalToolCall: RunToolLoopResult['finalToolCall'] = undefined
 
   for (let turn = 0; turn < maxTurns; turn++) {
-    await assertBudget(supabase, churchId, kind)
+    const remaining = await getRemaining(supabase, churchId, kind)
+    if (remaining <= 0) {
+      if (fallbackModel && activeModel !== fallbackModel && remaining > -HARD_STOP_OVERAGE_CENTS) {
+        // Soft fallback: keep working on the cheaper model instead of cutting off.
+        activeModel = fallbackModel
+        if (!didFallback) { didFallback = true; onFallback?.() }
+      } else if (activeModel !== fallbackModel) {
+        // No fallback configured (or already on it but blown the hard backstop).
+        throw new AiBudgetExhaustedError(bucketForKind(kind))
+      } else if (remaining <= -HARD_STOP_OVERAGE_CENTS) {
+        // Even on the fallback model, a true runaway hard-stops.
+        throw new AiBudgetExhaustedError(bucketForKind(kind))
+      }
+    }
 
     const response = await anthropic().messages.create({
-      model,
+      model: activeModel,
       max_tokens: 16384,
       system,
       tools,
@@ -119,7 +154,7 @@ export async function runToolLoop(args: RunToolLoopArgs): Promise<RunToolLoopRes
       cacheRead:   response.usage.cache_read_input_tokens     ?? 0,
       cacheCreate: response.usage.cache_creation_input_tokens ?? 0,
     }
-    const { cents } = await recordUsage(supabase, churchId, kind, model, usage, jobId)
+    const { cents } = await recordUsage(supabase, churchId, kind, activeModel, usage, jobId)
     totalCents += cents
 
     // Collect assistant content

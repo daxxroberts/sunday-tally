@@ -151,6 +151,7 @@ export async function updateSession(request: NextRequest) {
     if (
       membership &&
       role !== 'viewer' &&
+      !pathname.startsWith('/settings/billing') &&
       !pathname.startsWith('/billing') &&
       !pathname.startsWith('/onboarding') &&
       !pathname.startsWith('/api/stripe') &&
@@ -164,7 +165,7 @@ export async function updateSession(request: NextRequest) {
           request.method !== 'GET'
         if (isWriteSurface) {
           const url = request.nextUrl.clone()
-          url.pathname = '/billing'
+          url.pathname = '/settings/billing'
           return NextResponse.redirect(url)
         }
       }
