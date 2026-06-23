@@ -302,23 +302,23 @@ function CompareSummary({
 }) {
   const fmt = (n: number) => `${prefix}${fmtNum(n)}${suffix}`
   return (
-    <div className="mb-3 flex items-end gap-8">
+    <div className="mb-2 flex items-end gap-6">
       <div>
         <div className="flex items-center gap-1.5">
           <span className="h-[3px] w-3.5 shrink-0 rounded-full bg-blue-500" aria-hidden />
-          <span className="text-xs text-slate-600">This year</span>
+          <span className="text-[13px] text-slate-500">This year</span>
         </div>
-        <p className="font-num text-lg font-semibold tabular-nums text-slate-900">{fmt(thisTotal)}</p>
+        <p className="font-num text-base font-semibold tabular-nums text-slate-900">{fmt(thisTotal)}</p>
       </div>
       <div>
         <div className="flex items-center gap-1.5">
           <span className="h-[3px] w-3.5 shrink-0 rounded-full bg-violet-500" aria-hidden />
-          <span className="text-xs text-slate-600">Last year</span>
+          <span className="text-[13px] text-slate-500">Last year</span>
         </div>
-        <p className="font-num text-lg font-semibold tabular-nums text-slate-900">{fmt(priorTotal)}</p>
+        <p className="font-num text-base font-semibold tabular-nums text-slate-900">{fmt(priorTotal)}</p>
       </div>
       {Number.isFinite(delta) && (
-        <div className="pb-1">
+        <div className="pb-0.5">
           <DeltaBadge delta={delta} />
         </div>
       )}
@@ -360,6 +360,9 @@ function TremorChart({
   const ax = { tick: { fontSize: 11, fill: '#94a3b8' }, tickLine: false, axisLine: false } as const
   const margin = { top: 6, right: 8, left: -14, bottom: 0 }
   const fmtVal = (v: unknown, name: unknown): [string, string] => [`${prefix}${fmtNum(v)}${suffix}`, name === 'prior' ? 'Last year' : 'This year']
+  // Adaptive x-axis density: aim for ~6 labels so the axis isn't bare (was showing
+  // only first + last) but never crowded on a dense (weekly) series.
+  const xInterval = Math.max(0, Math.ceil(data.length / 6) - 1)
   return (
     <ResponsiveContainer width="100%" height="100%">
       {kind === 'bar' ? (
@@ -371,6 +374,7 @@ function TremorChart({
           valueFormatter={(v) => `${prefix}${fmtNum(v)}${suffix}`}
           yAxisFormatter={tickFmt}
           xAxisFormatter={(v) => fmtBucket(v)}
+          xAxisInterval={xInterval}
           showYAxis
           yAxisWidth={42}
           showLegend={false}
@@ -386,6 +390,7 @@ function TremorChart({
           valueFormatter={(v) => `${prefix}${fmtNum(v)}${suffix}`}
           yAxisFormatter={tickFmt}
           xAxisFormatter={(v) => fmtBucket(v)}
+          xAxisInterval={xInterval}
           showYAxis
           yAxisWidth={42}
           showLegend={false}

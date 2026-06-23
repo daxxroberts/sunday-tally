@@ -40,21 +40,21 @@ interface ChartTooltipProps {
 function ChartTooltip({ active, payload, label, valueFormatter }: ChartTooltipProps) {
   if (!active || !payload?.length) return null
   return (
-    <div className="rounded-md border border-gray-200 bg-white text-sm shadow-md dark:border-gray-800 dark:bg-gray-950">
-      <div className="border-b border-inherit px-4 py-2">
-        <p className="font-medium text-gray-900 dark:text-gray-50">{label}</p>
+    <div className="rounded-lg border border-slate-200 bg-white text-[13px] shadow-md">
+      <div className="border-b border-slate-100 px-3 py-1.5">
+        <p className="font-medium text-slate-900">{label}</p>
       </div>
-      <div className="space-y-1 px-4 py-2">
+      <div className="space-y-1 px-3 py-1.5">
         {payload.map(({ value, category, color }, i) => (
-          <div key={i} className="flex items-center justify-between space-x-8">
+          <div key={i} className="flex items-center justify-between space-x-6">
             <div className="flex items-center space-x-2">
               <span
                 aria-hidden
                 className={`size-2.5 shrink-0 rounded-sm ${colorClass(color, 'bg')}`}
               />
-              <p className="whitespace-nowrap text-gray-700 dark:text-gray-300">{category}</p>
+              <p className="whitespace-nowrap text-slate-600">{category}</p>
             </div>
-            <p className="whitespace-nowrap text-right font-medium tabular-nums text-gray-900 dark:text-gray-50">
+            <p className="whitespace-nowrap text-right font-medium tabular-nums text-slate-900">
               {valueFormatter(value)}
             </p>
           </div>
@@ -75,6 +75,9 @@ export interface BarChartProps extends React.HTMLAttributes<HTMLDivElement> {
   /** Optional formatter for Y-axis tick labels (defaults to valueFormatter — use a
    *  compact "1.2k" formatter so long numbers don't overflow a narrow axis). */
   yAxisFormatter?: (value: number) => string
+  /** X-axis tick density: a number (show every Nth label) or a recharts preset.
+   *  Pass 0 to show every label. */
+  xAxisInterval?: number | 'preserveStart' | 'preserveEnd' | 'preserveStartEnd' | 'equidistantPreserveStart'
   /** Stack bars on top of each other instead of grouping side-by-side */
   stack?: boolean
   showXAxis?: boolean
@@ -102,6 +105,7 @@ export function BarChart({
   colors = defaultColors,
   valueFormatter = (v) => String(v),
   yAxisFormatter,
+  xAxisInterval,
   stack = false,
   showXAxis = true,
   showYAxis = true,
@@ -170,10 +174,11 @@ export function BarChart({
             tick={{ transform: 'translate(0, 6)' }}
             fill=""
             stroke=""
-            className="fill-slate-400 text-[11px]"
+            className="fill-slate-400 text-[13px]"
             tickLine={false}
             axisLine={false}
             minTickGap={5}
+            interval={xAxisInterval}
             tickFormatter={xAxisFormatter}
           >
             {xAxisLabel && (
@@ -193,7 +198,7 @@ export function BarChart({
             tick={{ transform: 'translate(-3, 0)' }}
             fill=""
             stroke=""
-            className="fill-slate-400 text-[11px]"
+            className="fill-slate-400 text-[13px]"
             tickFormatter={yAxisFormatter ?? valueFormatter}
             allowDecimals={allowDecimals}
           >
