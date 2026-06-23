@@ -17,8 +17,9 @@ import type { UserRole } from '@/types'
 import { ServicesPanel } from '@/app/(app)/settings/services/page'
 import { TrackPanel } from '@/app/(app)/settings/track/page'
 import { LocationsPanel } from '@/app/(app)/settings/locations/page'
+import { TotalsRulesPanel } from '@/app/(app)/settings/setup/TotalsRulesPanel'
 
-type TabKey = 'services' | 'track' | 'locations'
+type TabKey = 'services' | 'track' | 'locations' | 'totals'
 
 // Tab labels mirror the Settings hub rows exactly — same names, same pages, just
 // a tabbed way in. Order matches the hub: Services → Locations → What we track.
@@ -26,6 +27,7 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: 'services',  label: 'Services and Occurrences' },
   { key: 'locations', label: 'Locations and Team' },
   { key: 'track',     label: 'What we track' },
+  { key: 'totals',    label: 'Totals' },
 ]
 
 export default function SetupWorkspacePage() {
@@ -123,6 +125,7 @@ export default function SetupWorkspacePage() {
           {mounted.has('services')  && <div className={active === 'services'  ? '' : 'hidden'}><ServicesPanel  embedded /></div>}
           {mounted.has('track')     && <div className={active === 'track'     ? '' : 'hidden'}><TrackPanel     embedded /></div>}
           {mounted.has('locations') && <div className={active === 'locations' ? '' : 'hidden'}><LocationsPanel embedded /></div>}
+          {mounted.has('totals')    && <div className={active === 'totals'    ? '' : 'hidden'}><TotalsRulesPanel embedded /></div>}
         </div>
       </div>
     </AppLayout>
