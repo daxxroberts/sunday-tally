@@ -17,8 +17,14 @@
  * DESIGN_SYSTEM: brand #4F6EF7, amber for the demo/error notes (no red, DS-2).
  */
 import { type ReactNode, useEffect, useRef, useState } from 'react'
+import { AreaChart as StyledAreaChart } from '@/components/charts/AreaChart'
+import { BarChart as StyledBarChart } from '@/components/charts/BarChart'
+import { type ChartColorKey } from '@/components/charts/chartUtils'
 
-type ChatMsg = { role: 'user' | 'assistant'; text: string }
+type ChatMsg =
+  | { role: 'user'; text: string }
+  | { role: 'assistant'; text: string }
+  | { role: 'preview'; kind: string; title: string; xKey: string; yKeys: string[]; data: Record<string, unknown>[] }
 
 /** The "what this shows" proof panel: plain-language facts + the raw SQL (toggle). */
 type QueryProof = {
@@ -89,7 +95,9 @@ export function WidgetChat({
     const message = input.trim()
     if (!message || streaming) return
     setInput('')
-    const history = messages.filter((m) => m.role === 'user' || m.role === 'assistant')
+    const history = messages.filter(
+      (m): m is { role: 'user' | 'assistant'; text: string } => m.role === 'user' || m.role === 'assistant',
+    )
     setMessages((m) => [...m, { role: 'user', text: message }, { role: 'assistant', text: '' }])
     setStreaming(true)
     const assistantIdx = messages.length + 1
@@ -98,7 +106,8 @@ export function WidgetChat({
     const appendAssistant = (delta: string) =>
       setMessages((m) => {
         const next = [...m]
-        if (next[assistantIdx]) next[assistantIdx] = { role: 'assistant', text: next[assistantIdx].text + delta }
+        const cur = next[assistantIdx]
+        if (cur?.role === 'assistant') next[assistantIdx] = { role: 'assistant', text: cur.text + delta }
         return next
       })
     const setAssistant = (text: string) =>
@@ -149,6 +158,11 @@ export function WidgetChat({
           if (ev === 'text') appendAssistant(String(payload.delta ?? ''))
           else if (ev === 'chart' || ev === 'grid') {
             built++
+            const kind = String(payload.type ?? payload.kind ?? 'bar')
+            const xKey = String(payload.xKey ?? 'bucket')
+            const yKeys = Array.isArray(payload.yKeys) ? (payload.yKeys as string[]) : ['value']
+            const data = Array.isArray(payload.data) ? (payload.data as Record<string, unknown>[]) : []
+            setMessages((m) => [...m, { role: 'preview', kind, title: String(payload.title ?? 'Widget'), xKey, yKeys, data }])
             if (payload.sql || payload.explain) {
               setShowSql(false)
               setLastQuery({
@@ -226,6 +240,8 @@ export function WidgetChat({
             <div key={i} className="flex justify-end">
               <div className="max-w-[90%] whitespace-pre-wrap rounded-2xl bg-[#4F6EF7] px-3 py-2 text-sm text-white">{m.text}</div>
             </div>
+          ) : m.role === 'preview' ? (
+            <WidgetPreviewCard key={i} kind={m.kind} title={m.title} xKey={m.xKey} yKeys={m.yKeys} data={m.data} />
           ) : (
             <div key={i} className="flex justify-start gap-2">
               <span className="mt-1 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[#4F6EF7]/10 text-[10px] text-[#4F6EF7]">
@@ -328,6 +344,49 @@ export function WidgetChat({
         )}
       </div>
     </aside>
+  )
+}
+
+// ─── Inline chart preview card ────────────────────────────────────────────────
+
+function WidgetPreviewCard({
+  kind, title, xKey, yKeys, data,
+}: {
+  kind: string; title: string; xKey: string; yKeys: string[]
+  data: Record<string, unknown>[]
+}) {
+  const isArea = kind === 'area'
+  const isBar = kind === 'bar'
+  // prior+value compare mode → gray (last year) + blue (this year)
+  const colors: ChartColorKey[] | undefined = yKeys.length === 2 && yKeys[0] === 'prior'
+    ? ['gray', 'blue']
+    : undefined
+
+  return (
+    <div className="mx-1 my-1 rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">{title}</p>
+      <div className="h-[160px]">
+        {isArea ? (
+          <StyledAreaChart
+            data={data} index={xKey} categories={yKeys}
+            colors={colors} showLegend={yKeys.length > 1}
+            showYAxis yAxisWidth={36} fill="gradient" connectNulls
+            className="h-full w-full"
+          />
+        ) : isBar ? (
+          <StyledBarChart
+            data={data} index={xKey} categories={yKeys}
+            colors={colors} showLegend={yKeys.length > 1}
+            showYAxis yAxisWidth={36} maxBarSize={20}
+            className="h-full w-full"
+          />
+        ) : (
+          <div className="flex h-full items-center justify-center text-[12px] text-slate-400">
+            {data.length} rows ready — save to view on dashboard
+          </div>
+        )}
+      </div>
+    </div>
   )
 }
 

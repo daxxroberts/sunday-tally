@@ -1,5 +1,7 @@
 'use client'
 
+export const dynamic = 'force-dynamic'
+
 // ─────────────────────────────────────────────────────────────────────────
 // DASHBOARD — D1 full dashboard — /(app)/dashboard (editor/admin/owner).
 // Build spec: IRIS_DASHBOARD_ELEMENT_MAP.md (E-1..E-83). UI rules: DESIGN_SYSTEM.md.
