@@ -191,7 +191,7 @@ export function AreaChart({
         >
           {showGridLines && (
             <CartesianGrid
-              className="stroke-slate-100 dark:stroke-gray-800"
+              className="stroke-slate-100"
               horizontal
               vertical={false}
             />
@@ -210,7 +210,7 @@ export function AreaChart({
             }
             fill=""
             stroke=""
-            className="fill-slate-400 text-[11px] dark:fill-slate-500"
+            className="fill-slate-400 text-[11px]"
             tickLine={false}
             axisLine={false}
             minTickGap={5}
@@ -233,7 +233,7 @@ export function AreaChart({
             tick={{ transform: 'translate(-3, 0)' }}
             fill=""
             stroke=""
-            className="fill-slate-400 text-[11px] dark:fill-slate-500"
+            className="fill-slate-400 text-[11px]"
             tickFormatter={type === 'percent' ? valueToPercent : (yAxisFormatter ?? valueFormatter)}
             allowDecimals={allowDecimals}
           >
