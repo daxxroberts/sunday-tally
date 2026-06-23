@@ -29,8 +29,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import AppLayout from '@/components/layouts/AppLayout'
+import MaybeLayout from '@/components/layouts/MaybeLayout'
 import { createClient } from '@/lib/supabase/client'
 import { Ico, membershipRoleLabel } from '@/app/(app)/entries/ui'
+import { BillingPanel } from '@/app/(app)/settings/billing/BillingPanel'
 import type { UserRole } from '@/types'
 
 type Saved = 'idle' | 'saving' | 'saved' | 'error'
@@ -56,7 +58,7 @@ function scorePassword(pw: string): Strength {
   return 'weak'
 }
 
-export default function AccountPage() {
+export function AccountPanel({ embedded = false }: { embedded?: boolean }) {
   const supabase = useMemo(() => createClient(), [])
   const router = useRouter()
 
@@ -231,7 +233,7 @@ export default function AccountPage() {
   const strength = pwNew ? scorePassword(pwNew) : null
 
   return (
-    <AppLayout role={role}>
+    <MaybeLayout embedded={embedded} role={role}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap');
         .font-num{font-family:'Fira Code',ui-monospace,monospace;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
@@ -239,19 +241,22 @@ export default function AccountPage() {
       `}</style>
 
       <div className="bg-slate-50 min-h-full" style={{ fontFamily: "'Fira Sans', ui-sans-serif, system-ui, sans-serif" }}>
-        {/* ── Zone A — header (E-1/E-2) ─────────────────────────────────── */}
-        <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 backdrop-blur-sm">
-          <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-3.5">
-            <button onClick={() => router.push('/settings/setup')} aria-label="Back to Setup"
-              className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition-colors duration-200 hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/40">
-              <Ico.left className="h-5 w-5" />
-            </button>
-            <div>
-              {churchName && <div className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: '#3D5BD4' }}>{churchName}</div>}
-              <h1 className="text-lg font-extrabold leading-tight tracking-tight text-slate-900">Account</h1>
+        {/* ── Zone A — header (E-1/E-2). Hidden when embedded in the Account
+            workspace — the workspace header + tab strip provide context. ── */}
+        {!embedded && (
+          <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 backdrop-blur-sm">
+            <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-3.5">
+              <button onClick={() => router.push('/settings')} aria-label="Back to Settings"
+                className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition-colors duration-200 hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/40">
+                <Ico.left className="h-5 w-5" />
+              </button>
+              <div>
+                {churchName && <div className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: '#3D5BD4' }}>{churchName}</div>}
+                <h1 className="text-lg font-extrabold leading-tight tracking-tight text-slate-900">Account</h1>
+              </div>
             </div>
-          </div>
-        </header>
+          </header>
+        )}
 
         <main className="mx-auto max-w-3xl px-4 py-6">
           {loading ? (
@@ -424,6 +429,101 @@ export default function AccountPage() {
             </>
           )}
         </main>
+      </div>
+    </MaybeLayout>
+  )
+}
+
+/* ── Account workspace — the tabbed shell (mirrors the Setup workspace):
+   tabs for Account + Billing & Subscriptions, content swapping in place, back
+   to Settings. The hub's Account row opens this; its Billing row opens ?tab=billing. */
+export default function AccountWorkspacePage() {
+  const supabase = useMemo(() => createClient(), [])
+  const router = useRouter()
+  const [role, setRole] = useState<UserRole>('viewer')
+  const [churchName, setChurchName] = useState('')
+  const [active, setActive] = useState<'account' | 'billing'>('account')
+  const [mounted, setMounted] = useState<Set<'account' | 'billing'>>(new Set(['account']))
+
+  useEffect(() => {
+    const t = new URLSearchParams(window.location.search).get('tab')
+    if (t === 'billing') {
+      setActive('billing')
+      setMounted(prev => new Set(prev).add('billing'))
+    }
+    ;(async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const { data: membership } = await supabase
+        .from('church_memberships')
+        .select('role, churches(name)')
+        .eq('user_id', user.id).eq('is_active', true).single()
+      if (!membership) return
+      setRole(membership.role as UserRole)
+      const ch = Array.isArray(membership.churches) ? membership.churches[0] : membership.churches
+      setChurchName((ch as { name?: string } | null)?.name ?? '')
+    })()
+  }, [supabase])
+
+  const TABS = [
+    { key: 'account' as const, label: 'Account' },
+    { key: 'billing' as const, label: 'Billing & Subscriptions' },
+  ]
+  function go(key: 'account' | 'billing') {
+    setActive(key)
+    setMounted(prev => (prev.has(key) ? prev : new Set(prev).add(key)))
+  }
+
+  return (
+    <AppLayout role={role} fillHeight>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap');
+        .font-num{font-family:'Fira Code',ui-monospace,monospace;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+        @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+      `}</style>
+
+      <div
+        className="flex flex-col bg-slate-50"
+        style={{ height: 'calc(100dvh - 58px)', fontFamily: "'Fira Sans', ui-sans-serif, system-ui, sans-serif" }}
+      >
+        <header className="shrink-0 border-b border-slate-200 bg-white">
+          <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3.5">
+            <button
+              onClick={() => router.push('/settings')}
+              aria-label="Back to Settings"
+              className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition-colors duration-200 hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/40"
+            >
+              <Ico.left className="h-5 w-5" />
+            </button>
+            <div className="min-w-0 flex-1">
+              {churchName && <div className="truncate text-[11px] font-semibold uppercase tracking-wider" style={{ color: '#3D5BD4' }}>{churchName}</div>}
+              <h1 className="text-lg font-extrabold leading-tight tracking-tight text-slate-900">Account</h1>
+            </div>
+          </div>
+          <div className="mx-auto flex max-w-5xl gap-1 px-3">
+            {TABS.map(t => {
+              const on = active === t.key
+              return (
+                <button
+                  key={t.key}
+                  onClick={() => go(t.key)}
+                  aria-current={on ? 'page' : undefined}
+                  className={`relative flex-1 px-3 py-2.5 text-[13px] font-semibold transition-colors focus-visible:outline-none ${
+                    on ? 'text-[#3D5BD4]' : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  {t.label}
+                  <span className={`absolute inset-x-2 -bottom-px h-0.5 rounded-full transition-colors ${on ? 'bg-[#4F6EF7]' : 'bg-transparent'}`} />
+                </button>
+              )
+            })}
+          </div>
+        </header>
+
+        <div className="min-h-0 flex-1 overflow-y-auto pb-6">
+          {mounted.has('account') && <div className={active === 'account' ? '' : 'hidden'}><AccountPanel embedded /></div>}
+          {mounted.has('billing') && <div className={active === 'billing' ? '' : 'hidden'}><BillingPanel embedded /></div>}
+        </div>
       </div>
     </AppLayout>
   )

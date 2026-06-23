@@ -7,7 +7,7 @@
 
 import { useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import AppLayout from '@/components/layouts/AppLayout'
+import MaybeLayout from '@/components/layouts/MaybeLayout'
 import type { UserRole } from '@/types'
 import { Dot, Ico } from '@/app/(app)/entries/ui'
 
@@ -20,6 +20,8 @@ interface Props {
   trialEndsAt: string | null
   currentPeriodEnd: string | null
   aiAddonTier: string
+  /** When mounted inside the Account workspace tabs, drop the AppLayout + header. */
+  embedded?: boolean
 }
 
 // Render-state model (IRIS_BILLING "Phase → State"): the page surfaces four
@@ -46,6 +48,7 @@ export default function BillingClient({
   trialEndsAt,
   currentPeriodEnd,
   aiAddonTier,
+  embedded = false,
 }: Props) {
   const state = resolveState(phase, subscriptionStatus)
   const isOwnerOrAdmin = role === 'owner' || role === 'admin'
@@ -59,25 +62,28 @@ export default function BillingClient({
     state === 'expired' && !!trialEndsAt && new Date(trialEndsAt).getTime() > Date.now()
 
   return (
-    <AppLayout role={role}>
+    <MaybeLayout embedded={embedded} role={role}>
       <div className="mx-auto w-full max-w-2xl px-5 py-8 space-y-6">
-        {/* Zone A — Header (E-1, E-2) */}
-        <header className="flex items-start gap-3">
-          <button onClick={() => router.push('/settings/setup')} aria-label="Back to Setup"
-            className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors duration-200 hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/40">
-            <Ico.left className="h-5 w-5" />
-          </button>
-          <div className="space-y-1">
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-[#3D5BD4]">
-              Billing & Subscriptions
-            </p>
-            <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">{churchName}</h1>
-            <p className="text-sm text-slate-600">
-              Sunday Tally Base <span className="text-slate-400">·</span>{' '}
-              <span className="font-num">$22</span> / month per location
-            </p>
-          </div>
-        </header>
+        {/* Zone A — Header (E-1, E-2). Hidden when embedded — the Account
+            workspace's header + tab strip provide the context instead. */}
+        {!embedded && (
+          <header className="flex items-start gap-3">
+            <button onClick={() => router.push('/settings')} aria-label="Back to Settings"
+              className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors duration-200 hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/40">
+              <Ico.left className="h-5 w-5" />
+            </button>
+            <div className="space-y-1">
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-[#3D5BD4]">
+                Billing & Subscriptions
+              </p>
+              <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">{churchName}</h1>
+              <p className="text-sm text-slate-600">
+                Sunday Tally Base <span className="text-slate-400">·</span>{' '}
+                <span className="font-num">$22</span> / month per location
+              </p>
+            </div>
+          </header>
+        )}
 
         {/* N-6 return-from-Stripe notice */}
         {checkout === 'success' && (
@@ -148,7 +154,7 @@ export default function BillingClient({
           <p className="text-sm text-slate-500">Only owners and admins can manage billing.</p>
         )}
       </div>
-    </AppLayout>
+    </MaybeLayout>
   )
 }
 

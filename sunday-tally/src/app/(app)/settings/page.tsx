@@ -111,12 +111,14 @@ export default function SettingsHubPage() {
               writable
               loading={false}
             />
+            {/* Billing lives inside Account — opens the Account workspace on its Billing tab. */}
             <HubRow
-              href="/settings/billing"
+              href="/settings/account?tab=billing"
               label="Billing & Subscriptions"
-              meta="Manage your AI tier, campuses, and Stripe subscription"
+              meta="Your plan, AI add-on, campuses, and payment"
               writable={write}
               loading={false}
+              indent
             />
           </Section>
 
