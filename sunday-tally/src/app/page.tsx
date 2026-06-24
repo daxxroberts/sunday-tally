@@ -396,7 +396,7 @@ export default function LandingPage() {
           
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-6xl font-bold text-stone-900 mb-6 tracking-tighter">Simple pricing.</h2>
-            <p className="text-xl text-stone-500 max-w-2xl mx-auto">Start with what you need. Add AI when you're ready.</p>
+            <p className="text-xl text-stone-500 max-w-2xl mx-auto">Everything you need to get started.</p>
           </div>
 
           {/* Base Tier Card */}
