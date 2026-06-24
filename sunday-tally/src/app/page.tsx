@@ -124,7 +124,7 @@ export default function LandingPage() {
               className="flex-1 text-left"
             >
               <span className="inline-block py-1.5 px-4 rounded-full bg-stone-100 border border-stone-200 text-stone-600 text-sm font-semibold mb-6">
-                Up and running in 10 minutes. See the impact you're having on your community.
+                Up and running in 10 minutes. Simple analytics for growing churches.
               </span>
               <div ref={heroRef} className="relative block text-left w-full group">
                 <h1 className="text-6xl md:text-8xl lg:text-[110px] font-extrabold tracking-tighter text-stone-900 mb-4 pb-4 leading-[1.05] relative z-10">
