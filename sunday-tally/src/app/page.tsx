@@ -124,7 +124,7 @@ export default function LandingPage() {
               className="flex-1 text-left"
             >
               <span className="inline-block py-1.5 px-4 rounded-full bg-stone-100 border border-stone-200 text-stone-600 text-sm font-semibold mb-6">
-                Up and running in 10 minutes. Simple analytics for growing churches.
+                Simple Analytics for Growing Churches
               </span>
               <div ref={heroRef} className="relative block text-left w-full group">
                 <h1 className="text-6xl md:text-8xl lg:text-[110px] font-extrabold tracking-tighter text-stone-900 mb-4 pb-4 leading-[1.05] relative z-10">
@@ -289,7 +289,7 @@ export default function LandingPage() {
       {/* Social Proof */}
       <div className="border-y border-stone-200 bg-white py-8">
         <div className="container mx-auto px-4 text-center">
-          <p className="text-sm font-bold tracking-widest text-stone-400 uppercase">Trusted by fast-growing ministries nationwide</p>
+          <p className="text-sm font-bold tracking-widest text-stone-400 uppercase">Trusted by fast-growing ministries</p>
         </div>
       </div>
 
@@ -301,8 +301,8 @@ export default function LandingPage() {
 
         <div className="container mx-auto px-4 md:px-8 relative z-10">
           <div className="text-center mb-24">
-            <h2 className="text-4xl md:text-6xl font-bold text-stone-900 mb-6 tracking-tighter">Measure your church's health.</h2>
-            <p className="text-xl text-stone-500 max-w-2xl mx-auto">Just answers.</p>
+            <h2 className="text-4xl md:text-6xl font-bold text-stone-900 mb-6 tracking-tighter">Every metric captured. <br className="hidden md:block" />Every trend revealed.</h2>
+            <p className="text-xl text-stone-500 max-w-2xl mx-auto">Up and running in 10 minutes. Guaranteed.</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-12 gap-6 max-w-6xl mx-auto">
