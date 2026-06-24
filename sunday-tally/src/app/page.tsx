@@ -130,7 +130,7 @@ export default function LandingPage() {
                 <h1 className="text-6xl md:text-8xl lg:text-[110px] font-extrabold tracking-tighter text-stone-900 mb-4 pb-4 leading-[1.05] relative z-10">
                   Stop guessing.
                   <br className="hidden lg:block" />
-                  <span className="text-stone-300 font-['EB_Garamond'] italic font-medium tracking-normal text-[0.95em] block md:inline-block">Reveal thy numbers.</span>
+                  <span className="text-stone-300 font-['Playfair_Display'] italic font-black tracking-tighter text-[0.95em] block md:inline-block">Reveal thy numbers.</span>
                 </h1>
                 <h1 className="absolute inset-0 text-6xl md:text-8xl lg:text-[110px] font-extrabold tracking-tighter leading-[1.05] mb-4 pb-4 pointer-events-none select-none text-transparent bg-clip-text bg-gradient-to-r from-[#4F6EF7] via-[#06B6D4] to-[#10B981] z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
                     style={{
@@ -139,7 +139,7 @@ export default function LandingPage() {
                     }}>
                   Stop guessing.
                   <br className="hidden lg:block" />
-                  <span className="font-['EB_Garamond'] italic font-medium tracking-normal text-[0.95em] block md:inline-block">Reveal thy numbers.</span>
+                  <span className="font-['Playfair_Display'] italic font-black tracking-tighter text-[0.95em] block md:inline-block">Reveal thy numbers.</span>
                 </h1>
               </div>
               <p className="text-2xl text-stone-500 mb-0 max-w-xl leading-relaxed font-medium">
