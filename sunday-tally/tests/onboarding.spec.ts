@@ -111,11 +111,17 @@ test.describe('2. AI Extraction Accuracy & 3. Interactive AI Chat (Mocked)', () 
             result: {
               proposed_setup: {
                 service_templates: [
-                  { service_code: 'svc1', display_name: 'Morning Service', primary_tag: 'MAIN' },
-                  { service_code: 'svc2', display_name: 'Evening Service', primary_tag: 'MAIN' }
+                  { service_code: 'svc1', display_name: 'Morning Service', primary_tag: 'MAIN', day_of_week: 0 },
+                  { service_code: 'svc2', display_name: 'Evening Service', primary_tag: 'MAIN', day_of_week: 0 }
                 ],
-                volunteer_categories: [{ name: 'MUSIC', primary_tag: 'MAIN' }],
-                giving_sources: [{ name: 'Tithes' }],
+                ministry_tags: [
+                  { code: 'MAIN', name: 'Main Campus', tag_role: 'ADULT_SERVICE' }
+                ],
+                metrics: [
+                  { metric_code: 'att_main', name: 'Attenders', ministry_tag: 'MAIN', reporting_tag: 'ATTENDANCE' },
+                  { metric_code: 'vol_music', name: 'MUSIC', ministry_tag: 'MAIN', reporting_tag: 'VOLUNTEERS' },
+                  { metric_code: 'giving_tithes', name: 'Tithes', ministry_tag: 'MAIN', reporting_tag: 'GIVING' }
+                ],
                 occurrences: [{ date: '2026-05-03', service_id: 'svc1', attendance: 150 }]
               },
               anomalies: [{ kind: 'missing_dates', description: 'Some rows missing dates' }]
@@ -132,11 +138,17 @@ test.describe('2. AI Extraction Accuracy & 3. Interactive AI Chat (Mocked)', () 
                 sources: [],
                 proposed_setup: {
                   service_templates: [
-                    { service_code: 'svc1', display_name: 'Morning Service', primary_tag: 'MAIN' },
-                    { service_code: 'svc2', display_name: 'Evening Service', primary_tag: 'MAIN' }
+                    { service_code: 'svc1', display_name: 'Morning Service', primary_tag: 'MAIN', day_of_week: 0 },
+                    { service_code: 'svc2', display_name: 'Evening Service', primary_tag: 'MAIN', day_of_week: 0 }
                   ],
-                  volunteer_categories: [{ name: 'MUSIC', primary_tag: 'MAIN' }],
-                  giving_sources: [{ name: 'Tithes' }],
+                  ministry_tags: [
+                    { code: 'MAIN', name: 'Main Campus', tag_role: 'ADULT_SERVICE' }
+                  ],
+                  metrics: [
+                    { metric_code: 'att_main', name: 'Attenders', ministry_tag: 'MAIN', reporting_tag: 'ATTENDANCE' },
+                    { metric_code: 'vol_music', name: 'MUSIC', ministry_tag: 'MAIN', reporting_tag: 'VOLUNTEERS' },
+                    { metric_code: 'giving_tithes', name: 'Tithes', ministry_tag: 'MAIN', reporting_tag: 'GIVING' }
+                  ],
                   occurrences: [{ date: '2026-05-03', service_id: 'svc1', attendance: 150 }]
                 },
               },
@@ -180,19 +192,19 @@ test.describe('2. AI Extraction Accuracy & 3. Interactive AI Chat (Mocked)', () 
 
   test('T9: Volunteer Categories parsed', async ({ page }) => {
     // The UI should show "Music" or "MUSIC" based on the mock
-    await expect(page.locator('text="Vol: MUSIC"').or(page.locator('text="Vol: Music"'))).toBeVisible();
+    await expect(page.locator('text="MUSIC"').first()).toBeVisible();
   });
 
   test('T11 & T12: Chat Updates Grid & Highlights', async ({ page }) => {
-    await page.fill('input[placeholder="Ask a question or request a change..."]', 'Make Tithes a column');
+    await page.fill('input[placeholder*="Ask a question"]', 'Make Tithes a column');
     await page.click('button[type="submit"]');
     // We mocked the stream response. Instead of checking the exact stream parsing, let's just ensure it hits the route.
-    await expect(page.locator('input[placeholder="Ask a question or request a change..."]')).toBeVisible();
+    await expect(page.locator('input[placeholder*="Ask a question"]')).toBeVisible();
     await page.waitForTimeout(500);
   });
 
   test('T13: Empty Chat Submission', async ({ page }) => {
-    const chatInput = page.locator('input[placeholder="Ask a question or request a change..."]');
+    const chatInput = page.locator('input[placeholder*="Ask a question"]');
     await chatInput.fill('   '); // spaces
     // The submit button should be disabled for empty strings
     await expect(page.locator('button[type="submit"]')).toBeDisabled();
@@ -223,8 +235,14 @@ test.describe('4. Database Submission & Confirmation', () => {
               proposed_mapping: {
                 sources: [],
                 proposed_setup: {
-                  service_templates: [{ service_code: 'svc1', display_name: 'Main', primary_tag: 'MAIN' }],
-                  occurrences: [], volunteers: [], stats: [], giving: []
+                  service_templates: [{ service_code: 'svc1', display_name: 'Main', primary_tag: 'MAIN', day_of_week: 0 }],
+                  ministry_tags: [
+                    { code: 'MAIN', name: 'Main Campus', tag_role: 'ADULT_SERVICE' }
+                  ],
+                  metrics: [
+                    { metric_code: 'att_main', name: 'Attenders', ministry_tag: 'MAIN', reporting_tag: 'ATTENDANCE' }
+                  ],
+                  occurrences: []
                 },
               },
               anomalies: []
@@ -306,7 +324,7 @@ test.describe('4. Database Submission & Confirmation', () => {
     await page.click('button:has-text("Confirm & Import")');
     // We mocked the PATCH route with a 1000ms delay.
     // The button disables immediately because `submitting` is true.
-    await expect(page.locator('button:has-text("Importing...")')).toBeDisabled({ timeout: 500 });
+    await expect(page.locator('button:has-text("Importing")')).toBeDisabled({ timeout: 500 });
   });
 });
 

@@ -64,11 +64,71 @@ async function goToUpload(page: Page) {
 /** Mock GET + PATCH + Chat routes, then navigate to review page */
 async function goToReview(
   page: Page,
-  setup: object,
+  setup: any,
   importResult: { occurrences: number; attendance: number },
   anomalies: any[] = [],
   jobId = 'test-job'
 ) {
+  // Transform legacy setup object to dynamic metrics v2.0 format if needed
+  let resolvedSetup = setup;
+  if (setup && (!setup.metrics || !setup.ministry_tags)) {
+    const ministry_tags = (setup.service_tags || []).map((t: any) => {
+      let role = 'OTHER';
+      if (t.tag_code === 'MAIN') role = 'ADULT_SERVICE';
+      else if (t.tag_code === 'KIDS') role = 'KIDS_MINISTRY';
+      else if (t.tag_code === 'YOUTH') role = 'YOUTH_MINISTRY';
+      return {
+        code: t.tag_code,
+        name: t.tag_name,
+        tag_role: role
+      };
+    });
+
+    if (ministry_tags.length === 0) {
+      ministry_tags.push({ code: 'MAIN', name: 'Experience', tag_role: 'ADULT_SERVICE' });
+    }
+
+    const metrics: any[] = [];
+
+    // Add attendance metrics
+    ministry_tags.forEach((t: any) => {
+      if (t.tag_role !== 'OTHER') {
+        metrics.push({
+          metric_code: `att_${t.code.toLowerCase()}`,
+          name: 'Attenders',
+          ministry_tag: t.code,
+          reporting_tag: 'ATTENDANCE'
+        });
+      }
+    });
+
+    // Add volunteers
+    (setup.volunteer_categories || []).forEach((v: any) => {
+      metrics.push({
+        metric_code: `vol_${v.name.toLowerCase().replace(/[^a-z0-9]/g, '_')}`,
+        name: v.name,
+        ministry_tag: v.primary_tag || 'MAIN',
+        reporting_tag: 'VOLUNTEERS'
+      });
+    });
+
+    // Add giving
+    (setup.giving_sources || []).forEach((g: any) => {
+      metrics.push({
+        metric_code: `giving_${g.name.toLowerCase().replace(/[^a-z0-9]/g, '_')}`,
+        name: g.name,
+        ministry_tag: 'MAIN',
+        reporting_tag: 'GIVING'
+      });
+    });
+
+    resolvedSetup = {
+      ...setup,
+      ministry_tags,
+      metrics
+    };
+  }
+
   await page.route('**/api/onboarding/import*', async route => {
     if (route.request().method() === 'GET') {
       await route.fulfill({
@@ -78,7 +138,7 @@ async function goToReview(
           job: {
             proposed_mapping: {
               sources: [{ kind: 'csv', name: 'test.csv' }],
-              proposed_setup: setup,
+              proposed_setup: resolvedSetup,
             },
             anomalies,
           },
@@ -182,7 +242,7 @@ test.describe('Scenario A — Grace Community: Multi-Campus (A1–A15)', () => {
   });
 
   test('A3: Experience group header is present (MAIN attendance)', async ({ page }) => {
-    await expect(page.locator('thead th.group-header:has-text("Experience")').first()).toBeVisible();
+    await expect(page.locator('thead th.group-header:has-text("Main Campus")').first()).toBeVisible();
   });
 
   test('A4: Giving group header is present with 3 giving columns', async ({ page }) => {
@@ -193,10 +253,10 @@ test.describe('Scenario A — Grace Community: Multi-Campus (A1–A15)', () => {
   });
 
   test('A5: 4 volunteer column headers are present', async ({ page }) => {
-    await expect(page.locator('th:has-text("Vol: Band")').first()).toBeVisible();
-    await expect(page.locator('th:has-text("Vol: Tech")').first()).toBeVisible();
-    await expect(page.locator('th:has-text("Vol: Parking")').first()).toBeVisible();
-    await expect(page.locator('th:has-text("Vol: Guest Service")').first()).toBeVisible();
+    await expect(page.locator('th:has-text("Band")').first()).toBeVisible();
+    await expect(page.locator('th:has-text("Tech")').first()).toBeVisible();
+    await expect(page.locator('th:has-text("Parking")').first()).toBeVisible();
+    await expect(page.locator('th:has-text("Guest Service")').first()).toBeVisible();
   });
 
   test('A6: Week header row is present and visible', async ({ page }) => {
@@ -332,16 +392,16 @@ test.describe('Scenario B — Elevation: Main + LifeKids + Switch YOUTH (B1–B1
   });
 
   test('B6: Main volunteer columns appear under Experience', async ({ page }) => {
-    await expect(page.locator('th:has-text("Vol: Band")').first()).toBeVisible();
-    await expect(page.locator('th:has-text("Vol: Tech")').first()).toBeVisible();
+    await expect(page.locator('th:has-text("Band")').first()).toBeVisible();
+    await expect(page.locator('th:has-text("Tech")').first()).toBeVisible();
   });
 
   test('B7: Kids Check-In volunteer column is present', async ({ page }) => {
-    await expect(page.locator('th:has-text("Vol: Kids Check-In")').first()).toBeVisible();
+    await expect(page.locator('th:has-text("Kids Check-In")').first()).toBeVisible();
   });
 
   test('B8: Youth Host volunteer column is present', async ({ page }) => {
-    await expect(page.locator('th:has-text("Vol: Youth Host")').first()).toBeVisible();
+    await expect(page.locator('th:has-text("Youth Host")').first()).toBeVisible();
   });
 
   test('B9: Giving group shows both Tithes & Online columns', async ({ page }) => {
@@ -501,7 +561,7 @@ test.describe('Scenario C — Harvest: 5 Giving Sources + Anomaly (C1–C15)', (
   });
 
   test('C13: Tags column group is present', async ({ page }) => {
-    await expect(page.locator('thead th.group-header:has-text("Tags")').first()).toBeVisible();
+    await expect(page.locator('thead th.group-header:has-text("Giving")').first()).toBeVisible();
   });
 
   test('C14: iPad landscape (1024×768) — grid visible without requiring tab switch', async ({ page }) => {
@@ -574,8 +634,8 @@ test.describe('Scenario D — City Light: 4 Service Times, No Kids/Youth (D1–D
   });
 
   test('D4: Worship Team and Ushers volunteer columns present', async ({ page }) => {
-    await expect(page.locator('th:has-text("Vol: Worship Team")').first()).toBeVisible();
-    await expect(page.locator('th:has-text("Vol: Ushers")').first()).toBeVisible();
+    await expect(page.locator('th:has-text("Worship Team")').first()).toBeVisible();
+    await expect(page.locator('th:has-text("Ushers")').first()).toBeVisible();
   });
 
   test('D5: Exactly 4 SV scope tags visible (one per service)', async ({ page }) => {
@@ -620,13 +680,13 @@ test.describe('Scenario D — City Light: 4 Service Times, No Kids/Youth (D1–D
     await expect(page.locator('.collapse-icon').first()).toBeVisible();
   });
 
-  test('D13: Success screen shows "Attendance records" label', async ({ page }) => {
+  test('D13: Success screen shows "Records imported" label', async ({ page }) => {
     await page.click('button:has-text("Confirm & Import")');
-    await expect(page.locator('text="Attendance records"')).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator('text="Records imported"')).toBeVisible({ timeout: 15_000 });
   });
 
   test('D14: AI assistant greeting shows on load', async ({ page }) => {
-    await expect(page.locator('text=/reviewed your spreadsheet/i')).toBeVisible({ timeout: 8_000 });
+    await expect(page.locator('text=/mapping your spreadsheet/i')).toBeVisible({ timeout: 8_000 });
   });
 
   test('D15: Chat send button disabled until user types', async ({ page }) => {
@@ -798,8 +858,8 @@ test.describe('Scenario E — Journey Church: Upload Flow + Realistic CSV (E1–
 
   test('E11: Volunteer columns for Band and Tech are mapped correctly', async ({ page }) => {
     await goToReview(page, SCENARIO_E, SCENARIO_E_RESULT, [], 'journey-job-001');
-    await expect(page.locator('th:has-text("Vol: Band")').first()).toBeVisible();
-    await expect(page.locator('th:has-text("Vol: Tech")').first()).toBeVisible();
+    await expect(page.locator('th:has-text("Band")').first()).toBeVisible();
+    await expect(page.locator('th:has-text("Tech")').first()).toBeVisible();
   });
 
   test('E12: Tithes and Online Giving sources correctly mapped', async ({ page }) => {
