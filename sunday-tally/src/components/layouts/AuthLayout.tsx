@@ -23,14 +23,19 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
     <div className="min-h-screen grid grid-cols-1 lg:grid-cols-2 bg-stone-50 font-sans">
       {/* Left Pane (Auth forms) */}
       <div className="flex flex-col justify-between p-6 md:p-12 lg:p-20 bg-white">
-        {/* Top brand header for mobile */}
-        <div className="flex items-center gap-3 lg:hidden mb-12">
-          <Link href="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-stone-900 text-white flex items-center justify-center font-extrabold text-xl shadow-md">
+        {/* Top brand header & navigation menu */}
+        <div className="flex items-center justify-between mb-12">
+          <Link href="/" className="flex items-center gap-3 group">
+            <div className="w-10 h-10 rounded-xl bg-stone-900 text-white flex items-center justify-center font-extrabold text-xl shadow-md group-hover:bg-[#4F6EF7] transition-all">
               S
             </div>
             <span className="text-2xl font-bold tracking-tight text-stone-900">SundayTally</span>
           </Link>
+          <nav className="flex items-center gap-4 text-xs font-semibold text-stone-500">
+            <Link href="/#features" className="hover:text-stone-900 transition-colors">Features</Link>
+            <Link href="/#pricing" className="hover:text-stone-900 transition-colors">Pricing</Link>
+            <Link href="/contact" className="hover:text-stone-900 transition-colors">Contact</Link>
+          </nav>
         </div>
 
         {/* Center container for children */}
@@ -57,15 +62,8 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         {/* Abstract background grid */}
         <div className="absolute inset-0 bg-[radial-gradient(#e5e7eb_1.5px,transparent_1.5px)] [background-size:24px_24px] opacity-40 z-0" />
 
-        {/* Top Brand header */}
-        <div className="relative z-10 flex items-center gap-3">
-          <Link href="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-stone-900 text-white flex items-center justify-center font-extrabold text-xl shadow-md">
-              S
-            </div>
-            <span className="text-2xl font-bold tracking-tight text-stone-900">SundayTally</span>
-          </Link>
-        </div>
+        {/* Top Brand header spacer */}
+        <div className="relative z-10 min-h-[40px]" />
 
         {/* Main visual - Interactive Floating Cards Area */}
         <div className="relative z-10 my-auto py-12 flex justify-center items-center h-[520px] w-full max-w-lg mx-auto">

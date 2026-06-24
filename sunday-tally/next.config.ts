@@ -11,6 +11,15 @@ const nextConfig: NextConfig = {
       'nanoid/non-secure': 'nanoid/non-secure/index.cjs',
     },
   },
+  async redirects() {
+    return [
+      {
+        source: '/features',
+        destination: '/#features',
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

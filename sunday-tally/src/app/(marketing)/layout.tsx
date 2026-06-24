@@ -21,8 +21,8 @@ export default function MarketingLayout({
           </div>
           
           <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-stone-500">
-            <Link href="/features" className="hover:text-stone-900 transition-colors">Features</Link>
-            <Link href="/pricing" className="hover:text-stone-900 transition-colors">Pricing</Link>
+            <Link href="/#features" className="hover:text-stone-900 transition-colors">Features</Link>
+            <Link href="/#pricing" className="hover:text-stone-900 transition-colors">Pricing</Link>
             <Link href="/contact" className="hover:text-stone-900 transition-colors">Contact</Link>
           </nav>
 
@@ -61,8 +61,8 @@ export default function MarketingLayout({
             © {new Date().getFullYear()} Sunday Tally. All rights reserved.
           </p>
           <div className="flex gap-6 text-sm text-stone-500">
-            <Link href="/features" className="hover:text-stone-900 transition-colors">Features</Link>
-            <Link href="/pricing" className="hover:text-stone-900 transition-colors">Pricing</Link>
+            <Link href="/#features" className="hover:text-stone-900 transition-colors">Features</Link>
+            <Link href="/#pricing" className="hover:text-stone-900 transition-colors">Pricing</Link>
             <Link href="/contact" className="hover:text-stone-900 transition-colors">Contact</Link>
           </div>
         </div>

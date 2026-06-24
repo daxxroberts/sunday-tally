@@ -97,7 +97,7 @@ export default function LandingPage() {
             <span className="text-2xl font-bold tracking-tight text-stone-900">SundayTally</span>
           </div>
           <div className="hidden md:flex items-center gap-8">
-            <Link href="/features" className="text-sm font-semibold text-stone-600 hover:text-stone-900 transition-colors">
+            <Link href="#features" className="text-sm font-semibold text-stone-600 hover:text-stone-900 transition-colors">
               Features
             </Link>
             <Link href="/auth/login" className="text-sm font-semibold text-stone-600 hover:text-stone-900 transition-colors">
@@ -161,7 +161,7 @@ export default function LandingPage() {
                 <ArrowRight size={24} className="group-hover:translate-x-1 transition-transform" />
               </Link>
               <Link 
-                href="/features" 
+                href="#features" 
                 className="w-full sm:w-auto rounded-full bg-white border-2 border-stone-200 px-10 py-5 text-lg font-bold text-stone-900 shadow-sm hover:bg-stone-50 hover:border-stone-300 transition-all flex items-center justify-center"
               >
                 See how it works
@@ -293,7 +293,7 @@ export default function LandingPage() {
       </div>
 
       {/* Bento Grid */}
-      <section className="py-32 bg-stone-50 relative border-t border-stone-200 overflow-hidden">
+      <section id="features" className="py-32 bg-stone-50 relative border-t border-stone-200 overflow-hidden">
         <div className="absolute inset-0 z-0">
           <ParticleNetwork />
         </div>
@@ -370,9 +370,9 @@ export default function LandingPage() {
               className="md:col-span-8 bg-white border border-stone-200 shadow-sm hover:shadow-md rounded-[2rem] p-8 md:p-12 transition-all flex flex-col md:flex-row-reverse items-center gap-12 group overflow-hidden relative"
             >
               <div className="flex-1 relative z-10 pl-4">
-                <h3 className="text-3xl font-bold text-stone-900 mb-4 tracking-tight">Instant Visualizations</h3>
+                <h3 className="text-3xl font-bold text-stone-900 mb-4 tracking-tight">Custom Dashboards</h3>
                 <p className="text-stone-500 text-lg leading-relaxed">
-                  Tell the AI what you want to see, and watch it build the exact chart you need.
+                  Stop relying on rigid reports. Tell the AI what you want to see, and watch it build the exact chart you need right in front of you.
                 </p>
               </div>
               <div className="flex-1 w-full bg-stone-50 rounded-xl border border-stone-200 p-6 shadow-inner relative h-48 flex items-center justify-center group-hover:bg-blue-50/50 transition-colors">
