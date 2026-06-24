@@ -35,7 +35,7 @@ writeFileSync(LOG_FILE, `=== AI Setup Test Run — ${ts()} ===\nTest email: ${TE
 writeFileSync(FULL_LOG, `=== Full Log — ${ts()} ===\n`)
 
 ;(async () => {
-  const browser = await chromium.launch({ headless: false, slowMo: 200 })
+  const browser = await chromium.launch({ headless: process.env.HEADED === 'true', slowMo: process.env.HEADED === 'true' ? 200 : 0 })
   const context = await browser.newContext({
     viewport: { width: 1280, height: 800 },
   })

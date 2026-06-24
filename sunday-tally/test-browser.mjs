@@ -36,7 +36,7 @@ async function waitAndClick(page, selector, opts = {}) {
 }
 
 // ─── Main ──────────────────────────────────────────────────────────────────────
-const browser = await chromium.launch({ headless: false, slowMo: 300 })
+const browser = await chromium.launch({ headless: process.env.HEADED === 'true', slowMo: process.env.HEADED === 'true' ? 300 : 0 })
 const context = await browser.newContext({ viewport: { width: 390, height: 844 } }) // iPhone-ish
 const page = await context.newPage()
 
