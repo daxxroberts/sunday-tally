@@ -5,6 +5,8 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useEffect, useMemo, useState } from 'react'
+import { createClient } from '@/lib/supabase/client'
 import type { UserRole } from '@/types'
 
 interface AppLayoutProps {
@@ -69,17 +71,10 @@ const TABS: Tab[] = [
     activeIcon: <SparkleIcon filled />,
   },
   {
-    // N-6 / IRIS_ACCOUNT: the Settings hub is the only in-app path to the
-    // role-agnostic /settings/account screen (display name, default campus,
-    // and E-46 "Set a password" — the password path OTP/magic-link viewers
-    // most need). Expose the tab to ALL roles so the route is reachable from
-    // the bottom nav, not just a raw URL. The hub itself stays role-gated:
-    // config rows render "View only" for non-writers and the owner/admin-only
-    // Data section is hidden, so editors/viewers see Account + read-only
-    // church structure exactly as the hub already intends.
+    // Settings hub is restricted to owner and admin only (hides for editor/viewer).
     label: 'Settings',
     href: '/settings',
-    roles: ['owner', 'admin', 'editor', 'viewer'],
+    roles: ['owner', 'admin'],
     icon: <SettingsIcon />,
     activeIcon: <SettingsIcon filled />,
   },
@@ -89,8 +84,40 @@ function getDashboardHref(role: UserRole) {
   return role === 'viewer' ? '/dashboard/viewer' : '/dashboard'
 }
 
+function getInitials(name: string) {
+  const parts = name.split(' ').filter(Boolean)
+  if (parts.length === 0) return 'U'
+  if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase()
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+}
+
 export default function AppLayout({ children, role, fillHeight }: AppLayoutProps) {
   const pathname = usePathname()
+  const supabase = useMemo(() => createClient(), [])
+  const [profile, setProfile] = useState<{ fullName: string; avatarUrl: string | null } | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user || cancelled) return
+
+      const { data: prof } = await supabase
+        .from('user_profiles')
+        .select('full_name, avatar_url')
+        .eq('id', user.id)
+        .maybeSingle()
+
+      if (cancelled) return
+      setProfile({
+        fullName: prof?.full_name || user.user_metadata?.full_name || 'User',
+        avatarUrl: prof?.avatar_url || user.user_metadata?.avatar_url || null,
+      })
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [supabase])
 
   const visibleTabs = TABS.filter(tab => tab.roles.includes(role))
 
@@ -99,7 +126,8 @@ export default function AppLayout({ children, role, fillHeight }: AppLayoutProps
     if (href === '/entries') return pathname.startsWith('/entries')
     if (href === '/dashboard/ai') return pathname.startsWith('/dashboard/ai')
     if (href === '/dashboard') return pathname.startsWith('/dashboard') && !pathname.startsWith('/dashboard/ai')
-    if (href === '/settings') return pathname.startsWith('/settings')
+    // Active only if it's the settings hub path, not the account page
+    if (href === '/settings') return pathname.startsWith('/settings') && !pathname.startsWith('/settings/account')
     return false
   }
 
@@ -120,7 +148,7 @@ export default function AppLayout({ children, role, fillHeight }: AppLayoutProps
 
       {/* Bottom tab bar */}
       <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
-        <div className="flex">
+        <div className="flex w-full">
           {visibleTabs.map(tab => {
             const active = isActive(tab)
             return (
@@ -136,8 +164,45 @@ export default function AppLayout({ children, role, fillHeight }: AppLayoutProps
               </Link>
             )
           })}
+
+          {/* User Badge / Account Tab (Everyone) */}
+          {(() => {
+            const active = pathname.startsWith('/settings/account')
+            return (
+              <Link
+                href="/settings/account"
+                className={`flex-1 flex flex-col items-center justify-center py-2 gap-1 transition-colors ${
+                  active ? 'text-[#4F6EF7]' : 'text-gray-400 hover:text-gray-600'
+                }`}
+              >
+                <span className={`inline-flex items-center gap-1.5 rounded-full py-0.5 pl-0.5 pr-2 text-[11px] font-semibold ring-1 ring-inset transition-all ${
+                  active 
+                    ? 'ring-[#4F6EF7] text-[#4F6EF7] bg-[#4F6EF7]/5' 
+                    : 'ring-gray-200 text-gray-500 hover:bg-gray-50'
+                }`}>
+                  {profile?.avatarUrl ? (
+                    <img
+                      className="inline-block size-5 rounded-full object-cover shrink-0"
+                      src={profile.avatarUrl}
+                      alt=""
+                    />
+                  ) : (
+                    <span className={`flex size-5 shrink-0 items-center justify-center rounded-full text-[9px] font-bold transition-colors ${
+                      active ? 'bg-[#4F6EF7] text-white' : 'bg-slate-100 text-slate-600'
+                    }`}>
+                      {getInitials(profile?.fullName || 'User')}
+                    </span>
+                  )}
+                  <span className="hidden sm:inline-block max-w-[80px] truncate">{profile?.fullName ? profile.fullName.split(' ')[0] : 'User'}</span>
+                  <span className="sm:hidden font-medium">Me</span>
+                </span>
+                <span className={`text-[10px] font-medium transition-colors ${active ? 'text-[#4F6EF7]' : 'text-gray-400'}`}>Account</span>
+              </Link>
+            )
+          })()}
         </div>
       </nav>
     </div>
   )
 }
+

@@ -422,10 +422,26 @@ export function AccountPanel({ embedded = false }: { embedded?: boolean }) {
                 )}
               </Section>
 
-              <p className="mt-6 px-1 text-[12px] leading-relaxed text-slate-400">
-                These settings apply only to your account. To manage your team or campuses, go to{' '}
-                <button onClick={() => router.push('/settings/locations')} className="font-semibold text-[#3D5BD4] hover:underline">Locations &amp; Team</button>.
-              </p>
+              <Section title="Session">
+                <Row label="Sign out" help="Sign out of your account on this device.">
+                  <button
+                    onClick={async () => {
+                      await supabase.auth.signOut()
+                      router.push('/auth/login')
+                    }}
+                    className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-[13px] font-semibold text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/40 transition-colors"
+                  >
+                    Sign out
+                  </button>
+                </Row>
+              </Section>
+
+              {role && (role === 'owner' || role === 'admin') && (
+                <p className="mt-6 px-1 text-[12px] leading-relaxed text-slate-400">
+                  These settings apply only to your account. To manage your team or campuses, go to{' '}
+                  <button onClick={() => router.push('/settings/locations')} className="font-semibold text-[#3D5BD4] hover:underline">Locations &amp; Team</button>.
+                </p>
+              )}
             </>
           )}
         </main>
@@ -447,10 +463,6 @@ export default function AccountWorkspacePage() {
 
   useEffect(() => {
     const t = new URLSearchParams(window.location.search).get('tab')
-    if (t === 'billing') {
-      setActive('billing')
-      setMounted(prev => new Set(prev).add('billing'))
-    }
     ;(async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
@@ -459,20 +471,32 @@ export default function AccountWorkspacePage() {
         .select('role, churches(name)')
         .eq('user_id', user.id).eq('is_active', true).single()
       if (!membership) return
-      setRole(membership.role as UserRole)
+      const currentRole = membership.role as UserRole
+      setRole(currentRole)
       const ch = Array.isArray(membership.churches) ? membership.churches[0] : membership.churches
       setChurchName((ch as { name?: string } | null)?.name ?? '')
+
+      const isManager = currentRole === 'owner' || currentRole === 'admin'
+      if (t === 'billing' && isManager) {
+        setActive('billing')
+        setMounted(prev => new Set(prev).add('billing'))
+      } else {
+        setActive('account')
+        setMounted(prev => new Set(prev).add('account'))
+      }
     })()
   }, [supabase])
 
   const TABS = [
     { key: 'account' as const, label: 'Account' },
-    { key: 'billing' as const, label: 'Billing & Subscriptions' },
+    ...((role === 'owner' || role === 'admin') ? [{ key: 'billing' as const, label: 'Billing & Subscriptions' }] : []),
   ]
   function go(key: 'account' | 'billing') {
     setActive(key)
     setMounted(prev => (prev.has(key) ? prev : new Set(prev).add(key)))
   }
+
+  const isManager = role === 'owner' || role === 'admin'
 
   return (
     <AppLayout role={role} fillHeight>
@@ -488,13 +512,15 @@ export default function AccountWorkspacePage() {
       >
         <header className="shrink-0 border-b border-slate-200 bg-white">
           <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3.5">
-            <button
-              onClick={() => router.push('/settings')}
-              aria-label="Back to Settings"
-              className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition-colors duration-200 hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/40"
-            >
-              <Ico.left className="h-5 w-5" />
-            </button>
+            {isManager && (
+              <button
+                onClick={() => router.push('/settings')}
+                aria-label="Back to Settings"
+                className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition-colors duration-200 hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/40"
+              >
+                <Ico.left className="h-5 w-5" />
+              </button>
+            )}
             <div className="min-w-0 flex-1">
               {churchName && <div className="truncate text-[11px] font-semibold uppercase tracking-wider" style={{ color: '#3D5BD4' }}>{churchName}</div>}
               <h1 className="text-lg font-extrabold leading-tight tracking-tight text-slate-900">Account</h1>
