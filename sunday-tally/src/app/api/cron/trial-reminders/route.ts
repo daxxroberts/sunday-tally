@@ -71,7 +71,18 @@ export async function GET(req: Request) {
       const email = userData?.user?.email
       if (!email) continue
 
-      const result = await sendEmail(email, template, { churchName: church.name })
+      const { count } = await supabase
+        .from('church_locations')
+        .select('*', { count: 'exact', head: true })
+        .eq('church_id', church.id)
+        .eq('is_active', true)
+      
+      const activeLocations = count ?? 1
+
+      const result = await sendEmail(email, template, { 
+        churchName: church.name,
+        activeLocations
+      })
       if (result.error) continue
 
       await supabase.from('notifications_sent').insert({ church_id: church.id, kind })

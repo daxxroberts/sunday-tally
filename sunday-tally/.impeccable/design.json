@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-06-20T21:49:00Z",
+  "title": "Design System: SundayTally",
+  "extensions": {
+    "colorMeta": {
+      "neutral-bg": { "role": "neutral", "displayName": "Gallery Off-White", "canonical": "#FAFAFA" },
+      "neutral-surface": { "role": "neutral", "displayName": "Cool Paper", "canonical": "#F5F5F4" },
+      "neutral-border": { "role": "neutral", "displayName": "Stone Border", "canonical": "#E7E5E4" },
+      "ink-primary": { "role": "primary", "displayName": "Slate Ink", "canonical": "#1C1917" },
+      "ink-secondary": { "role": "primary", "displayName": "Muted Ink", "canonical": "#78716C" }
+    }
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The main action button.",
+      "html": "<button class=\"ds-btn-primary\">GET STARTED</button>",
+      "css": ".ds-btn-primary { background: #1C1917; color: #ffffff; padding: 16px 32px; border-radius: 9999px; font-weight: 600; border: none; cursor: pointer; transition: transform 0.2s; } .ds-btn-primary:hover { transform: scale(1.05); }"
+    },
+    {
+      "name": "Default Card",
+      "kind": "card",
+      "refersTo": "card-default",
+      "description": "Standard data container.",
+      "html": "<div class=\"ds-card\"><h3 class=\"ds-card-title\">Section Title</h3><p class=\"ds-card-body\">Content goes here.</p></div>",
+      "css": ".ds-card { background: #ffffff; border-radius: 1rem; padding: 2rem; border: 1px solid #E7E5E4; } .ds-card-title { font-weight: 700; color: #1C1917; margin: 0 0 0.5rem 0; } .ds-card-body { color: #78716C; margin: 0; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Engineered Record",
+    "overview": "This system represents a clean, precise, and understated approach to data. It rejects the generic SaaS \"bento box\" aesthetic and the magical \"AI sparkles\" look. Instead, it feels like an editorial journal built by an engineer: relying on negative space, sharp typography, and thin structural borders rather than drop-shadows or gradients.",
+    "keyCharacteristics": [
+      "High-craft and editorial minimalism.",
+      "Data over decoration.",
+      "Strict alignment and generous padding.",
+      "Flat by default, shadows used exceptionally sparingly."
+    ],
+    "rules": [
+      { "name": "The One Voice Rule", "body": "There is no traditional \"brand accent color\" (no blue, red, or green buttons). The system speaks purely through the contrast between the Gallery Off-White background and the Slate Ink foreground.", "section": "colors" },
+      { "name": "The Technical Metric Rule", "body": "Any critical number or data point should use the `Fira Code` mono font (`.font-num`) to enforce tabular alignment and signal engineered precision.", "section": "typography" },
+      { "name": "The Flat-By-Default Rule", "body": "Surfaces are flat at rest. If a container needs separation from the background, it receives a 1px border or a subtle background tint (`bg-stone-50`), never a shadow.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do rely on generous padding (e.g., `p-8` or `p-12`) to separate elements instead of lines or boxes.",
+      "Do use `Fira Code` for all dashboard numbers and metrics.",
+      "Do use `bg-[#FAFAFA]` for the main page background."
+    ],
+    "donts": [
+      "Don't use the generic SaaS \"Bento Box\" template with repeating identical cards and generic icons.",
+      "Don't use \"Apple Dark Mode\" or overly moody tech styling.",
+      "Don't use \"Magic\" AI aesthetics like sparkles, purple/pink gradients, or glowing orbs.",
+      "Don't use light gray text on off-white backgrounds; ensure text contrast is high by sticking to `stone-500` or darker.",
+      "Don't apply shadows to standard cards or layout columns."
+    ]
+  }
+}

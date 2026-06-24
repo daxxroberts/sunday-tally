@@ -26,6 +26,7 @@ export interface TemplateData {
   inviterName?:      string
   role?:             string
   inviteExpiryDays?: number  // single source = INVITE_TTL_DAYS in @/lib/invites
+  activeLocations?:  number
 }
 
 export async function sendEmail(
@@ -54,7 +55,7 @@ function render(template: EmailTemplate, d: TemplateData): { subject: string; ht
         html: wrap(`
           <p>Hi,</p>
           <p>Your Sunday Tally trial for <strong>${church}</strong> ends in 7 days.</p>
-          <p>Subscribe now to keep logging attendance, volunteers, giving, and stats without interruption — $22/month, cancel anytime.</p>
+          ${d.activeLocations ? `<p>Note: You currently have <strong>${d.activeLocations} active locations</strong>. Subscribe now to keep logging data without interruption for $${d.activeLocations * 22}/month ($22 per location).</p>` : `<p>Subscribe now to keep logging attendance, volunteers, giving, and stats without interruption — $22/month, cancel anytime.</p>`}
           <p><a href="${billing}" style="background:#2563eb;color:#fff;padding:10px 16px;border-radius:6px;text-decoration:none;">Subscribe</a></p>
         `),
       }
@@ -64,7 +65,7 @@ function render(template: EmailTemplate, d: TemplateData): { subject: string; ht
         html: wrap(`
           <p>Hi,</p>
           <p>Your Sunday Tally trial for <strong>${church}</strong> ends <strong>tomorrow</strong>. After that, data entry is locked until you subscribe.</p>
-          <p>Your dashboards stay visible regardless.</p>
+          ${d.activeLocations ? `<p>Note: You currently have <strong>${d.activeLocations} active locations</strong>. Subscribe today to prevent interruptions for $${d.activeLocations * 22}/month ($22 per location).</p>` : `<p>Your dashboards stay visible regardless.</p>`}
           <p><a href="${billing}" style="background:#2563eb;color:#fff;padding:10px 16px;border-radius:6px;text-decoration:none;">Subscribe</a></p>
         `),
       }

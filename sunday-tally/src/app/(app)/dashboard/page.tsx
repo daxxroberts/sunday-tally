@@ -54,6 +54,8 @@ import {
   DashHeader, ColumnHeaders, FourColRow, CardHeader, NotInTotalTag, KpiCard,
   KeyMetricCard, KeyMetricsPicker, LaneLabel, EmptyState, fmtVal, Ico, accentForRole,
 } from './ui'
+import { getDashboardEntitlementsAction } from './actions'
+import type { Entitlements } from '@/lib/billing/entitlements'
 
 // role → the attendance-view column its audience aggregate reads (mirrors
 // dashboard.ts attendanceForRole). Used to build per-ministry drill selectors.
@@ -66,9 +68,10 @@ const ROLE_TO_ATT_COLUMN: Record<string, AttendanceColumn> = {
 
 type Tracks = { tracks_volunteers: boolean; tracks_responses: boolean; tracks_giving: boolean }
 interface GridPrefs {
+  keyMetrics?: KeyMetricsConfig
+  keyMetricTargets?: KeyMetricTargetsConfig
   excludedTotalMinistries?: string[]
-  keyMetrics?: KeyMetricsConfig            // #70 — ordered featured keys (church-wide)
-  keyMetricTargets?: KeyMetricTargetsConfig // #70 — per-metric all-time targets
+  excludedTotalMetrics?: string[]
 }
 
 // ── derive a grandTotal FourWin honouring excludedTotalMinistries (E-22/E-54).
@@ -113,7 +116,7 @@ function subtractFourWin(a: FourWin, b: FourWin): FourWin {
 
 // ── Zone D — Summary card (E-30..E-33) + include-in-total edit (E-22 / I) ─────
 function SummaryCard({
-  summary, grandTotalOverride, tagSections, roleByTag, colorByTag, excluded, flags, onChangeFlags, onSavePrefs,
+  summary, grandTotalOverride, tagSections, roleByTag, colorByTag, excluded, excludedMetrics, flags, onChangeFlags, onSavePrefs,
   tracks, hideComparisons, readOnly, windows, onDrill,
 }: {
   summary: DashboardData['summary']
@@ -122,6 +125,7 @@ function SummaryCard({
   roleByTag: Map<string, string | null>
   colorByTag: Map<string, string>   // resolved ministry colors (match Setup/History)
   excluded: Set<string>
+  excludedMetrics: Set<string>
   flags: SummaryMetricFlags
   onChangeFlags: (flags: SummaryMetricFlags) => void
   onSavePrefs: (next: GridPrefs) => void
@@ -268,39 +272,93 @@ function SummaryCard({
       {/* E-22 panel — church-wide include-in-total (mirrors Entries TotalsView) */}
       {editTotals && !readOnly && (
         <div className="border-b border-slate-100 bg-slate-50/60 px-4 py-3">
-          <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Include in grand total</p>
-          <div className="space-y-1.5">
-            {ministrySections.map(s => {
-              const included = !draft.has(s.tag_id)
-              return (
-                <button
-                  key={s.tag_id}
-                  onClick={() => setDraft(d => { const n = new Set(d); if (included) n.add(s.tag_id); else n.delete(s.tag_id); return n })}
-                  className="flex w-full cursor-pointer items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 text-left transition-colors duration-200 hover:bg-slate-50"
-                >
-                  <span className="flex items-center gap-2.5">
-                    <span className={`flex h-5 w-5 items-center justify-center rounded-md border-2 transition-colors duration-200 ${included ? 'border-transparent' : 'border-slate-300'}`} style={included ? { background: '#4F6EF7' } : undefined}>
-                      {included && <Ico.check className="h-3 w-3 text-white" />}
-                    </span>
-                    <span
-                      className={`h-4 w-1.5 rounded-full ${colorByTag.has(s.tag_id) ? '' : accentForRole(roleByTag.get(s.tag_id) ?? null)}`}
-                      style={colorByTag.has(s.tag_id) ? { backgroundColor: colorByTag.get(s.tag_id) } : undefined}
-                      aria-hidden
-                    />
-                    <span className="text-[14px] font-semibold text-slate-800">{s.tag_name}</span>
-                  </span>
-                  <span className="font-num text-[13px] text-slate-500">{fmtVal(s.attendance.w)}</span>
-                </button>
-              )
-            })}
+          <p className="mb-4 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Include in grand total</p>
+          
+          <div className="grid gap-6 sm:grid-cols-2">
+            {/* Attendance Column */}
+            <div>
+              <h4 className="mb-2 text-[13px] font-bold text-slate-800">Attendance</h4>
+              <div className="space-y-1.5">
+                {ministrySections.map(s => {
+                  if (s.attendance.w === null && s.attendance.w !== 0) return null
+                  const included = !draft.has(s.tag_id) && !excludedMetrics.has(`${s.tag_id}|ATTENDANCE`)
+                  return (
+                    <button
+                      key={`${s.tag_id}-att`}
+                      onClick={() => {
+                        const newExcluded = new Set(excludedMetrics)
+                        const key = `${s.tag_id}|ATTENDANCE`
+                        if (included) newExcluded.add(key)
+                        else newExcluded.delete(key)
+                        onSavePrefs({ excludedTotalMinistries: Array.from(draft), excludedTotalMetrics: Array.from(newExcluded) })
+                      }}
+                      className="flex w-full cursor-pointer items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 text-left transition-colors duration-200 hover:bg-slate-50"
+                    >
+                      <span className="flex items-center gap-2.5">
+                        <span className={`flex h-4 w-4 items-center justify-center rounded border-2 transition-colors duration-200 ${included ? 'border-transparent' : 'border-slate-300'}`} style={included ? { background: '#4F6EF7' } : undefined}>
+                          {included && <Ico.check className="h-2.5 w-2.5 text-white" />}
+                        </span>
+                        <span
+                          className={`h-4 w-1.5 rounded-full ${colorByTag.has(s.tag_id) ? '' : accentForRole(roleByTag.get(s.tag_id) ?? null)}`}
+                          style={colorByTag.has(s.tag_id) ? { backgroundColor: colorByTag.get(s.tag_id) } : undefined}
+                          aria-hidden
+                        />
+                        <span className="text-[13px] font-semibold text-slate-800">{s.tag_name}</span>
+                      </span>
+                      <span className="font-num text-[12px] text-slate-500">{fmtVal(s.attendance.w)}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Volunteers Column */}
+            {tracks.tracks_volunteers && (
+              <div>
+                <h4 className="mb-2 text-[13px] font-bold text-slate-800">Volunteers</h4>
+                <div className="space-y-1.5">
+                  {ministrySections.map(s => {
+                    if (s.volunteers.w === null && s.volunteers.w !== 0) return null
+                    const included = !draft.has(s.tag_id) && !excludedMetrics.has(`${s.tag_id}|VOLUNTEERS`)
+                    return (
+                      <button
+                        key={`${s.tag_id}-vol`}
+                        onClick={() => {
+                          const newExcluded = new Set(excludedMetrics)
+                          const key = `${s.tag_id}|VOLUNTEERS`
+                          if (included) newExcluded.add(key)
+                          else newExcluded.delete(key)
+                          onSavePrefs({ excludedTotalMinistries: Array.from(draft), excludedTotalMetrics: Array.from(newExcluded) })
+                        }}
+                        className="flex w-full cursor-pointer items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 text-left transition-colors duration-200 hover:bg-slate-50"
+                      >
+                        <span className="flex items-center gap-2.5">
+                          <span className={`flex h-4 w-4 items-center justify-center rounded border-2 transition-colors duration-200 ${included ? 'border-transparent' : 'border-slate-300'}`} style={included ? { background: '#4F6EF7' } : undefined}>
+                            {included && <Ico.check className="h-2.5 w-2.5 text-white" />}
+                          </span>
+                          <span
+                            className={`h-4 w-1.5 rounded-full ${colorByTag.has(s.tag_id) ? '' : accentForRole(roleByTag.get(s.tag_id) ?? null)}`}
+                            style={colorByTag.has(s.tag_id) ? { backgroundColor: colorByTag.get(s.tag_id) } : undefined}
+                            aria-hidden
+                          />
+                          <span className="text-[13px] font-semibold text-slate-800">{s.tag_name}</span>
+                        </span>
+                        <span className="font-num text-[12px] text-slate-500">{fmtVal(s.volunteers.w)}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
           </div>
-          <div className="mt-3 flex items-center justify-between">
+
+          <div className="mt-4 flex items-center justify-between border-t border-slate-200 pt-3">
             <span className="text-[11px] text-slate-400">Saved for the whole church · doesn’t change entered numbers</span>
             <button
-              onClick={() => { onSavePrefs({ excludedTotalMinistries: Array.from(draft) }); setEditTotals(false) }}
+              onClick={() => setEditTotals(false)}
               className="cursor-pointer rounded-lg px-4 py-2 text-[13px] font-semibold text-white shadow-sm transition-opacity duration-200 hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/40"
               style={{ background: '#4F6EF7' }}
-            >Save</button>
+            >Close</button>
           </div>
         </div>
       )}
@@ -474,6 +532,10 @@ export default function DashboardPage() {
   const [flags, setFlags] = useState<SummaryMetricFlags>(DEFAULT_SUMMARY_METRICS)
   const [gridPrefs, setGridPrefs] = useState<GridPrefs>({})
   const [roleByTag, setRoleByTag] = useState<Map<string, string | null>>(new Map())
+  
+  // AI/Widgets Paywall State
+  const [entitlements, setEntitlements] = useState<Entitlements | null>(null)
+  const [showPaywall, setShowPaywall] = useState(false)
 
   const readOnly = role === 'viewer'
 
@@ -497,6 +559,9 @@ export default function DashboardPage() {
       setFlags(loadSummaryMetrics(user.id, membership.church_id))
       // 0039 split: prefs from dashboard_prefs (legacy grid_config keys pre-apply).
       setGridPrefs(readChurchPrefs(ch) as GridPrefs)
+
+      const { entitlements: ent } = await getDashboardEntitlementsAction()
+      if (!cancelled && ent) setEntitlements(ent as Entitlements)
 
       // active campus (N-2 / D-088): default_location_id → fallback first active by sort_order
       let campusRow: { id: string; name: string } | null = null
@@ -631,6 +696,7 @@ export default function DashboardPage() {
 
   const hideComparisons = !!data && data.weeksWithData < 2
   const excluded = useMemo(() => new Set(gridPrefs.excludedTotalMinistries ?? []), [gridPrefs])
+  const excludedMetrics = useMemo(() => new Set(gridPrefs.excludedTotalMetrics ?? []), [gridPrefs])
 
   // ── Phase B nesting — build parent→child tree from tagSections. Roots are
   //    sections with no parent (or whose parent isn't a rendered section, so an
@@ -706,8 +772,7 @@ export default function DashboardPage() {
   // of that role is excluded; partial same-role exclusion leaves the role counted.
   const grandTotalOverride = useMemo(() => {
     if (!data) return emptyFourWin()
-    // if nothing is excluded, trust the data layer's grandTotal verbatim (D-082)
-    if (excluded.size === 0) return data.summary.grandTotal
+    if (excluded.size === 0 && excludedMetrics.size === 0) return data.summary.grandTotal
 
     // group real ministry tags by their audience role
     const tagsByRole = new Map<AudienceRole, string[]>()
@@ -722,13 +787,20 @@ export default function DashboardPage() {
 
     let total = data.summary.grandTotal
     for (const [role, tagIds] of tagsByRole) {
-      const allExcluded = tagIds.length > 0 && tagIds.every(id => excluded.has(id))
-      if (allExcluded) {
+      const allAttExcluded = tagIds.length > 0 && tagIds.every(id => excluded.has(id) || excludedMetrics.has(`${id}|ATTENDANCE`))
+      if (allAttExcluded) {
         total = subtractFourWin(total, data.summary[ROLE_TO_SUMMARY[role]])
       }
     }
+    for (const s of data.tagSections) {
+      if (s.tag_id === 'UNASSIGNED') continue
+      const volExcluded = excluded.has(s.tag_id) || excludedMetrics.has(`${s.tag_id}|VOLUNTEERS`)
+      if (volExcluded) {
+        total = subtractFourWin(total, s.volunteers)
+      }
+    }
     return total
-  }, [data, excluded, roleByTag])
+  }, [data, excluded, excludedMetrics, roleByTag])
 
   // Stable across renders so dependent memos (keyMetricCatalog) actually cache
   // (FELIX #70 Finding 3 — a fresh object literal each render busted the memo).
@@ -972,6 +1044,7 @@ export default function DashboardPage() {
                     roleByTag={roleByTag}
                     colorByTag={colorByTag}
                     excluded={excluded}
+                    excludedMetrics={excludedMetrics}
                     flags={flags}
                     onChangeFlags={handleFlagsChange}
                     onSavePrefs={handleSavePrefs}
@@ -1043,6 +1116,23 @@ export default function DashboardPage() {
                   <p className="px-1 text-[12px] leading-relaxed text-slate-400">
                     Every value is derived from your entries — never edited here. Totals roll up across the week’s sittings.
                   </p>
+
+                  {/* ── Add Dashboard Widgets Button ── */}
+                  <div className="mt-8 flex justify-center pb-4">
+                    <button
+                      onClick={() => {
+                        if (entitlements && !entitlements.aiEnabled) {
+                          setShowPaywall(true)
+                        } else {
+                          // Future: Open Widget Builder
+                        }
+                      }}
+                      className="group flex items-center gap-2 rounded-full border border-slate-200 bg-white px-6 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition-all hover:border-[#4F6EF7]/30 hover:bg-[#4F6EF7]/5 hover:text-[#4F6EF7] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/40"
+                    >
+                      <Ico.plus className="h-4 w-4" />
+                      Add Dashboard Widgets
+                    </button>
+                  </div>
                 </div>
               )}
             </main>
@@ -1058,6 +1148,38 @@ export default function DashboardPage() {
         triggerWindow={drillWindow}
         onClose={() => setDrillOpen(false)}
       />
+
+      {/* ── AI/Widgets Paywall Modal ── */}
+      {showPaywall && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          {/* Glassmorphism Blur Backdrop */}
+          <div className="absolute inset-0 bg-slate-900/30 backdrop-blur-md transition-opacity" onClick={() => setShowPaywall(false)} />
+          
+          {/* Premium Modal */}
+          <div className="relative w-full max-w-md overflow-hidden rounded-[24px] border border-white/20 bg-white shadow-2xl">
+            <div className="absolute inset-0 bg-gradient-to-br from-white/60 to-white/10 pointer-events-none" />
+            <div className="relative px-8 py-10 text-center">
+              <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-[#4F6EF7]/10 to-[#06B6D4]/10 shadow-inner">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-[#4F6EF7] to-[#06B6D4] shadow-md">
+                  <Ico.plus className="h-6 w-6 text-white" />
+                </div>
+              </div>
+              <h3 className="mb-3 text-2xl font-bold tracking-tight text-slate-900">Unlock Dashboard Widgets & AI</h3>
+              <p className="mb-8 text-[15px] leading-relaxed text-slate-600">
+                Your data holds answers. Build custom charts to visualize exact trends, and instantly chat with your AI assistant to spot hidden patterns across your attendance and giving metrics. Upgrade your Sunday Tally experience today.
+              </p>
+              <div className="flex flex-col gap-3">
+                <a href="/api/stripe/portal" className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#4F6EF7] to-[#06B6D4] px-6 py-3.5 text-[15px] font-semibold text-white shadow-lg transition-transform hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/40">
+                  Upgrade Subscription
+                </a>
+                <button onClick={() => setShowPaywall(false)} className="rounded-xl px-6 py-3 text-[14px] font-medium text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-200">
+                  Maybe Later
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </AppLayout>
   )
 }

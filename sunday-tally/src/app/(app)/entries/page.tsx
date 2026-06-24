@@ -472,11 +472,12 @@ export default function EntriesPage() {
   }, [instances])
 
   const excluded = new Set(gridPrefs.excludedTotalMinistries ?? [])
+  const excludedMetrics = new Set(gridPrefs.excludedTotalMetrics ?? [])
 
   // E-13 ministry rollups: attendance summed across week's occurrences + other canonical metrics
   const rollups = useMemo(() => {
     return weekMinistries.map(m => {
-      const rows: { label: string; value: number; sub?: string }[] = []
+      const rows: { label: string; value: number; sub?: string; reporting_tag_code: string }[] = []
       // group metrics by reporting tag for ordered output: ATTENDANCE first, then volunteers subtotal, then others
       const att = m.metrics.filter(x => x.reporting_tag_code === 'ATTENDANCE')
       const vols = m.metrics.filter(x => x.reporting_tag_code === 'VOLUNTEERS')
@@ -488,21 +489,27 @@ export default function EntriesPage() {
           return s + (e && !e.is_not_applicable && e.value !== null ? e.value : 0)
         }, 0)
 
-      let attTotal = 0
+      let attVal = 0
       const attSittings = instances.filter(i => i.ministries.some(mm => mm.tag_id === m.tag_id)).length
-      for (const a of att) attTotal += sumAcrossWeek(a)
-      rows.push({ label: 'Attendance', value: attTotal, sub: attSittings > 1 ? `${attSittings} sittings` : undefined })
+      for (const a of att) attVal += sumAcrossWeek(a)
+      rows.push({ label: 'Attendance', value: attVal, sub: attSittings > 1 ? `${attSittings} sittings` : undefined, reporting_tag_code: 'ATTENDANCE' })
 
+      let volVal = 0
       if (vols.length > 0) {
-        const vTotal = vols.reduce((s, v) => s + sumAcrossWeek(v), 0)
-        rows.push({ label: 'Volunteers', value: vTotal })
+        for (const v of vols) volVal += sumAcrossWeek(v)
+        rows.push({ label: 'Volunteers', value: volVal, reporting_tag_code: 'VOLUNTEERS' })
       }
-      for (const o of others) rows.push({ label: o.name, value: sumAcrossWeek(o) })
+      for (const o of others) rows.push({ label: o.name, value: sumAcrossWeek(o), reporting_tag_code: o.reporting_tag_code ?? '' })
 
-      return { ministry: m, rows, attTotal }
+      let attTotal = 0
+      if (!excludedMetrics.has(`${m.tag_id}|ATTENDANCE`)) attTotal += attVal
+      if (!excludedMetrics.has(`${m.tag_id}|VOLUNTEERS`)) attTotal += volVal
+
+      return { ministry: m, rows, attTotal, attVal, volVal }
     })
-  }, [weekMinistries, instances, entries])
+  }, [weekMinistries, instances, entries, excludedMetrics])
 
+  // Legacy fallback: if excluded.has(tag_id), drop the whole ministry. Otherwise use the granular attTotal.
   const grandTotal = rollups.reduce((s, r) => s + (excluded.has(r.ministry.tag_id) ? 0 : r.attTotal), 0)
 
   /* ── completion strip (E-4) ────────────────────────────────────────────── */
@@ -631,6 +638,7 @@ export default function EntriesPage() {
               grandTotal={grandTotal}
               rollups={rollups}
               excluded={excluded}
+              excludedMetrics={excludedMetrics}
               readOnly={readOnly}
               onSavePrefs={saveGridPrefs}
             />

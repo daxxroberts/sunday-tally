@@ -20,6 +20,8 @@ import InlineEditField from '@/components/shared/InlineEditField'
 import { createClient } from '@/lib/supabase/client'
 import { Ico } from '@/app/(app)/entries/ui'
 import type { UserRole } from '@/types'
+import type { BillingStatus } from '@/lib/billing/status'
+import { addLocationAction, toggleLocationActiveAction, deleteLocationAction, checkLocationDataAction, getBillingInfoAction } from './actions'
 
 const PAGE = 1000 // PostgREST cap (N-9)
 
@@ -52,6 +54,12 @@ export function LocationsPanel({ embedded = false }: { embedded?: boolean }) {
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState<string | null>(null)
   const [newCampus, setNewCampus] = useState('')
+  const [confirmDelete, setConfirmDelete] = useState<Campus | null>(null)
+  const [deleteWarning, setDeleteWarning] = useState<boolean>(false)
+  
+  // Billing pre-flight state
+  const [billingStatus, setBillingStatus] = useState<BillingStatus | null>(null)
+  const [preFlightLocation, setPreFlightLocation] = useState<string | null>(null)
 
   const write = canWrite(role)
 
@@ -96,17 +104,27 @@ export function LocationsPanel({ embedded = false }: { embedded?: boolean }) {
     if (error) setCampuses(prev)
   }, [supabase, write, campuses])
 
-  /* ── E-54 add campus (slug code unique per church, next sort_order) ────── */
-  const addCampus = useCallback(async () => {
+  /* ── E-54 add campus pre-flight (fetches billing info) ──────────────── */
+  const addCampusIntent = useCallback(async () => {
     if (!churchId || !write) return
     const name = newCampus.trim()
     if (!name) return
-    // Each campus is billed ($22/mo). Confirm the cost before adding so a new
-    // campus is never a billing surprise.
-    if (typeof window !== 'undefined' &&
-      !window.confirm(`Adding “${name}” as a campus adds $22/month to your subscription. Add it?`)) {
-      return
-    }
+
+    setBusy('add-campus')
+    const { status, error } = await getBillingInfoAction()
+    setBusy(null)
+
+    if (error || !status) return
+    setBillingStatus(status as BillingStatus)
+    setPreFlightLocation(name)
+  }, [churchId, write, newCampus])
+
+  /* ── Confirm add campus after pre-flight modal ────────────────────────── */
+  const confirmAddCampus = useCallback(async () => {
+    if (!churchId || !write || !preFlightLocation) return
+    const name = preFlightLocation
+    
+    setPreFlightLocation(null)
     setBusy('add-campus')
     const base = slugifyCode(name) || 'CAMPUS'
     const existing = new Set(campuses.map(c => c.code))
@@ -114,11 +132,9 @@ export function LocationsPanel({ embedded = false }: { embedded?: boolean }) {
     let n = 1
     while (existing.has(code)) { code = `${base}_${n}`; n++ }
     const nextSort = campuses.reduce((m, c) => Math.max(m, c.sort_order), -1) + 1
-    const { data, error } = await supabase
-      .from('church_locations')
-      .insert({ church_id: churchId, name, code, is_active: true, sort_order: nextSort })
-      .select('id, name, code, is_active, sort_order')
-      .single()
+    
+    const { data, error } = await addLocationAction(name, code, nextSort)
+    
     setBusy(null)
     if (data && !error) {
       setCampuses(p => [...p, data as Campus])
@@ -127,7 +143,7 @@ export function LocationsPanel({ embedded = false }: { embedded?: boolean }) {
       // uq_location_code collision under race — reload to reconcile
       await load(churchId, selfId ?? '')
     }
-  }, [supabase, churchId, write, newCampus, campuses, load, selfId])
+  }, [churchId, write, preFlightLocation, campuses, load, selfId])
 
   /* ── E-53 soft deactivate / reactivate campus (FK RESTRICT → soft only) ── */
   const toggleCampusActive = useCallback(async (c: Campus) => {
@@ -136,10 +152,31 @@ export function LocationsPanel({ embedded = false }: { embedded?: boolean }) {
     setBusy(c.id)
     const prev = campuses
     setCampuses(p => p.map(x => x.id === c.id ? { ...x, is_active: next } : x))
-    const { error } = await supabase.from('church_locations').update({ is_active: next }).eq('id', c.id)
+    const { error } = await toggleLocationActiveAction(c.id, next)
     setBusy(null)
     if (error) setCampuses(prev) // e.g. FK RESTRICT if a hard delete were attempted elsewhere
-  }, [supabase, write, campuses])
+  }, [write, campuses])
+
+  const initiateDelete = async (c: Campus) => {
+    setBusy(c.id)
+    const { hasData, error } = await checkLocationDataAction(c.id)
+    setBusy(null)
+    if (error) return // Ignore silently or toast
+    setDeleteWarning(hasData ?? false)
+    setConfirmDelete(c)
+  }
+  
+  const confirmDeleteAction = async () => {
+    if (!confirmDelete) return
+    setBusy(confirmDelete.id)
+    const prev = campuses
+    setCampuses(p => p.filter(x => x.id !== confirmDelete.id))
+    const { error } = await deleteLocationAction(confirmDelete.id)
+    setBusy(null)
+    if (error) setCampuses(prev)
+    setConfirmDelete(null)
+    setDeleteWarning(false)
+  }
 
   /* ── E-55 reorder campuses (rewrite sort_order among active) ───────────── */
   const moveCampus = useCallback(async (index: number, dir: -1 | 1) => {
@@ -223,8 +260,14 @@ export function LocationsPanel({ embedded = false }: { embedded?: boolean }) {
                           <Ico.down className="h-4 w-4" />
                         </button>
                         <button onClick={() => toggleCampusActive(c)} disabled={busy === c.id}
-                          className="ml-1 rounded-lg px-2 py-1 text-[12px] font-medium text-slate-400 transition-colors duration-200 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/40">
+                          className="ml-1 rounded-lg px-2 py-1 text-[12px] font-medium text-slate-400 transition-colors duration-200 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/40"
+                          title="Deactivate to hide from entry screens without losing past data">
                           {c.is_active ? 'Deactivate' : 'Reactivate'}
+                        </button>
+                        <button onClick={() => initiateDelete(c)} disabled={busy === c.id}
+                          className="rounded-lg px-2 py-1 text-[12px] font-medium text-red-400 transition-colors duration-200 hover:bg-red-50 hover:text-red-700 disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
+                          title="Permanently delete this location">
+                          Delete
                         </button>
                       </div>
                     )}
@@ -237,12 +280,12 @@ export function LocationsPanel({ embedded = false }: { embedded?: boolean }) {
                       type="text"
                       value={newCampus}
                       onChange={(e) => setNewCampus(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && addCampus()}
+                      onKeyDown={(e) => e.key === 'Enter' && addCampusIntent()}
                       placeholder="Add a campus…"
                       aria-label="New campus name"
                       className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[14px] text-slate-900 outline-none transition placeholder:text-slate-300 focus-visible:border-[#4F6EF7] focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/25"
                     />
-                    <button onClick={addCampus} disabled={!newCampus.trim() || busy === 'add-campus'}
+                    <button onClick={addCampusIntent} disabled={!newCampus.trim() || busy === 'add-campus'}
                       className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-[13px] font-semibold text-white shadow-sm transition-opacity duration-200 hover:opacity-90 disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/40"
                       style={{ background: '#4F6EF7' }}>
                       <Ico.plus className="h-4 w-4" />Add
@@ -257,7 +300,7 @@ export function LocationsPanel({ embedded = false }: { embedded?: boolean }) {
               </div>
               {/* E-56 note: a campus can only be deactivated (never deleted) because services and entries point to it. */}
               <p className="mb-6 px-1 text-[12px] leading-relaxed text-slate-400">
-                A campus stays in your history — deactivate it to hide it from new entries instead of deleting.
+                A campus stays in your history — deactivate it to hide it from new entries, or delete it permanently.
               </p>
 
               {/* ── Members moved to the canonical /settings/team screen ─── */}
@@ -275,6 +318,76 @@ export function LocationsPanel({ embedded = false }: { embedded?: boolean }) {
             </>
           )}
         </main>
+
+        {/* Delete Confirmation Modal */}
+        {confirmDelete && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
+            <div className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-xl">
+              <div className="px-6 py-5">
+                <h3 className="text-lg font-bold text-slate-900">Delete {confirmDelete.name}?</h3>
+                {deleteWarning ? (
+                  <p className="mt-2 text-sm text-red-600 font-medium bg-red-50 p-3 rounded-lg border border-red-100">
+                    Warning: This location has entries or services tied to it. Deleting it will permanently delete ALL past entries and service data associated with it. This action cannot be undone. Consider deactivating it instead.
+                  </p>
+                ) : (
+                  <p className="mt-2 text-sm text-slate-500">
+                    This location has no data tied to it and can be deleted safely. This will immediately update your billing.
+                  </p>
+                )}
+              </div>
+              <div className="flex items-center justify-end gap-2 bg-slate-50 px-6 py-4">
+                <button onClick={() => setConfirmDelete(null)} disabled={busy !== null} className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/40 disabled:opacity-40">
+                  Cancel
+                </button>
+                <button onClick={confirmDeleteAction} disabled={busy !== null} className="rounded-lg px-4 py-2 text-sm font-semibold text-white bg-red-500 hover:bg-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40 disabled:opacity-40">
+                  {busy === confirmDelete.id ? 'Deleting...' : 'Delete'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Pre-Flight Billing Confirmation Modal */}
+        {preFlightLocation && billingStatus && (() => {
+          const activeCount = campuses.filter(c => c.is_active).length
+          const isTrial = billingStatus.phase === 'trial'
+          const hitTrialCap = isTrial && activeCount >= 3
+
+          return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
+              <div className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-xl">
+                <div className="px-6 py-5">
+                  <h3 className="text-lg font-bold text-slate-900">
+                    {hitTrialCap ? 'Location Limit Reached' : `Add ${preFlightLocation}?`}
+                  </h3>
+                  {hitTrialCap ? (
+                    <p className="mt-2 text-sm text-slate-600 leading-relaxed">
+                      You have reached the maximum number of active locations allowed during the free trial (3). Please <a href="/api/stripe/portal" className="font-semibold text-[#4F6EF7] hover:underline">upgrade your subscription</a> or deactivate an existing location to add more.
+                    </p>
+                  ) : isTrial ? (
+                    <p className="mt-2 text-sm text-slate-600 leading-relaxed">
+                      You are currently in your free trial. Adding a location is free right now, but please note that each active location costs <strong className="text-slate-900">$22/month</strong>. When your trial ends, your subscription total will reflect your active location count.
+                    </p>
+                  ) : (
+                    <p className="mt-2 text-sm text-slate-600 leading-relaxed">
+                      Adding a new location will increase your subscription by <strong className="text-slate-900">$22/month</strong>. The prorated amount for the rest of this billing cycle will be automatically added to your next invoice.
+                    </p>
+                  )}
+                </div>
+                <div className="flex items-center justify-end gap-2 bg-slate-50 px-6 py-4 border-t border-slate-100">
+                  <button onClick={() => setPreFlightLocation(null)} disabled={busy !== null} className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/40 disabled:opacity-40">
+                    {hitTrialCap ? 'Close' : 'Cancel'}
+                  </button>
+                  {!hitTrialCap && (
+                    <button onClick={confirmAddCampus} disabled={busy !== null} className="rounded-lg px-4 py-2 text-sm font-semibold text-white transition-opacity duration-200 hover:opacity-90 disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/40" style={{ background: '#4F6EF7' }}>
+                      {busy === 'add-campus' ? 'Adding...' : 'Confirm & Add Location'}
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )
+        })()}
       </div>
     </MaybeLayout>
   )

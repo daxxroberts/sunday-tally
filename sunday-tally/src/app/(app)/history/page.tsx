@@ -79,6 +79,7 @@ export default function HistoryPage() {
   const [codeMaps, setCodeMaps]         = useState<CodeMaps | null>(null)
   const [loading, setLoading]           = useState(true)
   const [emptyReason, setEmptyReason]   = useState<string | null>(null)
+  const [showDeactivated, setShowDeactivated] = useState(false)
 
   // Top-level group filter state — same pattern as the import review preview.
   // Hides/shows full ministry sections (Giving, Experience, LifeKids, Switch, …)
@@ -168,19 +169,8 @@ export default function HistoryPage() {
       const ch = membership.churches as Church & { grid_config?: GridConfig | null }
       setChurch(ch)
 
-      // SINGLE SOURCE OF TRUTH (SAGE Tier 1, 2026-06-17): History ALWAYS reflects
-      // the CURRENT setup. We derive the grid live from the schema on every load
-      // and no longer read the stored grid_config snapshot for layout — a snapshot
-      // goes stale the moment setup changes (a metric renamed, a ministry added, a
-      // cadence changed) and was the reason setup edits stopped mirroring here.
-      // Past numbers are unaffected: they live in metric_entries by date; only the
-      // column LAYOUT is re-derived. (Time-versioned snapshots — "show the structure
-      // as of a past date" — is a deferred Tier-2 open item, not this behavior.)
-      const derived = await deriveGridConfigFromSchema(supabase, ch.id)
-      if (!derived) {
-        setEmptyReason('No active services with a primary tag yet. Set up your services first.')
-      }
-      setConfig(derived ? dedupeConfig(derived) : null)
+      // Config load moved to separate useEffect so it responds to showDeactivated toggle
+
 
       // Ministry colors (0040): root tags with a chosen color override the
       // positional palette — same color here as everywhere that ministry shows.
@@ -209,6 +199,22 @@ export default function HistoryPage() {
       }
     })
   }, [router])
+
+  // ── Load config ─────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!church) return
+    const loadConfig = async () => {
+      const supabase = createClient()
+      const derived = await deriveGridConfigFromSchema(supabase, church.id, showDeactivated)
+      if (!derived) {
+        setEmptyReason('No active services with a primary tag yet. Set up your services first.')
+      } else {
+        setEmptyReason(null)
+      }
+      setConfig(derived ? dedupeConfig(derived) : null)
+    }
+    loadConfig()
+  }, [church, showDeactivated])
 
   // ── Load occurrences + per-cell data for the date range ──────────────────
   const loadData = useCallback(async (
@@ -462,8 +468,19 @@ export default function HistoryPage() {
               <p className="text-xs text-gray-400 leading-tight">{church.name}</p>
             </div>
           </div>
-          <div className="flex items-center gap-1.5 text-xs shrink-0">
-            <input
+          
+          <div className="flex items-center gap-4 text-xs shrink-0">
+            <label className="flex items-center gap-2 text-[13px] font-medium text-slate-500 hover:text-slate-800 cursor-pointer transition-colors">
+              <input
+                type="checkbox"
+                className="h-4 w-4 rounded border-slate-300 text-[#4F6EF7] focus:ring-[#4F6EF7]"
+                checked={showDeactivated}
+                onChange={(e) => setShowDeactivated(e.target.checked)}
+              />
+              Show deactivated services
+            </label>
+            <div className="flex items-center gap-1.5 text-xs shrink-0">
+              <input
               type="date"
               value={dateFrom}
               max={dateTo}
@@ -479,6 +496,7 @@ export default function HistoryPage() {
               className="border border-gray-200 rounded-lg px-2 py-1 text-xs text-gray-700 focus:outline-none focus:border-gray-400 w-32"
             />
           </div>
+        </div>
         </div>
 
         <div className="flex-1 min-h-0">

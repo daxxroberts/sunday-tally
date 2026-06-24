@@ -97,7 +97,7 @@ export function ServicesPanel({ embedded = false }: { embedded?: boolean }) {
     // E-20 active templates + location name + group/visibility (0036/0037)
     const { data: tmplRows } = await supabase
       .from('service_templates')
-      .select('id, display_name, sort_order, location_id, show_in_entries, reporting_group_id, church_locations(name)')
+      .select('id, display_name, sort_order, location_id, show_in_entries, reporting_group_id, church_locations(name, is_active)')
       .eq('church_id', cid)
       .eq('is_active', true)
       .order('sort_order', { ascending: true })
@@ -116,7 +116,13 @@ export function ServicesPanel({ embedded = false }: { embedded?: boolean }) {
       show_in_entries?: boolean | null; reporting_group_id?: string | null
       church_locations: EmbeddedLoc
     }
-    const templates = ((tmplRows ?? []) as TmplRow[]).map((t) => ({
+    const templates = ((tmplRows ?? []) as TmplRow[])
+      .filter(t => {
+        const loc = oneOf(t.church_locations) as { is_active?: boolean } | null
+        if (loc && loc.is_active === false) return false
+        return true
+      })
+      .map((t) => ({
       id: t.id,
       name: t.display_name ?? 'Service',
       sort_order: t.sort_order ?? 0,
@@ -353,8 +359,8 @@ export function ServicesPanel({ embedded = false }: { embedded?: boolean }) {
 
         <main className="mx-auto max-w-3xl px-4 py-6">
           <p className="mb-5 px-1 text-[13px] leading-relaxed text-slate-500">
-            When and where you gather, and what&apos;s counted there. Each service has its own schedule (a set day and time, or weekly or monthly) that creates the occurrences you log in Entries. The ministries on each card are what gets counted there.{' '}
-            {write ? 'Add, remove, or reorder ministries. Changes apply to every future week.' : 'This is read-only for your role.'}
+            When and where you gather, and what&apos;s counted there. Manage your service schedules and the ministries counted at each.{' '}
+            {write ? 'Changes apply to all future occurrences.' : 'This is read-only for your role.'}
           </p>
 
           {/* S2 — orphan banner: counts with nowhere to render (editors+ see it) */}
@@ -393,14 +399,24 @@ export function ServicesPanel({ embedded = false }: { embedded?: boolean }) {
             <div className="space-y-4">
               {/* G2 — Add service entry point, above the first card (owner/admin only) */}
               {write && (
-                <button
-                  onClick={() => router.push('/settings/services/new')}
-                  className="flex w-full items-center justify-center gap-1.5 rounded-2xl border border-dashed border-[#4F6EF7]/40 bg-[#4F6EF7]/5 px-4 py-3 text-[14px] font-semibold text-[#3D5BD4] transition-colors duration-200 hover:bg-[#4F6EF7]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/40"
-                  aria-label="Add a new service"
-                >
-                  <Ico.plus className="h-4 w-4" />
-                  Add service
-                </button>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => router.push('/settings/services/new')}
+                    className="flex items-center gap-1.5 rounded-xl border border-dashed border-[#4F6EF7]/40 bg-[#4F6EF7]/5 px-3 py-2 text-[13px] font-semibold text-[#3D5BD4] transition-colors duration-200 hover:bg-[#4F6EF7]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/40"
+                    aria-label="Add a new service"
+                  >
+                    <Ico.plus className="h-3.5 w-3.5" />
+                    Add service
+                  </button>
+                  <button
+                    onClick={() => router.push('/settings/locations')}
+                    className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[13px] font-medium text-slate-700 transition-colors duration-200 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/40"
+                    aria-label="Add a new location"
+                  >
+                    <Ico.pin className="h-3.5 w-3.5" />
+                    Add a Location
+                  </button>
+                </div>
               )}
               {/* S3 — group by location; church-wide last. Headers only when there
                   is more than one group (single-campus stays a flat list). */}

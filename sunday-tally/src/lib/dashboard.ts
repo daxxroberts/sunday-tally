@@ -534,8 +534,12 @@ export async function fetchDashboardData(
   }
 
   // ── Summary ──
+  const totalPresentWeekly = new Map<string, number>()
+  for (const [wk, att] of attTotalWeekly) totalPresentWeekly.set(wk, att)
+  for (const [wk, vol] of volTotalWeekly) totalPresentWeekly.set(wk, (totalPresentWeekly.get(wk) ?? 0) + vol)
+
   const summary: DashboardSummary = {
-    grandTotal:         fourWinAvgOfWeeks(attTotalWeekly, b),
+    grandTotal:         fourWinAvgOfWeeks(totalPresentWeekly, b),
     adults:             fourWinAvgOfWeeks(attAdultsWeekly, b),
     kids:               fourWinAvgOfWeeks(attKidsWeekly, b),
     youth:              fourWinAvgOfWeeks(attYouthWeekly, b),

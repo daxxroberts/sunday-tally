@@ -101,19 +101,25 @@ const FALLBACK_GROUP_LABEL = 'Stats'
 export async function deriveGridConfigFromSchema(
   supabase: SupabaseClient,
   churchId: string,
+  includeDeactivated: boolean = false
 ): Promise<GridConfig | null> {
+  let tmplQuery = supabase
+    .from('service_templates')
+    .select('id, service_code, display_name, sort_order, primary_tag_id, is_active, location_id, church_locations(is_active)')
+    .eq('church_id', churchId)
+    .order('sort_order', { ascending: true })
+    
+  if (!includeDeactivated) {
+    tmplQuery = tmplQuery.eq('is_active', true)
+  }
+
   const [churchRes, tmplRes, tagsRes, repRes, metricsRes, linksRes] = await Promise.all([
     supabase
       .from('churches')
       .select('id, tracks_volunteers, tracks_responses, tracks_giving')
       .eq('id', churchId)
       .single(),
-    supabase
-      .from('service_templates')
-      .select('id, service_code, display_name, sort_order, primary_tag_id')
-      .eq('church_id', churchId)
-      .eq('is_active', true)
-      .order('sort_order', { ascending: true }),
+    tmplQuery,
     // Canonical palette order lives in fetchActiveServiceTags — group order
     // feeds the positional color palette shared with track page + dashboard.
     fetchActiveServiceTags(supabase, churchId),
@@ -134,11 +140,23 @@ export async function deriveGridConfigFromSchema(
   ])
 
   const church    = churchRes.data as ChurchRow | null
-  const templates = (tmplRes.data    ?? []) as TemplateRow[]
   const tags      = tagsRes.rows as unknown as ServiceTagRow[]
   const repTags   = (repRes.data     ?? []) as ReportingTagRow[]
   const metrics   = (metricsRes.data ?? []) as MetricRow[]
   const links     = (linksRes.data   ?? []) as LinkRow[]
+
+  // Filter out templates linked to a deactivated location if !includeDeactivated
+  const rawTemplates = (tmplRes.data ?? []) as (TemplateRow & { church_locations?: { is_active?: boolean } | { is_active?: boolean }[] | null })[]
+  const templates = rawTemplates.filter(t => {
+    if (includeDeactivated) return true
+    
+    // If not including deactivated, filter out those where the location is inactive
+    // Note: one-to-one join might be an object or array depending on PostgREST shape
+    const loc = Array.isArray(t.church_locations) ? t.church_locations[0] : t.church_locations
+    if (loc && loc.is_active === false) return false
+    
+    return true
+  })
 
   if (!church || templates.length === 0) return null
 

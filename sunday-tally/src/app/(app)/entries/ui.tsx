@@ -42,7 +42,10 @@ export interface Instance {
 // entries keyed by `${metric_id}|${service_instance_id}` (instance) or `${metric_id}|${period_anchor}` (period)
 export type EntryMap = Record<string, { value: number | null; is_not_applicable: boolean }>
 
-export interface GridPrefs { excludedTotalMinistries?: string[] }
+export interface GridPrefs { 
+  excludedTotalMinistries?: string[]
+  excludedTotalMetrics?: string[] 
+}
 
 /* ── date helper (client-side, browser-local is fine per task note) ──────── */
 export function toDateStr(d: Date) {
