@@ -124,7 +124,7 @@ export default function LandingPage() {
               className="flex-1 text-left"
             >
               <span className="inline-block py-1.5 px-4 rounded-full bg-stone-100 border border-stone-200 text-stone-600 text-sm font-semibold mb-6">
-                See the impact you're having on your community.
+                Up and running in 10 minutes. See the impact you're having on your community.
               </span>
               <div ref={heroRef} className="relative block text-left w-full group">
                 <h1 className="text-6xl md:text-8xl lg:text-[110px] font-extrabold tracking-tighter text-stone-900 mb-4 pb-4 leading-[1.05] relative z-10">
@@ -314,7 +314,7 @@ export default function LandingPage() {
               <div className="flex-1 relative z-10 pr-4">
                 <h3 className="text-3xl font-bold text-stone-900 mb-4 tracking-tight">Instant Imports</h3>
                 <p className="text-stone-500 text-lg leading-relaxed">
-                  Upload your spreadsheet. Our AI maps the data and imports your history in seconds.
+                  Upload your spreadsheet. Our AI maps the data and imports your history in seconds, getting you set up in under 10 minutes.
                 </p>
               </div>
               <div className="flex-1 w-full bg-stone-50 rounded-xl border border-stone-200 p-4 shadow-inner relative h-48 flex items-center justify-center group-hover:bg-blue-50/50 transition-colors">
@@ -410,6 +410,7 @@ export default function LandingPage() {
               <h3 className="text-3xl font-bold text-stone-900 mb-2">Base Platform</h3>
               <p className="text-stone-500 text-lg mb-6 leading-relaxed">Everything you need to count what matters (attendance, volunteers, giving, salvations, and baptisms) and see it week over week, month over month, and year over year.</p>
               <ul className="text-stone-600 font-medium flex flex-col gap-3 mb-8 md:mb-0">
+                <li className="flex items-center gap-2 justify-center md:justify-start"><CheckCircle2 className="text-[#4F6EF7]" size={20} /> Up and running in 10 minutes</li>
                 <li className="flex items-center gap-2 justify-center md:justify-start"><CheckCircle2 className="text-[#4F6EF7]" size={20} /> Unlimited manual tracking</li>
                 <li className="flex items-center gap-2 justify-center md:justify-start"><CheckCircle2 className="text-[#4F6EF7]" size={20} /> Core metric dashboards</li>
                 <li className="flex items-center gap-2 justify-center md:justify-start"><CheckCircle2 className="text-[#4F6EF7]" size={20} /> Standard reporting</li>
