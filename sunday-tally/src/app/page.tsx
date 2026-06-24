@@ -347,20 +347,20 @@ export default function LandingPage() {
             >
               <div className="flex-1 w-full bg-stone-50 rounded-xl border border-stone-200 p-6 shadow-inner relative flex flex-col gap-4 mb-8">
                 <div className="self-end bg-stone-900 text-white text-xs font-medium px-4 py-2 rounded-2xl rounded-tr-sm shadow-sm max-w-[85%] group-hover:-translate-y-1 transition-transform">
-                  How many kids checked in last Sunday?
+                  Did we have enough volunteers for the kids' ministry last Sunday?
                 </div>
                 <div className="self-start bg-white border border-stone-200 text-stone-900 text-xs font-medium px-4 py-3 rounded-2xl rounded-tl-sm shadow-sm max-w-[90%] group-hover:-translate-y-1 transition-transform delay-75">
                   <div className="flex items-center gap-2 mb-2">
                     <Bot size={14} className="text-[#4F6EF7]" />
                     <span className="text-[#4F6EF7] font-bold">SundayTally AI</span>
                   </div>
-                  You had <span className="font-bold text-stone-900 bg-blue-50 px-1 rounded">114 kids</span> check in last Sunday. That's a 15% increase from the previous week!
+                  Last Sunday, you had <span className="font-bold text-stone-900 bg-blue-50 px-1 rounded">42 volunteers</span> and <span className="font-bold text-stone-900 bg-blue-50 px-1 rounded">114 kids</span> in attendance, representing a ratio of about 1 volunteer for every 2.7 kids.
                 </div>
               </div>
               <div className="relative z-10 mt-auto">
-                <h3 className="text-2xl font-bold text-stone-900 mb-3 tracking-tight">AI Assistant</h3>
+                <h3 className="text-2xl font-bold text-stone-900 mb-3 tracking-tight">Staff Meeting Analytics</h3>
                 <p className="text-stone-500 leading-relaxed">
-                  Ask questions and get instant, accurate answers about your data.
+                  Get the numbers your staff meetings actually need. Ask about attendance trends, volunteer ratios, or giving averages, all in plain English.
                 </p>
               </div>
             </motion.div>
@@ -371,9 +371,9 @@ export default function LandingPage() {
               className="md:col-span-8 bg-white border border-stone-200 shadow-sm hover:shadow-md rounded-[2rem] p-8 md:p-12 transition-all flex flex-col md:flex-row-reverse items-center gap-12 group overflow-hidden relative"
             >
               <div className="flex-1 relative z-10 pl-4">
-                <h3 className="text-3xl font-bold text-stone-900 mb-4 tracking-tight">Custom Dashboards</h3>
+                <h3 className="text-3xl font-bold text-stone-900 mb-4 tracking-tight">Built for Your Team</h3>
                 <p className="text-stone-500 text-lg leading-relaxed">
-                  Stop relying on rigid reports. Tell the AI what you want to see, and watch it build the exact chart you need right in front of you.
+                  Stop fighting with rigid database grids. Build custom dashboards for children's directors, campus pastors, and finance teams so everyone sees the trends that matter to their ministry.
                 </p>
               </div>
               <div className="flex-1 w-full bg-stone-50 rounded-xl border border-stone-200 p-6 shadow-inner relative h-48 flex items-center justify-center group-hover:bg-blue-50/50 transition-colors">
