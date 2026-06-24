@@ -171,32 +171,35 @@ export default function AppLayout({ children, role, fillHeight }: AppLayoutProps
             return (
               <Link
                 href="/settings/account"
-                className={`flex-1 flex flex-col items-center justify-center py-2 gap-1 transition-colors ${
+                className={`flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-colors ${
                   active ? 'text-[#4F6EF7]' : 'text-gray-400 hover:text-gray-600'
                 }`}
               >
-                <span className={`inline-flex items-center gap-1.5 rounded-full py-0.5 pl-0.5 pr-2 text-[11px] font-semibold ring-1 ring-inset transition-all ${
-                  active 
-                    ? 'ring-[#4F6EF7] text-[#4F6EF7] bg-[#4F6EF7]/5' 
-                    : 'ring-gray-200 text-gray-500 hover:bg-gray-50'
-                }`}>
+                <div className="flex h-6 items-center justify-center">
                   {profile?.avatarUrl ? (
                     <img
-                      className="inline-block size-5 rounded-full object-cover shrink-0"
+                      className={`inline-block size-6 rounded-full object-cover shrink-0 transition-all ${
+                        active ? 'ring-2 ring-[#4F6EF7] ring-offset-1' : ''
+                      }`}
                       src={profile.avatarUrl}
                       alt=""
                     />
                   ) : (
-                    <span className={`flex size-5 shrink-0 items-center justify-center rounded-full text-[9px] font-bold transition-colors ${
+                    <span className={`flex size-6 shrink-0 items-center justify-center rounded-full text-[9.5px] font-extrabold transition-colors ${
                       active ? 'bg-[#4F6EF7] text-white' : 'bg-slate-100 text-slate-600'
                     }`}>
                       {getInitials(profile?.fullName || 'User')}
                     </span>
                   )}
-                  <span className="hidden sm:inline-block max-w-[80px] truncate">{profile?.fullName ? profile.fullName.split(' ')[0] : 'User'}</span>
-                  <span className="sm:hidden font-medium">Me</span>
+                </div>
+                <span className={`text-xs font-medium transition-colors ${active ? 'text-[#4F6EF7]' : ''}`}>
+                  <span className="hidden sm:inline-block max-w-[80px] truncate">
+                    {profile?.fullName ? profile.fullName.split(' ')[0] : 'Account'}
+                  </span>
+                  <span className="sm:hidden">
+                    {profile?.fullName ? profile.fullName.split(' ')[0] : 'Me'}
+                  </span>
                 </span>
-                <span className={`text-[10px] font-medium transition-colors ${active ? 'text-[#4F6EF7]' : 'text-gray-400'}`}>Account</span>
               </Link>
             )
           })()}
