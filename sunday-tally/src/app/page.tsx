@@ -3,7 +3,7 @@
 import { useRef, useState, useEffect } from 'react'
 import { motion, useScroll, useTransform } from 'framer-motion'
 import Link from 'next/link'
-import { ArrowRight, BarChart3, Bot, Database, CheckCircle2 } from 'lucide-react'
+import { ArrowRight, BarChart3, Bot, Database, CheckCircle2, ShieldCheck } from 'lucide-react'
 import { ParticleNetwork } from '@/components/ParticleNetwork'
 
 function useCountUp(target: number, trigger: boolean, duration: number = 1000) {
@@ -153,13 +153,18 @@ export default function LandingPage() {
               transition={{ duration: 0.5, delay: 0.2 }}
               className="flex flex-col gap-5 w-full lg:w-auto shrink-0 lg:ml-auto"
             >
-              <Link 
-                href="/auth/login" 
-                className="w-full sm:w-auto rounded-full bg-stone-900 px-10 py-5 text-xl font-bold text-white shadow-lg hover:bg-[#4F6EF7] hover:shadow-[#4F6EF7]/40 transition-all duration-300 hover:-translate-y-1 hover:scale-[1.02] flex items-center justify-center gap-3 group"
-              >
-                Start your 45-day free trial
-                <ArrowRight size={24} className="group-hover:translate-x-1 transition-transform" />
-              </Link>
+              <div className="flex flex-col gap-2 items-center">
+                <Link 
+                  href="/auth/login" 
+                  className="w-full sm:w-auto rounded-full bg-stone-900 px-10 py-5 text-xl font-bold text-white shadow-lg hover:bg-[#4F6EF7] hover:shadow-[#4F6EF7]/40 transition-all duration-300 hover:-translate-y-1 hover:scale-[1.02] flex items-center justify-center gap-3 group"
+                >
+                  Start your 45-day free trial
+                  <ArrowRight size={24} className="group-hover:translate-x-1 transition-transform" />
+                </Link>
+                <span className="text-xs text-stone-400 font-semibold text-center mt-1">
+                  No credit card required. Setup in under 10 minutes, guaranteed.
+                </span>
+              </div>
               <Link 
                 href="#features" 
                 className="w-full sm:w-auto rounded-full bg-white border-2 border-stone-200 px-10 py-5 text-lg font-bold text-stone-900 shadow-sm hover:bg-stone-50 hover:border-stone-300 transition-all flex items-center justify-center"
@@ -415,6 +420,16 @@ export default function LandingPage() {
                 <li className="flex items-center gap-2 justify-center md:justify-start"><CheckCircle2 className="text-[#4F6EF7]" size={20} /> Core metric dashboards</li>
                 <li className="flex items-center gap-2 justify-center md:justify-start"><CheckCircle2 className="text-[#4F6EF7]" size={20} /> Standard reporting</li>
               </ul>
+              
+              <div className="mt-8 p-4 bg-[#4F6EF7]/5 border border-[#4F6EF7]/10 rounded-2xl flex items-start gap-3 text-left">
+                <ShieldCheck className="text-[#4F6EF7] shrink-0 mt-0.5" size={18} />
+                <div>
+                  <p className="text-sm font-bold text-stone-900">The 10-Minute Setup Guarantee</p>
+                  <p className="text-xs text-stone-500 mt-1 leading-relaxed">
+                    If you aren't seeing your first dashboard in 10 minutes, click the help button and our team will map and import your history for you.
+                  </p>
+                </div>
+              </div>
             </div>
             <div className="md:w-80 bg-[#4F6EF7] text-white p-8 rounded-[1.5rem] shadow-xl text-center shrink-0 relative overflow-hidden flex flex-col items-center justify-center transition-all hover:shadow-2xl hover:scale-[1.02]">
               <div className="inline-block bg-white/15 text-white text-[10px] font-bold tracking-wider uppercase px-3 py-1 rounded-full mb-4">
