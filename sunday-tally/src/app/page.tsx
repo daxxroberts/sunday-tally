@@ -180,6 +180,7 @@ export default function LandingPage() {
         <div ref={containerRef} className="mt-20 relative max-w-5xl mx-auto px-4 [perspective:2000px] z-10">
           <motion.div 
             style={{ rotateX, scale, opacity }}
+            initial={{ rotateX: 25, scale: 0.8, opacity: 0 }}
             className="relative rounded-2xl border border-stone-200 bg-white/40 p-2 backdrop-blur-xl shadow-2xl shadow-stone-200/50 overflow-hidden transform-gpu"
           >
             {/* Fake browser chrome */}

@@ -5,7 +5,7 @@ import { SundaySessionProvider } from '@/contexts/SundaySessionContext'
 import { DataReviewProvider } from '@/contexts/DataReviewContext'
 
 const geist = Geist({
-  variable: '--font-geist',
+  variable: '--font-geist-sans',
   subsets: ['latin'],
 })
 
