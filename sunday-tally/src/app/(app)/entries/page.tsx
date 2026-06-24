@@ -64,6 +64,7 @@ export default function EntriesPage() {
   const [showTotals, setShowTotals] = useState(false)
 
   const readOnly = role === 'viewer'
+  const canEditTotals = role === 'owner' || role === 'admin'
   const weekStartStr = toDateStr(weekStart)
 
   /* ── boot: resolve user → membership → campus → grid prefs (once) ─────── */
@@ -454,15 +455,17 @@ export default function EntriesPage() {
   }, [supabase, churchId, entries, readOnly, materializeVirtual, locationForInst])
 
   /* ── grid_config include-in-total prefs (E-12 / N-8) ────────────────────── */
-  const saveGridPrefs = useCallback(async (next: GridPrefs) => {
+  const saveGridPrefs = useCallback(async (patch: GridPrefs) => {
     if (!churchId) return
+    const prev = gridPrefs
+    const next = { ...gridPrefs, ...patch }
     setGridPrefs(next)
-    // 0039 split: merge the patch over the CURRENT prefs (dashboard_prefs, or
-    // the legacy grid_config keys pre-apply) so an entries save never drops the
-    // dashboard's keyMetrics/targets — then write via the shared helper.
-    const existing = readChurchPrefs(church)
-    await saveChurchPrefs(supabase, churchId, { ...existing, ...next })
-  }, [supabase, churchId, church])
+    const res = await saveChurchPrefs(supabase, churchId, next as Record<string, unknown>)
+    if (!res.ok) {
+      setGridPrefs(prev)
+      console.error('Failed to save grid prefs:', res.message)
+    }
+  }, [supabase, churchId, gridPrefs])
 
   // ── derived: all ministries across the week (deduped by tag) for Totals ──
   const weekMinistries = useMemo(() => {
@@ -639,7 +642,7 @@ export default function EntriesPage() {
               rollups={rollups}
               excluded={excluded}
               excludedMetrics={excludedMetrics}
-              readOnly={readOnly}
+              readOnly={!canEditTotals}
               onSavePrefs={saveGridPrefs}
             />
           ) : (

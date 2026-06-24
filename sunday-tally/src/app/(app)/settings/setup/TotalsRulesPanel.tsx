@@ -22,7 +22,7 @@ import {
   type ReportingType,
 } from '@/lib/totals'
 
-const MANAGER_ROLES = new Set(['owner', 'admin', 'editor'])
+const MANAGER_ROLES = new Set(['owner', 'admin'])
 
 export function TotalsRulesPanel({ embedded = false }: { embedded?: boolean }) {
   const supabase = useMemo(() => createClient(), [])
@@ -233,7 +233,7 @@ export function TotalsRulesPanel({ embedded = false }: { embedded?: boolean }) {
         </div>
       )}
       {!canEdit && (
-        <p className="mt-4 text-[13px] text-slate-400">Only owners, admins, and editors can change the total rules.</p>
+        <p className="mt-4 text-[13px] text-slate-400">Only owners and admins can change the total rules.</p>
       )}
 
       <p className="mt-6 text-[12px] text-slate-400">

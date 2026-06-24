@@ -117,7 +117,7 @@ function subtractFourWin(a: FourWin, b: FourWin): FourWin {
 // ── Zone D — Summary card (E-30..E-33) + include-in-total edit (E-22 / I) ─────
 function SummaryCard({
   summary, grandTotalOverride, tagSections, roleByTag, colorByTag, excluded, excludedMetrics, flags, onChangeFlags, onSavePrefs,
-  tracks, hideComparisons, readOnly, windows, onDrill,
+  tracks, hideComparisons, readOnly, windows, onDrill, canEditTotals,
 }: {
   summary: DashboardData['summary']
   grandTotalOverride: FourWin
@@ -134,6 +134,7 @@ function SummaryCard({
   readOnly: boolean
   windows: DashboardData['windows']
   onDrill?: (selector: MetricSelector, window: DrillWindow) => void
+  canEditTotals: boolean
 }) {
   const [customize, setCustomize] = useState(false)
   const [editTotals, setEditTotals] = useState(false)
@@ -220,14 +221,16 @@ function SummaryCard({
           !readOnly && (
             <div className="flex items-center gap-1">
               {/* E-22 — include-in-total edit (filled pencil, chrome on hover, DS-15) */}
-              <button
-                onClick={() => { setEditTotals(e => !e); setCustomize(false) }}
-                title="Edit what counts toward the grand total"
-                aria-label="Edit what counts toward the grand total"
-                className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full text-slate-400 transition-colors duration-200 hover:bg-slate-100 hover:text-slate-700 focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/40"
-              >
-                <Ico.pencilFill className="h-3 w-3" />
-              </button>
+              {canEditTotals && (
+                <button
+                  onClick={() => { setEditTotals(e => !e); setCustomize(false) }}
+                  title="Edit what counts toward the grand total"
+                  aria-label="Edit what counts toward the grand total"
+                  className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full text-slate-400 transition-colors duration-200 hover:bg-slate-100 hover:text-slate-700 focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/40"
+                >
+                  <Ico.pencilFill className="h-3 w-3" />
+                </button>
+              )}
               {/* E-32 — per-user customize (cog only, no label) */}
               <button
                 onClick={() => { setCustomize(c => !c); setEditTotals(false) }}
@@ -270,7 +273,7 @@ function SummaryCard({
       )}
 
       {/* E-22 panel — church-wide include-in-total (mirrors Entries TotalsView) */}
-      {editTotals && !readOnly && (
+      {editTotals && canEditTotals && (
         <div className="border-b border-slate-100 bg-slate-50/60 px-4 py-3">
           <div className="mb-4">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Include in grand total</p>
@@ -636,6 +639,7 @@ export default function DashboardPage() {
   // ── Key Metrics (#70) — owner/admin only. Persist ordered featured keys +
   //    per-metric all-time targets church-wide (grid_config, no migration).
   const canEditKeyMetrics = role === 'owner' || role === 'admin'
+  const canEditTotals = role === 'owner' || role === 'admin'
   const [pickerOpen, setPickerOpen] = useState(false)
 
   function handleSaveKeyMetrics(keys: string[]) {
@@ -1058,6 +1062,7 @@ export default function DashboardPage() {
                     readOnly={readOnly}
                     windows={data.windows}
                     onDrill={handleDrill}
+                    canEditTotals={canEditTotals}
                   />
 
                   {/* ── Zone F — per-ministry breakdown (E-50..E-55). Phase B:
