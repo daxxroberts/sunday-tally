@@ -72,7 +72,13 @@ export default function AuthLoginPage() {
           redirectTo: `${window.location.origin}/auth/callback`,
         },
       })
-      if (error) setError(error.message)
+      if (error) {
+        let msg = error.message
+        if (msg.toLowerCase().includes('not enabled') || msg.toLowerCase().includes('not configured')) {
+          msg = `OAuth Setup Required: Please configure and enable Google/Microsoft login providers in your Supabase project dashboard.`
+        }
+        setError(msg)
+      }
     } catch (err: any) {
       setError(err?.message || 'Failed to trigger OAuth. Please try again.')
     }
@@ -238,89 +244,47 @@ export default function AuthLoginPage() {
           />
         </div>
 
-        {/* Password Tab Form */}
-        {mode === 'password' && (
-          <form onSubmit={handlePasswordSubmit} className="space-y-4">
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <label htmlFor="password" className="block text-xs font-bold text-stone-700 uppercase tracking-wider">
-                  Password
-                </label>
-                <Link
-                  href="/auth/forgot"
-                  className="text-xs font-bold text-[#4F6EF7] hover:text-[#3D5BD4] transition-colors"
-                >
-                  Forgot password?
-                </Link>
-              </div>
-              <input
-                id="password"
-                type="password"
-                autoComplete="current-password"
-                placeholder="••••••••"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                disabled={isPending}
-                className="w-full border border-stone-200 rounded-xl px-4 py-3 text-stone-900 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-[#4F6EF7] focus:border-transparent disabled:opacity-50 text-sm transition-all shadow-inner"
-              />
-            </div>
-
-            {error && (
-              <motion.p
-                initial={{ opacity: 0, y: 5 }}
-                animate={{ opacity: 1, y: 0 }}
-                role="alert"
-                className="text-sm font-semibold text-[#B45309] bg-[#F59E0B]/10 border border-[#F59E0B]/30 rounded-xl px-4 py-3"
+        {/* Animated height container for smooth tab transitions */}
+        <motion.div 
+          layout
+          className="overflow-hidden"
+          transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+        >
+          <AnimatePresence mode="wait">
+            {mode === 'password' ? (
+              <motion.form 
+                key="password-form"
+                initial={{ opacity: 0, x: -8 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 8 }}
+                transition={{ duration: 0.18 }}
+                onSubmit={handlePasswordSubmit} 
+                className="space-y-4"
               >
-                {error}
-              </motion.p>
-            )}
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <label htmlFor="password" className="block text-xs font-bold text-stone-700 uppercase tracking-wider">
+                      Password
+                    </label>
+                    <Link
+                      href="/auth/forgot"
+                      className="text-xs font-bold text-[#4F6EF7] hover:text-[#3D5BD4] transition-colors"
+                    >
+                      Forgot password?
+                    </Link>
+                  </div>
+                  <input
+                    id="password"
+                    type="password"
+                    autoComplete="current-password"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    disabled={isPending}
+                    className="w-full border border-stone-200 rounded-xl px-4 py-3 text-stone-900 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-[#4F6EF7] focus:border-transparent disabled:opacity-50 text-sm transition-all shadow-inner"
+                  />
+                </div>
 
-            <button
-              type="submit"
-              disabled={!email || !password || isPending}
-              className="w-full bg-[#4F6EF7] text-white rounded-xl py-3.5 font-bold text-sm hover:bg-[#3D5BD4] active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-[0_4px_12px_rgba(79,110,247,0.15)] cursor-pointer"
-            >
-              {isPending ? 'Signing in...' : 'Sign in'}
-            </button>
-
-            {/* Link access helper */}
-            <div className="text-center pt-2">
-              <button
-                type="button"
-                onClick={() => { setMode('magic'); setError(null) }}
-                className="text-xs text-stone-400 hover:text-stone-600 transition-colors py-1 cursor-pointer"
-              >
-                Sign in with a link instead
-              </button>
-            </div>
-          </form>
-        )}
-
-        {/* Magic Link Form */}
-        {mode === 'magic' && (
-          <form onSubmit={handleMagicSubmit} className="space-y-4">
-            {magicSent ? (
-              <motion.div 
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="bg-[#4F6EF7]/5 border border-[#4F6EF7]/20 rounded-xl px-4 py-4"
-              >
-                <p className="text-sm text-[#3D5BD4] font-bold">Check your email</p>
-                <p className="text-xs text-[#3D5BD4]/80 mt-1 leading-relaxed">
-                  We sent a secure magic link to <strong className="font-semibold text-[#3D5BD4]">{email}</strong>. Click it to log in.
-                </p>
-                <button
-                  type="submit"
-                  disabled={resendCooldown > 0 || isPending}
-                  className="mt-4 text-xs text-[#3D5BD4] hover:text-[#4F6EF7] disabled:opacity-40 disabled:cursor-not-allowed transition-colors font-bold flex items-center gap-1 cursor-pointer"
-                >
-                  <RefreshCw size={12} className={isPending ? 'animate-spin' : ''} />
-                  {resendCooldown > 0 ? `Resend link in ${resendCooldown}s` : 'Resend link'}
-                </button>
-              </motion.div>
-            ) : (
-              <>
                 {error && (
                   <motion.p
                     initial={{ opacity: 0, y: 5 }}
@@ -331,17 +295,80 @@ export default function AuthLoginPage() {
                     {error}
                   </motion.p>
                 )}
+
                 <button
                   type="submit"
-                  disabled={!email || isPending}
+                  disabled={!email || !password || isPending}
                   className="w-full bg-[#4F6EF7] text-white rounded-xl py-3.5 font-bold text-sm hover:bg-[#3D5BD4] active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-[0_4px_12px_rgba(79,110,247,0.15)] cursor-pointer"
                 >
-                  {isPending ? 'Sending...' : 'Send me a magic link'}
+                  {isPending ? 'Signing in...' : 'Sign in'}
                 </button>
-              </>
+
+                {/* Link access helper */}
+                <div className="text-center pt-2">
+                  <button
+                    type="button"
+                    onClick={() => { setMode('magic'); setError(null) }}
+                    className="text-xs text-stone-400 hover:text-stone-600 transition-colors py-1 cursor-pointer"
+                  >
+                    Sign in with a link instead
+                  </button>
+                </div>
+              </motion.form>
+            ) : (
+              <motion.form 
+                key="magic-form"
+                initial={{ opacity: 0, x: 8 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -8 }}
+                transition={{ duration: 0.18 }}
+                onSubmit={handleMagicSubmit} 
+                className="space-y-4"
+              >
+                {magicSent ? (
+                  <motion.div 
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="bg-[#4F6EF7]/5 border border-[#4F6EF7]/20 rounded-xl px-4 py-4"
+                  >
+                    <p className="text-sm text-[#3D5BD4] font-bold">Check your email</p>
+                    <p className="text-xs text-[#3D5BD4]/80 mt-1 leading-relaxed">
+                      We sent a secure magic link to <strong className="font-semibold text-[#3D5BD4]">{email}</strong>. Click it to log in.
+                    </p>
+                    <button
+                      type="submit"
+                      disabled={resendCooldown > 0 || isPending}
+                      className="mt-4 text-xs text-[#3D5BD4] hover:text-[#4F6EF7] disabled:opacity-40 disabled:cursor-not-allowed transition-colors font-bold flex items-center gap-1 cursor-pointer"
+                    >
+                      <RefreshCw size={12} className={isPending ? 'animate-spin' : ''} />
+                      {resendCooldown > 0 ? `Resend link in ${resendCooldown}s` : 'Resend link'}
+                    </button>
+                  </motion.div>
+                ) : (
+                  <>
+                    {error && (
+                      <motion.p
+                        initial={{ opacity: 0, y: 5 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        role="alert"
+                        className="text-sm font-semibold text-[#B45309] bg-[#F59E0B]/10 border border-[#F59E0B]/30 rounded-xl px-4 py-3"
+                      >
+                        {error}
+                      </motion.p>
+                    )}
+                    <button
+                      type="submit"
+                      disabled={!email || isPending}
+                      className="w-full bg-[#4F6EF7] text-white rounded-xl py-3.5 font-bold text-sm hover:bg-[#3D5BD4] active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-[0_4px_12px_rgba(79,110,247,0.15)] cursor-pointer"
+                    >
+                      {isPending ? 'Sending...' : 'Send me a magic link'}
+                    </button>
+                  </>
+                )}
+              </motion.form>
             )}
-          </form>
-        )}
+          </AnimatePresence>
+        </motion.div>
 
         {/* Passkey Biometric Sign In button */}
         <div className="mt-8 pt-6 border-t border-stone-100 flex justify-center">
@@ -416,30 +443,42 @@ export default function AuthLoginPage() {
                 {/* Simulated Auth text status */}
                 {simulatedAuth === 'passkey' && (
                   <>
-                    <h3 className="text-lg font-bold text-stone-900 mb-2">
+                    <div className="flex justify-center mb-1">
+                      <span className="text-[9px] font-black tracking-widest text-[#4F6EF7] bg-[#4F6EF7]/10 px-2 py-0.5 rounded-full uppercase">Demo Simulation</span>
+                    </div>
+                    <h3 className="text-lg font-bold text-stone-900 mb-2 mt-2">
                       {simStep === 1 && 'Accessing Security Key'}
                       {simStep === 2 && 'Scanning Biometrics'}
                       {simStep === 3 && 'Passkey Approved'}
                     </h3>
-                    <p className="text-stone-500 text-sm">
+                    <p className="text-stone-500 text-xs leading-relaxed">
                       {simStep === 1 && 'Place your finger on the fingerprint sensor...'}
                       {simStep === 2 && 'Reading authentication token...'}
                       {simStep === 3 && 'Success! Authenticating session...'}
+                    </p>
+                    <p className="text-[10px] text-stone-400 mt-4 leading-normal italic">
+                      * In production, this securely verifies your device passkeys via WebAuthn credentials.
                     </p>
                   </>
                 )}
 
                 {simulatedAuth === 'pco' && (
                   <>
-                    <h3 className="text-lg font-bold text-stone-900 mb-2">
+                    <div className="flex justify-center mb-1">
+                      <span className="text-[9px] font-black tracking-widest text-[#00c853] bg-[#00c853]/10 px-2 py-0.5 rounded-full uppercase">Demo Simulation</span>
+                    </div>
+                    <h3 className="text-lg font-bold text-stone-900 mb-2 mt-2">
                       {simStep === 1 && 'Connecting Planning Center'}
                       {simStep === 2 && 'Exchanging Safe Tokens'}
                       {simStep === 3 && 'Access Granted'}
                     </h3>
-                    <p className="text-stone-500 text-sm">
+                    <p className="text-stone-500 text-xs leading-relaxed">
                       {simStep === 1 && 'Initializing secure Planning Center OAuth route...'}
                       {simStep === 2 && 'Acquiring active member profile tokens...'}
                       {simStep === 3 && 'Linking church analytics dashboard...'}
+                    </p>
+                    <p className="text-[10px] text-stone-400 mt-4 leading-normal italic">
+                      * In production, this initiates Planning Center OpenID authentication.
                     </p>
                   </>
                 )}
