@@ -408,24 +408,27 @@ export default function LandingPage() {
           >
             <div className="flex-1 text-center md:text-left">
               <h3 className="text-3xl font-bold text-stone-900 mb-2">Base Platform</h3>
-              <p className="text-stone-500 text-lg mb-6 leading-relaxed">Everything you need to count what matters — attendance, volunteers, giving, salvations, baptisms — and see it week over week, month over month, and year over year.</p>
+              <p className="text-stone-500 text-lg mb-6 leading-relaxed">Everything you need to count what matters (attendance, volunteers, giving, salvations, and baptisms) and see it week over week, month over month, and year over year.</p>
               <ul className="text-stone-600 font-medium flex flex-col gap-3 mb-8 md:mb-0">
                 <li className="flex items-center gap-2 justify-center md:justify-start"><CheckCircle2 className="text-[#4F6EF7]" size={20} /> Unlimited manual tracking</li>
                 <li className="flex items-center gap-2 justify-center md:justify-start"><CheckCircle2 className="text-[#4F6EF7]" size={20} /> Core metric dashboards</li>
                 <li className="flex items-center gap-2 justify-center md:justify-start"><CheckCircle2 className="text-[#4F6EF7]" size={20} /> Standard reporting</li>
               </ul>
             </div>
-            <div className="md:w-80 bg-white p-8 rounded-3xl border border-stone-200 shadow-lg text-center shrink-0">
-              <p className="text-sm font-bold tracking-widest text-stone-400 uppercase mb-2">One price per location</p>
-              <div className="flex justify-center items-end gap-1 mb-2">
-                <span className="text-5xl font-extrabold text-stone-900">$22</span>
-                <span className="text-stone-500 font-medium pb-1">/mo</span>
+            <div className="md:w-80 bg-[#4F6EF7] text-white p-8 rounded-[1.5rem] shadow-xl text-center shrink-0 relative overflow-hidden flex flex-col items-center justify-center transition-all hover:shadow-2xl hover:scale-[1.02]">
+              <div className="inline-block bg-white/15 text-white text-[10px] font-bold tracking-wider uppercase px-3 py-1 rounded-full mb-4">
+                45-Day Free Trial
               </div>
-              <p className="text-sm text-stone-500 mb-6">Add a campus anytime for $22/mo.</p>
-              <button className="w-full bg-stone-900 hover:bg-stone-800 text-white font-bold py-4 rounded-xl transition-all shadow-md hover:shadow-xl hover:-translate-y-1">
+              <p className="text-sm font-bold tracking-widest text-blue-200 uppercase mb-2">One price per location</p>
+              <div className="flex justify-center items-end gap-1 mb-2">
+                <span className="text-5xl font-extrabold text-white">$22</span>
+                <span className="text-blue-100 font-medium pb-1">/mo</span>
+              </div>
+              <p className="text-sm text-blue-100/90 mb-6">Add a campus anytime for $22/mo.</p>
+              <button className="w-full bg-white hover:bg-stone-50 text-[#4F6EF7] font-bold py-4 rounded-xl transition-all shadow-md hover:shadow-xl hover:-translate-y-0.5 active:scale-[0.98]">
                 Start free for 45 days
               </button>
-              <p className="text-xs text-stone-400 mt-4 font-medium">No credit card required.</p>
+              <p className="text-xs text-blue-200/80 mt-4 font-medium">No credit card required.</p>
             </div>
           </motion.div>
 
@@ -436,7 +439,7 @@ export default function LandingPage() {
             </div>
             <h2 className="text-3xl md:text-5xl font-bold text-stone-900 mb-6 tracking-tight">Add AI Insights & Dashboards</h2>
             <p className="text-lg text-stone-500 max-w-3xl mx-auto leading-relaxed">
-              Ask a question in plain English — <span className="italic">"How's our average attendance this year compared to last?"</span> — and get a chart or number you can save to your dashboard forever. It refreshes itself every week. No spreadsheets, no formulas.
+              Ask a question in plain English (like <span className="italic">"How's our average attendance this year compared to last?"</span>) and get a chart or number you can save to your dashboard forever. It refreshes itself every week. No spreadsheets, no formulas.
             </p>
           </div>
 
@@ -464,7 +467,7 @@ export default function LandingPage() {
                 <li className="flex items-start gap-3"><CheckCircle2 className="text-emerald-500 shrink-0" size={18} /> <span>Ask AI in plain English</span></li>
                 <li className="flex items-start gap-3"><CheckCircle2 className="text-emerald-500 shrink-0" size={18} /> <span>Auto-refreshing dashboards</span></li>
                 <li className="flex items-start gap-3"><CheckCircle2 className="text-emerald-500 shrink-0" size={18} /> <span>Compare to last year & set goals</span></li>
-                <li className="flex items-start gap-3 opacity-40"><span className="w-[18px] flex justify-center text-stone-300">—</span> <span>Most capable AI models</span></li>
+                <li className="flex items-start gap-3 opacity-40"><span className="w-[18px] flex justify-center text-stone-300">-</span> <span>Most capable AI models</span></li>
               </ul>
               <div className="mt-8 pt-6 border-t border-stone-100">
                 <p className="text-xs text-stone-500 font-medium uppercase tracking-wider text-center">Best for a single church getting started</p>
@@ -489,14 +492,14 @@ export default function LandingPage() {
               </div>
               <p className="text-sm text-stone-400 font-medium mb-6 pb-6 border-b border-stone-100">per church</p>
               
-              <p className="text-stone-600 mb-8 leading-relaxed">Room to grow — 40 saved dashboard widgets across every ministry, same plain-English AI.</p>
+              <p className="text-stone-600 mb-8 leading-relaxed">Room to grow, offering 40 saved dashboard widgets across every ministry, with the same plain-English AI.</p>
               
               <ul className="flex flex-col gap-4 text-sm text-stone-600 mt-auto">
                 <li className="flex items-start gap-3"><CheckCircle2 className="text-emerald-500 shrink-0" size={18} /> <span><strong>40</strong> Saved dashboard widgets</span></li>
                 <li className="flex items-start gap-3"><CheckCircle2 className="text-emerald-500 shrink-0" size={18} /> <span>Ask AI in plain English</span></li>
                 <li className="flex items-start gap-3"><CheckCircle2 className="text-emerald-500 shrink-0" size={18} /> <span>Auto-refreshing dashboards</span></li>
                 <li className="flex items-start gap-3"><CheckCircle2 className="text-emerald-500 shrink-0" size={18} /> <span>Compare to last year & set goals</span></li>
-                <li className="flex items-start gap-3 opacity-40"><span className="w-[18px] flex justify-center text-stone-300">—</span> <span>Most capable AI models</span></li>
+                <li className="flex items-start gap-3 opacity-40"><span className="w-[18px] flex justify-center text-stone-300">-</span> <span>Most capable AI models</span></li>
               </ul>
               <div className="mt-8 pt-6 border-t border-stone-100">
                 <p className="text-xs text-stone-500 font-medium uppercase tracking-wider text-center">Best for a growing, multi-ministry church</p>
@@ -536,7 +539,7 @@ export default function LandingPage() {
           {/* AI Banner / Callout */}
           <div className="text-center mb-16">
             <p className="text-stone-500 font-medium bg-stone-100 inline-block px-6 py-2 rounded-full text-sm">
-              ✨ Try the AI <span className="font-bold text-stone-900">free</span> during your 45-day trial — it's unlocked from day one.
+              Try the AI <span className="font-bold text-stone-900">free</span> during your 45-day trial: it's unlocked from day one.
             </p>
           </div>
 
