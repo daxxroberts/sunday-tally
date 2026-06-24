@@ -194,7 +194,15 @@ function BillingActions({ state, currentTier }: { state: RenderState, currentTie
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ aiTier: selectedTier })
       })
-      const body = await res.json()
+      
+      const text = await res.text()
+      let body: any = {}
+      try {
+        if (text) body = JSON.parse(text)
+      } catch (err) {
+        throw new Error(`Server returned an invalid response (${res.status})`)
+      }
+      
       if (!res.ok || !body.url) throw new Error(body.error ?? 'Something went wrong')
       window.location.href = body.url
     } catch (e) {

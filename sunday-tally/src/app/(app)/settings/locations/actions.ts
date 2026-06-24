@@ -149,11 +149,14 @@ export async function checkLocationDataAction(locationId: string) {
   if (!caller.ok || !isOwnerAdmin(caller.member.role)) return { error: 'Unauthorized' }
 
   const adminSb = await createServiceRoleClient()
-  const [tmplCheck, entryCheck] = await Promise.all([
+  const [tmplCheck, entryCheck, instCheck] = await Promise.all([
     adminSb.from('service_templates').select('id', { count: 'exact', head: true }).eq('location_id', locationId),
-    adminSb.from('metric_entries').select('id', { count: 'exact', head: true }).eq('location_id', locationId)
+    adminSb.from('metric_entries').select('id', { count: 'exact', head: true }).eq('location_id', locationId),
+    adminSb.from('service_instances').select('id', { count: 'exact', head: true }).eq('location_id', locationId)
   ])
   
-  const hasData = (tmplCheck.count && tmplCheck.count > 0) || (entryCheck.count && entryCheck.count > 0)
+  const hasData = (tmplCheck.count && tmplCheck.count > 0) || 
+                  (entryCheck.count && entryCheck.count > 0) || 
+                  (instCheck.count && instCheck.count > 0)
   return { hasData }
 }

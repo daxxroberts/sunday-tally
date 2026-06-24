@@ -173,9 +173,13 @@ export function LocationsPanel({ embedded = false }: { embedded?: boolean }) {
     setCampuses(p => p.filter(x => x.id !== confirmDelete.id))
     const { error } = await deleteLocationAction(confirmDelete.id)
     setBusy(null)
-    if (error) setCampuses(prev)
-    setConfirmDelete(null)
-    setDeleteWarning(false)
+    if (error) {
+      alert(error)
+      setCampuses(prev)
+    } else {
+      setConfirmDelete(null)
+      setDeleteWarning(false)
+    }
   }
 
   /* ── E-55 reorder campuses (rewrite sort_order among active) ───────────── */

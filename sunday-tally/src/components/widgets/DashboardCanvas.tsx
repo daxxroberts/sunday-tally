@@ -530,14 +530,26 @@ export function DashboardCanvas({ role }: { role?: UserRole }) {
                   className="layout"
                   layouts={{ lg: layout }}
                   breakpoints={{ lg: 1024, md: 768, sm: 480, xs: 0 }}
-                  cols={{ lg: COLS, md: 8, sm: 4, xs: 2 }}
+                  cols={{ lg: COLS, md: COLS, sm: 1, xs: 1 }}
                   rowHeight={ROW_H}
                   margin={[14, 14]}
-                  dragConfig={{ enabled: editMode, cancel: '.no-drag' }}
-                  resizeConfig={{ enabled: editMode }}
-                  onLayoutChange={(l: Layout) => setLayout([...l])}
-                  onDragStop={(l: Layout) => { const next = [...l]; setLayout(next); persistLayout(next) }}
-                  onResizeStop={(l: Layout) => { const next = [...l]; setLayout(next); persistLayout(next) }}
+                  dragConfig={{
+                    enabled: editMode && width >= 768,
+                    cancel: '.no-drag'
+                  }}
+                  resizeConfig={{
+                    enabled: editMode && width >= 768,
+                    handles: ['se']
+                  }}
+                  onLayoutChange={(current: Layout, all: Partial<Record<string, Layout>>) => {
+                    // Only persist if we are on a desktop/tablet breakpoint (lg or md)
+                    // otherwise scrolling on mobile might accidentally trigger a save that destroys the 12-col layout
+                    if (all.lg && width >= 768) {
+                      setLayout([...all.lg])
+                    }
+                  }}
+                  onDragStop={(l: Layout, _old, _new, _p, _e, _node) => { if (width >= 768) persistLayout([...l]) }}
+                  onResizeStop={(l: Layout, _old, _new, _p, _e, _node) => { if (width >= 768) persistLayout([...l]) }}
                 >
                   {widgets.map((w) => (
                     <div key={w.id} className={editMode ? 'cursor-move rounded-2xl ring-2 ring-[#4F6EF7]/30' : ''}>
