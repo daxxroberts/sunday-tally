@@ -441,7 +441,7 @@ export default function LandingPage() {
             </div>
             <h2 className="text-3xl md:text-5xl font-bold text-stone-900 mb-6 tracking-tight">Add AI Insights & Dashboards</h2>
             <p className="text-lg text-stone-500 max-w-3xl mx-auto leading-relaxed">
-              Ask a question in plain English (like <span className="italic">"How's our average attendance this year compared to last?"</span>) and get a chart or number you can save to your dashboard forever. It refreshes itself every week. No spreadsheets, no formulas.
+              Get the numbers your staff meetings actually need. Ask a question in plain English (like <span className="italic">"Did we have enough volunteers for the kids' ministry last Sunday?"</span>) and save the resulting chart to your dashboard. No spreadsheets, no formulas.
             </p>
           </div>
 
