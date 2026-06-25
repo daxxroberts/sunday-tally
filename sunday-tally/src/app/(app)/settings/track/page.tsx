@@ -92,7 +92,7 @@ export function TrackPanel({ embedded = false }: { embedded?: boolean }) {
     const { data: rtRows } = await supabase
       .from('reporting_tags')
       .select('id, code, name')
-      .eq('church_id', cid)
+      .or(`church_id.eq.${cid},church_id.is.null`)
     setReportingTags((rtRows ?? []) as ReportingTag[])
 
     const minIds = mins.map(m => m.id)

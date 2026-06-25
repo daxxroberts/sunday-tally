@@ -32,6 +32,73 @@ let demoChurchId = '';
 test.beforeAll(async () => {
   const { data } = await admin.from('churches').select('id').eq('name', 'Demo Church').single();
   demoChurchId = (data?.id as string) ?? '';
+
+  if (demoChurchId) {
+    const { data: existingTag } = await admin
+      .from('service_tags')
+      .select('id')
+      .eq('church_id', demoChurchId)
+      .eq('name', 'Life Groups')
+      .single();
+
+    let tagId = existingTag?.id;
+
+    if (!tagId) {
+      const { data: newTag, error: tagErr } = await admin
+        .from('service_tags')
+        .insert({
+          church_id: demoChurchId,
+          name: 'Life Groups',
+          code: 'LIFE_GROUPS',
+          tag_role: 'OTHER',
+          is_active: true,
+          is_custom: true,
+        })
+        .select('id')
+        .single();
+      if (tagErr) console.error('Error creating Life Groups tag:', tagErr);
+      tagId = newTag?.id;
+    }
+
+    if (tagId) {
+      const { data: repTags } = await admin.from('reporting_tags').select('id, code');
+      const attRepTag = repTags?.find(r => r.code === 'ATTENDANCE')?.id;
+      const volRepTag = repTags?.find(r => r.code === 'VOLUNTEERS')?.id;
+
+      if (attRepTag && volRepTag) {
+        const metricsToInsert = [
+          { name: 'Attendance', code: 'attendance', repId: attRepTag },
+          { name: 'Dinner', code: 'dinner', repId: volRepTag },
+          { name: 'Lunch', code: 'lunch', repId: volRepTag },
+        ];
+
+        for (const m of metricsToInsert) {
+          const { data: existingMetric } = await admin
+            .from('metrics')
+            .select('id')
+            .eq('ministry_tag_id', tagId)
+            .eq('name', m.name)
+            .single();
+
+          if (!existingMetric) {
+            const { error: metErr } = await admin
+              .from('metrics')
+              .insert({
+                church_id: demoChurchId,
+                ministry_tag_id: tagId,
+                name: m.name,
+                code: `roll_${m.code}`,
+                mode: 'rollup',
+                reporting_tag_id: m.repId,
+                scope: 'instance',
+                is_active: true,
+              });
+            if (metErr) console.error(`Error creating ${m.name} metric:`, metErr);
+          }
+        }
+      }
+    }
+  }
 });
 
 // ── Helpers ──────────────────────────────────────────────────────────────────

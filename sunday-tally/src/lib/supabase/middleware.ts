@@ -38,13 +38,23 @@ export async function updateSession(request: NextRequest) {
   // login, invite, forgot, reset, and the recovery/OTP landing at /auth/callback.
   // The forgot/reset flow specifically depends on an unauthenticated user (they
   // forgot their password) being able to load /auth/reset to process the token.
-  const publicRoutes = [
+  const exactPublicRoutes = [
+    '/',
+    '/pricing',
+    '/features',
+    '/contact',
+    '/terms',
+    '/privacy',
+  ]
+  const prefixPublicRoutes = [
     '/auth/',
     '/signup',
     '/api/',
     '/services-prototype',
   ]
-  const isPublic = publicRoutes.some(r => pathname.startsWith(r))
+  const isPublic = 
+    exactPublicRoutes.includes(pathname) ||
+    prefixPublicRoutes.some(r => pathname.startsWith(r))
 
   // Not logged in and not on a public route → redirect to login
   if (!user && !isPublic) {

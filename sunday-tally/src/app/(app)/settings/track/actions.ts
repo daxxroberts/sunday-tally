@@ -261,7 +261,9 @@ async function inheritRollupsFromParent(
   for (const t of (tagRows ?? []) as { id: string; parent_tag_id: string | null }[]) parentOf.set(t.id, t.parent_tag_id)
 
   const { data: rtags } = await supabase
-    .from('reporting_tags').select('id, code').eq('church_id', churchId)
+    .from('reporting_tags')
+    .select('id, code')
+    .or(`church_id.eq.${churchId},church_id.is.null`)
   const codeById = new Map<string, string>()
   for (const r of (rtags ?? []) as { id: string; code: string }[]) codeById.set(r.id, r.code)
 
@@ -540,7 +542,7 @@ export async function addCount(params: {
     const { data: rtag } = await supabase
       .from('reporting_tags')
       .select('id')
-      .eq('church_id', churchId)
+      .or(`church_id.eq.${churchId},church_id.is.null`)
       .eq('code', params.reportingTagCode)
       .maybeSingle()
     if (!rtag) return { ok: false, error: `Reporting tag ${params.reportingTagCode} not found` }

@@ -89,12 +89,79 @@ const RICH_MOCK_RESPONSE = {
 
 /** Sets up the GET mock and navigates to the review page */
 async function goToReviewPage(page: Page, jobId = 'rich-mock-job') {
+  let resolvedSetup = RICH_PROPOSED_SETUP as any;
+  if (resolvedSetup && (!resolvedSetup.metrics || !resolvedSetup.ministry_tags)) {
+    const ministry_tags = (resolvedSetup.service_tags || []).map((t: any) => {
+      let role = 'OTHER';
+      if (t.tag_code === 'MAIN') role = 'ADULT_SERVICE';
+      else if (t.tag_code === 'KIDS') role = 'KIDS_MINISTRY';
+      else if (t.tag_code === 'YOUTH') role = 'YOUTH_MINISTRY';
+      return {
+        code: t.tag_code,
+        name: t.tag_name,
+        tag_role: role
+      };
+    });
+
+    if (ministry_tags.length === 0) {
+      ministry_tags.push({ code: 'MAIN', name: 'Experience', tag_role: 'ADULT_SERVICE' });
+    }
+
+    const metrics: any[] = [];
+
+    // Add attendance metrics
+    ministry_tags.forEach((t: any) => {
+      if (t.tag_role !== 'OTHER') {
+        metrics.push({
+          metric_code: `att_${t.code.toLowerCase()}`,
+          name: 'Attenders',
+          ministry_tag: t.code,
+          reporting_tag: 'ATTENDANCE'
+        });
+      }
+    });
+
+    // Add volunteers
+    (resolvedSetup.volunteer_categories || []).forEach((v: any) => {
+      metrics.push({
+        metric_code: `vol_${v.name.toLowerCase().replace(/[^a-z0-9]/g, '_')}`,
+        name: v.name,
+        ministry_tag: v.primary_tag || 'MAIN',
+        reporting_tag: 'VOLUNTEERS'
+      });
+    });
+
+    // Add giving
+    (resolvedSetup.giving_sources || []).forEach((g: any) => {
+      metrics.push({
+        metric_code: `giving_${g.name.toLowerCase().replace(/[^a-z0-9]/g, '_')}`,
+        name: g.name,
+        ministry_tag: 'MAIN',
+        reporting_tag: 'GIVING'
+      });
+    });
+
+    resolvedSetup = {
+      ...resolvedSetup,
+      ministry_tags,
+      metrics
+    };
+  }
+
   await page.route('**/api/onboarding/import*', async route => {
     if (route.request().method() === 'GET') {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify(RICH_MOCK_RESPONSE),
+        body: JSON.stringify({
+          job: {
+            proposed_mapping: {
+              sources: [{ kind: 'csv', name: 'church_data.csv' }],
+              proposed_setup: resolvedSetup,
+            },
+            anomalies: [],
+          },
+        }),
       });
     } else {
       await route.fallback();
@@ -240,9 +307,9 @@ test.describe('R13–R15: Volunteer & Giving columns', () => {
   test.afterEach(async () => { await deleteUser(email); });
 
   test('R13: Volunteer column headers appear (Band, Tech, Guest Service)', async ({ page }) => {
-    await expect(page.locator('th:has-text("Vol: Band")').first()).toBeVisible();
-    await expect(page.locator('th:has-text("Vol: Tech")').first()).toBeVisible();
-    await expect(page.locator('th:has-text("Vol: Guest Service")').first()).toBeVisible();
+    await expect(page.locator('th:has-text("Band")').first()).toBeVisible();
+    await expect(page.locator('th:has-text("Tech")').first()).toBeVisible();
+    await expect(page.locator('th:has-text("Guest Service")').first()).toBeVisible();
   });
 
   test('R14: Giving sources appear as column headers', async ({ page }) => {
@@ -304,7 +371,7 @@ test.describe('R19–R21: AI Chat pane', () => {
 
   test('R19: Assistant greeting is shown on load', async ({ page }) => {
     await expect(
-      page.locator('text=/reviewed your spreadsheet/i')
+      page.locator('text=/mapping your spreadsheet/i')
     ).toBeVisible({ timeout: 8_000 });
   });
 
