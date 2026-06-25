@@ -192,13 +192,8 @@ export default function AppLayout({ children, role, fillHeight }: AppLayoutProps
                     </span>
                   )}
                 </div>
-                <span className={`text-xs font-medium transition-colors ${active ? 'text-[#4F6EF7]' : ''}`}>
-                  <span className="hidden sm:inline-block max-w-[80px] truncate">
-                    {profile?.fullName ? profile.fullName.split(' ')[0] : 'Account'}
-                  </span>
-                  <span className="sm:hidden">
-                    {profile?.fullName ? profile.fullName.split(' ')[0] : 'Me'}
-                  </span>
+                <span className="text-xs font-medium select-none invisible" aria-hidden="true">
+                  Account
                 </span>
               </Link>
             )
