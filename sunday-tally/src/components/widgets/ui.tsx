@@ -282,15 +282,19 @@ function WidgetBody({ w }: { w: ReplayWidget }) {
 function DeltaBadge({ delta }: { delta: number }) {
   if (!Number.isFinite(delta)) return null
   const up = delta >= 0
+  const absDeltaFormatted = Math.abs(delta).toLocaleString('en-US', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  })
   return (
     <span
       className={`font-num inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[11px] font-semibold tabular-nums ${
         up ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
       }`}
-      title={`${up ? 'Up' : 'Down'} ${Math.abs(delta)}% vs the same window last year`}
+      title={`${up ? 'Up' : 'Down'} ${absDeltaFormatted}% vs the same window last year`}
     >
       <span aria-hidden>{up ? '▲' : '▼'}</span>
-      {Math.abs(delta)}%
+      {absDeltaFormatted}%
     </span>
   )
 }

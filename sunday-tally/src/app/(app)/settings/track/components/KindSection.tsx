@@ -6,14 +6,14 @@
 
 import { useState } from 'react'
 import { Ico } from '@/app/(app)/entries/ui'
-import type { MetricMode, RollupOp } from '../actions'
+import type { MetricMode, RollupOp, TagRole } from '../actions'
 import type { Metric } from '../types'
 import { MetricRowItem } from './MetricRowItem'
 
 export function KindSection({
-  kindCode, kindLabel, metrics, write,
+  kindCode, kindLabel, metrics, write, inheritedRole,
   eligibleParentsFor, parentLabel, unreferencedRollupIds, childCountFor,
-  onRenameMetric, onRemoveMetric, onSetMode, onSetParent, onSetOp,
+  onRenameMetric, onRemoveMetric, onSetMode, onSetParent, onSetOp, onSetDemographic,
 }: {
   /** Phase-1 kind code OR any other reporting kind (GIVING / custom) — only
    *  drives the accent tint, so a plain string is safe. */
@@ -21,6 +21,8 @@ export function KindSection({
   kindLabel: string
   metrics: Metric[]
   write: boolean
+  /** The owning ministry's role — the default each count inherits. */
+  inheritedRole: TagRole
   eligibleParentsFor: (m: Metric) => Metric[]
   parentLabel: (m: Metric) => string
   unreferencedRollupIds: Set<string>
@@ -30,8 +32,12 @@ export function KindSection({
   onSetMode: (metricId: string, mode: MetricMode, op?: RollupOp) => Promise<void>
   onSetParent: (metricId: string, parentId: string | null) => Promise<void>
   onSetOp: (metricId: string, op: RollupOp) => Promise<void>
+  onSetDemographic: (metricId: string, demographic: TagRole | null) => Promise<void>
 }) {
   const [expanded, setExpanded] = useState(true)
+
+  // Who-are-you-counting lives only on people counts: Attendance & Volunteers.
+  const showDemographic = kindCode === 'ATTENDANCE' || kindCode === 'VOLUNTEERS'
 
   const kindAccent = kindCode === 'ATTENDANCE'
     ? 'bg-[#4F6EF7]/15 border-[#4F6EF7]/30'
@@ -74,11 +80,14 @@ export function KindSection({
             parentLabel={parentLabel}
             unreferenced={unreferencedRollupIds.has(m.id)}
             childCount={childCountFor(m.id)}
+            showDemographic={showDemographic}
+            inheritedRole={inheritedRole}
             onRename={name => onRenameMetric(m.id, name)}
             onRemove={() => onRemoveMetric(m.id)}
             onSetMode={(mode, op) => onSetMode(m.id, mode, op)}
             onSetParent={pid => onSetParent(m.id, pid)}
             onSetOp={op => onSetOp(m.id, op)}
+            onSetDemographic={d => onSetDemographic(m.id, d)}
           />
         ))}
       </ul>

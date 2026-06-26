@@ -21,7 +21,7 @@ export function DetailPanel({
   eligibleParentsFor, parentLabel, unreferencedRollupIds, childCountFor,
   onSelectChild, onAddGroupHere,
   onRename, onRoleChange, onColorChange, onDeactivate,
-  onAddMetric, onRenameMetric, onRemoveMetric, onSetMode, onSetParent, onSetOp,
+  onAddMetric, onRenameMetric, onRemoveMetric, onSetMode, onSetParent, onSetOp, onSetDemographic,
 }: {
   ministry: Ministry
   write: boolean
@@ -46,6 +46,7 @@ export function DetailPanel({
   onSetMode: (metricId: string, mode: MetricMode, op?: RollupOp) => Promise<void>
   onSetParent: (metricId: string, parentId: string | null) => Promise<void>
   onSetOp: (metricId: string, op: RollupOp) => Promise<void>
+  onSetDemographic: (metricId: string, demographic: TagRole | null) => Promise<void>
 }) {
   const [addingGroup, setAddingGroup] = useState(false)
   const [gName, setGName] = useState('')
@@ -190,6 +191,7 @@ export function DetailPanel({
             kindLabel={kind.label}
             metrics={list}
             write={write}
+            inheritedRole={ministry.tag_role}
             eligibleParentsFor={eligibleParentsFor}
             parentLabel={parentLabel}
             unreferencedRollupIds={unreferencedRollupIds}
@@ -199,6 +201,7 @@ export function DetailPanel({
             onSetMode={onSetMode}
             onSetParent={onSetParent}
             onSetOp={onSetOp}
+            onSetDemographic={onSetDemographic}
           />
         )
       })}

@@ -130,7 +130,7 @@ export function accentForRole(role: string | null | undefined): string {
 export function roleLabel(role: string | null | undefined): string {
   switch (role) {
     case 'KIDS_MINISTRY': return 'Kids'
-    case 'YOUTH_MINISTRY': return 'Youth'
+    case 'YOUTH_MINISTRY': return 'Students'
     case 'ADULT_SERVICE': return 'Adults'
     default: return 'Other'
   }

@@ -162,7 +162,7 @@ function tagRoleLabel(role: string): string {
   switch (role) {
     case 'ADULT_SERVICE':  return 'Adult service'
     case 'KIDS_MINISTRY':  return 'Kids'
-    case 'YOUTH_MINISTRY': return 'Youth'
+    case 'YOUTH_MINISTRY': return 'Students'
     case 'OTHER':          return 'Other'
     default:               return role
   }

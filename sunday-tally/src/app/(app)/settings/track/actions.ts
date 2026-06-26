@@ -513,13 +513,17 @@ export interface MetricRow {
   mode: MetricMode
   rollup_op: RollupOp | null
   parent_metric_id: string | null
+  /** Who this count actually counts, independent of its ministry. null =
+   *  inherit the ministry's tag_role (the default). Surfaced in the UI for
+   *  ATTENDANCE / VOLUNTEERS counts only. */
+  counted_demographic: TagRole | null
   /** 'instance' = per gathering (needs a service); 'period' = weekly/monthly
    *  church-wide (Stat Entries — e.g. Giving). Optional: defaults to instance. */
   scope?: 'instance' | 'period'
   cadence?: 'week' | 'month' | 'day' | null
 }
 
-const METRIC_SELECT = 'id, code, name, reporting_tag_id, is_canonical, is_active, mode, rollup_op, parent_metric_id'
+const METRIC_SELECT = 'id, code, name, reporting_tag_id, is_canonical, is_active, mode, rollup_op, parent_metric_id, counted_demographic'
 
 export async function addCount(params: {
   ministryId: string
@@ -651,6 +655,34 @@ export async function setMetricMode(
     const { data, error } = await supabase
       .from('metrics')
       .update(update)
+      .eq('id', metricId)
+      .eq('church_id', churchId)
+      .select(METRIC_SELECT)
+      .single()
+
+    if (error || !data) return { ok: false, error: error?.message ?? 'Update failed' }
+    return { ok: true, data: data as MetricRow }
+  } catch (e) {
+    return { ok: false, error: (e as Error).message }
+  }
+}
+
+// ── setCountDemographic ────────────────────────────────────────────────────
+// Set who a count actually counts (independent of its ministry). null =
+// inherit the ministry's tag_role. Surfaced in the UI for ATTENDANCE /
+// VOLUNTEERS only; the column is harmless on other kinds, so the server
+// doesn't gate by kind.
+export async function setCountDemographic(
+  metricId: string,
+  demographic: TagRole | null,
+): Promise<ActionResult<MetricRow>> {
+  try {
+    const supabase = await createClient()
+    const churchId = await requireOwnerAdmin(supabase)
+
+    const { data, error } = await supabase
+      .from('metrics')
+      .update({ counted_demographic: demographic })
       .eq('id', metricId)
       .eq('church_id', churchId)
       .select(METRIC_SELECT)

@@ -204,7 +204,7 @@ function MiniDashboard({ church, data, loading }: {
                 <MetricRow label="Total Attendance" values={data.summary.grandTotal} hideComparisons={hideComparisons} />
                 <MetricRow label="Adults" values={data.summary.adults} hideComparisons={hideComparisons} />
                 <MetricRow label="Kids" values={data.summary.kids} hideComparisons={hideComparisons} />
-                <MetricRow label="Youth" values={data.summary.youth} hideComparisons={hideComparisons} />
+                <MetricRow label="Students" values={data.summary.youth} hideComparisons={hideComparisons} />
                 {church?.tracks_volunteers && (
                   <MetricRow label="Volunteers" values={data.summary.volunteers} hideComparisons={hideComparisons} />
                 )}

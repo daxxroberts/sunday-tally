@@ -6,13 +6,14 @@
 
 import { useState } from 'react'
 import InlineEditField from '@/components/shared/InlineEditField'
-import { Ico } from '@/app/(app)/entries/ui'
-import type { MetricMode, RollupOp } from '../actions'
-import { OP_LABEL, type Metric } from '../types'
+import { Ico, roleLabel } from '@/app/(app)/entries/ui'
+import type { MetricMode, RollupOp, TagRole } from '../actions'
+import { OP_LABEL, ROLE_OPTIONS, type Metric } from '../types'
 
 export function MetricRowItem({
   metric, write, eligibleParents, parentLabel, unreferenced, childCount,
-  onRename, onRemove, onSetMode, onSetParent, onSetOp,
+  showDemographic, inheritedRole,
+  onRename, onRemove, onSetMode, onSetParent, onSetOp, onSetDemographic,
 }: {
   metric: Metric
   write: boolean
@@ -20,11 +21,16 @@ export function MetricRowItem({
   parentLabel: (m: Metric) => string
   unreferenced: boolean
   childCount: number
+  /** Attendance / Volunteers counts can carry a per-count demographic. */
+  showDemographic: boolean
+  /** The ministry's role — the default this count inherits when not overridden. */
+  inheritedRole: TagRole
   onRename: (name: string) => Promise<void>
   onRemove: () => void
   onSetMode: (mode: MetricMode, op?: RollupOp) => void
   onSetParent: (parentId: string | null) => void
   onSetOp: (op: RollupOp) => void
+  onSetDemographic: (demographic: TagRole | null) => void
 }) {
   const [confirmRemove, setConfirmRemove] = useState(false)
   const isRollup = metric.mode === 'rollup'
@@ -46,10 +52,30 @@ export function MetricRowItem({
               {metric.cadence === 'month' ? 'Monthly' : 'Weekly'} · church-wide
             </span>
           )}
+          {/* View-only: show an explicit demographic when it differs from the ministry default. */}
+          {!write && showDemographic && metric.counted_demographic && (
+            <span className="shrink-0 rounded-md bg-[#4F6EF7]/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#3D5BD4]" title="Who this count counts.">
+              Counts {roleLabel(metric.counted_demographic)}
+            </span>
+          )}
         </div>
 
         {write && (
           <div className="flex shrink-0 items-center gap-1">
+            {/* who-are-you-counting (Attendance / Volunteers only). Blank = inherit
+                the ministry; a pick is an explicit demographic for this count. */}
+            {showDemographic && (
+              <select
+                value={metric.counted_demographic ?? ''}
+                onChange={e => onSetDemographic(e.target.value ? (e.target.value as TagRole) : null)}
+                aria-label="Who are you counting?"
+                title="Who you're actually counting here. Defaults to this ministry — change it to count a different group (e.g. students serving in the adult ministry)."
+                className={`mr-1 rounded-lg border px-2 py-1 text-[12px] outline-none focus:border-[#4F6EF7] ${metric.counted_demographic ? 'border-[#4F6EF7]/50 bg-[#4F6EF7]/5 font-semibold text-[#3D5BD4]' : 'border-slate-200 bg-white text-slate-500'}`}
+              >
+                <option value="">{roleLabel(inheritedRole)} · default</option>
+                {ROLE_OPTIONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+              </select>
+            )}
             {/* mode toggle (service-bound metrics only) */}
             {!isPeriod && (
             <div className="flex overflow-hidden rounded-lg border border-slate-200 text-[11px] font-semibold">

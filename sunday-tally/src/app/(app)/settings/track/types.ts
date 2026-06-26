@@ -47,7 +47,7 @@ export const KIND_PLACEHOLDER: Record<KindCode, string> = {
 export const ROLE_OPTIONS: { value: TagRole; label: string }[] = [
   { value: 'ADULT_SERVICE', label: 'Adults' },
   { value: 'KIDS_MINISTRY', label: 'Kids' },
-  { value: 'YOUTH_MINISTRY', label: 'Youth' },
+  { value: 'YOUTH_MINISTRY', label: 'Students' },
   { value: 'OTHER', label: 'Other' },
 ]
 

@@ -1,0 +1,477 @@
+{
+  "dashboard": {
+    "id": "3b19e388-10f2-41de-8299-0f1279a94600",
+    "church_id": "4037051e-52f5-4c22-a0f1-32e7b45aaff4",
+    "owner_user_id": null,
+    "name": "Demo Dashboard",
+    "scope": "church",
+    "breakpoints": {},
+    "created_by": null,
+    "created_at": "2026-06-09T12:23:39.653816+00:00",
+    "updated_at": "2026-06-09T12:23:39.653816+00:00"
+  },
+  "widgets": [
+    {
+      "id": "bfd0a48a-4bbc-4062-9ff3-f4a97295e065",
+      "title": "Weekly attendance — this year vs last",
+      "kind": "metric_card",
+      "viz_config": {
+        "kind": "metric_card",
+        "title": "Weekly attendance — this year vs last"
+      },
+      "layout": {
+        "h": 2,
+        "w": 2,
+        "x": 4,
+        "y": 0
+      },
+      "rows": [
+        {
+          "value": 438.65,
+          "prior": 433.24,
+          "delta": 1.25
+        }
+      ],
+      "resolved": {
+        "start": "2026-01-01",
+        "end": "2026-06-25"
+      },
+      "explainerFacts": {
+        "summing": "Attendance = adults + kids + youth + other, averaged per week; blanks skipped, not zero; cancelled services excluded.",
+        "refresh": "Rolling — year so far, from January 1st.",
+        "currentlyShowing": "Jan 2026 – Jun 2026",
+        "included": "All ministries and services."
+      },
+      "agg": "weekly_avg"
+    },
+    {
+      "id": "9da1ee46-bb4d-48e2-b670-00d53b4ee2a7",
+      "title": "Volunteers by ministry",
+      "kind": "pivot",
+      "viz_config": {},
+      "layout": {
+        "h": 5,
+        "w": 3,
+        "x": 3,
+        "y": 6
+      },
+      "rows": [
+        {
+          "bucket": "2025-07",
+          "EXPERIENCE": 390,
+          "LIFEKIDS": 148
+        },
+        {
+          "bucket": "2025-08",
+          "EXPERIENCE": 389,
+          "LIFEKIDS": 213
+        },
+        {
+          "bucket": "2025-09",
+          "EXPERIENCE": 306,
+          "LIFEKIDS": 160
+        },
+        {
+          "bucket": "2025-10",
+          "EXPERIENCE": 272,
+          "LIFEKIDS": 153
+        },
+        {
+          "bucket": "2025-11",
+          "EXPERIENCE": 417,
+          "LIFEKIDS": 200
+        },
+        {
+          "bucket": "2025-12",
+          "EXPERIENCE": 252,
+          "LIFEKIDS": 116
+        },
+        {
+          "bucket": "2026-01",
+          "EXPERIENCE": 245,
+          "LIFEKIDS": 108
+        },
+        {
+          "bucket": "2026-02",
+          "EXPERIENCE": 353,
+          "LIFEKIDS": 169
+        },
+        {
+          "bucket": "2026-03",
+          "EXPERIENCE": 378,
+          "LIFEKIDS": 217
+        },
+        {
+          "bucket": "2026-04",
+          "EXPERIENCE": 367,
+          "LIFEKIDS": 174
+        },
+        {
+          "bucket": "2026-05",
+          "EXPERIENCE": 291,
+          "LIFEKIDS": 179
+        }
+      ],
+      "resolved": {
+        "start": "2025-07-01",
+        "end": "2026-06-25"
+      },
+      "explainerFacts": {
+        "summing": "Volunteers = every volunteer area added together; blanks skipped, not zero; cancelled services excluded.",
+        "refresh": "Rolling — always the last 12 months.",
+        "currentlyShowing": "Jul 2025 – Jun 2026, monthly",
+        "included": "All ministries and services."
+      },
+      "agg": "sum"
+    },
+    {
+      "id": "c86ceab6-6a52-453d-bac3-09fd2bef3f03",
+      "title": "Giving by month",
+      "kind": "bar",
+      "viz_config": {},
+      "layout": {
+        "h": 5,
+        "w": 3,
+        "x": 0,
+        "y": 6
+      },
+      "rows": [
+        {
+          "bucket": "2025-07",
+          "value": 74761
+        },
+        {
+          "bucket": "2025-08",
+          "value": 102219
+        },
+        {
+          "bucket": "2025-09",
+          "value": 76130
+        },
+        {
+          "bucket": "2025-10",
+          "value": 79777
+        },
+        {
+          "bucket": "2025-11",
+          "value": 106456
+        },
+        {
+          "bucket": "2025-12",
+          "value": 95535
+        },
+        {
+          "bucket": "2026-01",
+          "value": 150525
+        },
+        {
+          "bucket": "2026-02",
+          "value": 85080
+        },
+        {
+          "bucket": "2026-03",
+          "value": 127897
+        },
+        {
+          "bucket": "2026-04",
+          "value": 80928
+        },
+        {
+          "bucket": "2026-05",
+          "value": 92302
+        }
+      ],
+      "resolved": {
+        "start": "2025-07-01",
+        "end": "2026-06-25"
+      },
+      "explainerFacts": {
+        "summing": "Giving = all sources totalled each week; blanks skipped, not zero; cancelled services excluded.",
+        "refresh": "Rolling — always the last 12 months.",
+        "currentlyShowing": "Jul 2025 – Jun 2026, monthly",
+        "included": "All ministries and services."
+      },
+      "agg": "sum"
+    },
+    {
+      "id": "bd96f3b6-311d-4a6d-aeca-8fa643d88ea5",
+      "title": "Attendance this year vs last",
+      "kind": "area",
+      "viz_config": {},
+      "layout": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 11
+      },
+      "rows": [
+        {
+          "bucket": "2026-01",
+          "value": 1255,
+          "prior": 1568
+        },
+        {
+          "bucket": "2026-02",
+          "value": 1749,
+          "prior": 1784
+        },
+        {
+          "bucket": "2026-03",
+          "value": 1929,
+          "prior": 1922
+        },
+        {
+          "bucket": "2026-04",
+          "value": 2169,
+          "prior": 2205
+        },
+        {
+          "bucket": "2026-05",
+          "value": 1671,
+          "prior": 1843
+        }
+      ],
+      "resolved": {
+        "start": "2026-01-01",
+        "end": "2026-06-25"
+      },
+      "explainerFacts": {
+        "summing": "Attendance = adults + kids + youth + other, summed; blanks skipped, not zero; cancelled services excluded.",
+        "refresh": "Rolling — year so far, from January 1st.",
+        "currentlyShowing": "Jan 2026 – Jun 2026, monthly",
+        "included": "All ministries and services."
+      },
+      "agg": "sum"
+    },
+    {
+      "id": "287103c5-dda8-472b-8a3d-2edc9bd68fec",
+      "title": "Volunteers to attendance",
+      "kind": "metric_card",
+      "viz_config": {},
+      "layout": {
+        "h": 2,
+        "w": 2,
+        "x": 4,
+        "y": 4
+      },
+      "rows": [
+        {
+          "value": 28.28
+        }
+      ],
+      "resolved": {
+        "start": "2026-01-01",
+        "end": "2026-06-25"
+      },
+      "explainerFacts": {
+        "summing": "Volunteers ÷ Attendance, shown as a percentage; blanks skipped, not zero; cancelled services excluded.",
+        "refresh": "Rolling — year so far, from January 1st.",
+        "currentlyShowing": "Jan 2026 – Jun 2026",
+        "included": "All ministries and services."
+      },
+      "agg": "sum"
+    },
+    {
+      "id": "9fa6aa33-be34-4c1c-8dca-373494a36194",
+      "title": "Avg weekly attendance",
+      "kind": "metric_card",
+      "viz_config": {},
+      "layout": {
+        "h": 2,
+        "w": 2,
+        "x": 4,
+        "y": 2
+      },
+      "rows": [
+        {
+          "value": 438.65
+        }
+      ],
+      "resolved": {
+        "start": "2026-01-01",
+        "end": "2026-06-25"
+      },
+      "explainerFacts": {
+        "summing": "Attendance = adults + kids + youth + other, averaged per week; blanks skipped, not zero; cancelled services excluded.",
+        "refresh": "Rolling — year so far, from January 1st.",
+        "currentlyShowing": "Jan 2026 – Jun 2026",
+        "included": "All ministries and services."
+      },
+      "agg": "weekly_avg"
+    },
+    {
+      "id": "e8092aa7-1aac-423b-b57f-7eb9dea636c3",
+      "title": "Attendance trend — weekly avg by month",
+      "kind": "area",
+      "viz_config": {
+        "kind": "area",
+        "xKey": "bucket",
+        "title": "Attendance trend — weekly avg by month",
+        "yKeys": [
+          "value",
+          "prior_year_value"
+        ]
+      },
+      "layout": {
+        "h": 6,
+        "w": 4,
+        "x": 0,
+        "y": 0
+      },
+      "rows": [
+        {
+          "bucket": "2026-01",
+          "value": 418.33,
+          "prior": 392
+        },
+        {
+          "bucket": "2026-02",
+          "value": 437.25,
+          "prior": 446
+        },
+        {
+          "bucket": "2026-03",
+          "value": 385.8,
+          "prior": 384.4
+        },
+        {
+          "bucket": "2026-04",
+          "value": 542.25,
+          "prior": 551.25
+        },
+        {
+          "bucket": "2026-05",
+          "value": 417.75,
+          "prior": 460.75
+        }
+      ],
+      "resolved": {
+        "start": "2026-01-01",
+        "end": "2026-06-25"
+      },
+      "explainerFacts": {
+        "summing": "Attendance = adults + kids + youth + other, averaged per week; blanks skipped, not zero; cancelled services excluded.",
+        "refresh": "Rolling — always the last 6 months.",
+        "currentlyShowing": "Jan 2026 – Jun 2026, monthly",
+        "included": "All ministries and services."
+      },
+      "agg": "weekly_avg"
+    },
+    {
+      "id": "106d8ad7-da51-46fc-a74e-5961e9895043",
+      "title": "Weekly Giving — Last 6 Months",
+      "kind": "area",
+      "viz_config": {
+        "kind": "area",
+        "xKey": "week",
+        "title": "Weekly Giving — Last 6 Months",
+        "yKeys": [
+          "total_giving"
+        ]
+      },
+      "layout": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 15
+      },
+      "rows": [
+        {
+          "bucket": "2026-01-04",
+          "value": 15512
+        },
+        {
+          "bucket": "2026-01-11",
+          "value": 24605
+        },
+        {
+          "bucket": "2026-01-18",
+          "value": 8178
+        },
+        {
+          "bucket": "2026-01-25",
+          "value": 102230
+        },
+        {
+          "bucket": "2026-02-01",
+          "value": 18858
+        },
+        {
+          "bucket": "2026-02-08",
+          "value": 26778
+        },
+        {
+          "bucket": "2026-02-15",
+          "value": 11416
+        },
+        {
+          "bucket": "2026-02-22",
+          "value": 28028
+        },
+        {
+          "bucket": "2026-03-01",
+          "value": 27380
+        },
+        {
+          "bucket": "2026-03-08",
+          "value": 27060
+        },
+        {
+          "bucket": "2026-03-15",
+          "value": 17816
+        },
+        {
+          "bucket": "2026-03-22",
+          "value": 13248
+        },
+        {
+          "bucket": "2026-03-29",
+          "value": 42393
+        },
+        {
+          "bucket": "2026-04-05",
+          "value": 20743
+        },
+        {
+          "bucket": "2026-04-12",
+          "value": 21187
+        },
+        {
+          "bucket": "2026-04-19",
+          "value": 9518
+        },
+        {
+          "bucket": "2026-04-26",
+          "value": 29480
+        },
+        {
+          "bucket": "2026-05-03",
+          "value": 16638
+        },
+        {
+          "bucket": "2026-05-10",
+          "value": 17655
+        },
+        {
+          "bucket": "2026-05-17",
+          "value": 35479
+        },
+        {
+          "bucket": "2026-05-24",
+          "value": 22530
+        }
+      ],
+      "resolved": {
+        "start": "2026-01-01",
+        "end": "2026-06-25"
+      },
+      "explainerFacts": {
+        "summing": "Giving = all sources totalled each week; blanks skipped, not zero; cancelled services excluded.",
+        "refresh": "Rolling — always the last 6 months.",
+        "currentlyShowing": "Jan 2026 – Jun 2026, weekly",
+        "included": "All ministries and services."
+      },
+      "agg": "sum"
+    }
+  ]
+}

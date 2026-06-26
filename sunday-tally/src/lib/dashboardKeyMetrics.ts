@@ -65,7 +65,7 @@ const ROLE_OF: Record<AudienceKey, string> = {
   youth:  'YOUTH_MINISTRY',
 }
 const GENERIC_AUDIENCE_LABEL: Record<AudienceKey, string> = {
-  adults: 'Adults', kids: 'Kids', youth: 'Youth',
+  adults: 'Adults', kids: 'Kids', youth: 'Students',
 }
 
 export function audienceTotalLabel(

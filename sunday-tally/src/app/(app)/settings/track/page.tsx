@@ -38,6 +38,7 @@ import {
   setMetricMode,
   setMetricParent,
   setRollupOp,
+  setCountDemographic,
 } from './actions'
 import type { TagRole, MetricMode, RollupOp } from './actions'
 import {
@@ -105,7 +106,7 @@ export function TrackPanel({ embedded = false }: { embedded?: boolean }) {
     // 0034 not applied), fall back to the base columns and treat all as 'entry'.
     const full = await supabase
       .from('metrics')
-      .select('id, code, name, reporting_tag_id, is_canonical, is_active, ministry_tag_id, mode, rollup_op, parent_metric_id, scope, cadence')
+      .select('id, code, name, reporting_tag_id, is_canonical, is_active, ministry_tag_id, mode, rollup_op, parent_metric_id, counted_demographic, scope, cadence')
       .eq('church_id', cid)
       .eq('is_active', true)
       .in('ministry_tag_id', minIds)
@@ -118,7 +119,7 @@ export function TrackPanel({ embedded = false }: { embedded?: boolean }) {
 
     const basic = await supabase
       .from('metrics')
-      .select('id, code, name, reporting_tag_id, is_canonical, is_active, ministry_tag_id, scope, cadence')
+      .select('id, code, name, reporting_tag_id, is_canonical, is_active, ministry_tag_id, counted_demographic, scope, cadence')
       .eq('church_id', cid)
       .eq('is_active', true)
       .in('ministry_tag_id', minIds)
@@ -351,6 +352,14 @@ export function TrackPanel({ embedded = false }: { embedded?: boolean }) {
       alert(result.error)
     }
   }
+  async function handleSetDemographic(metricId: string, demographic: TagRole | null) {
+    const result = await setCountDemographic(metricId, demographic)
+    if (result.ok && result.data) {
+      setMetrics(prev => prev.map(m => m.id === metricId ? { ...m, ...result.data! } : m))
+    } else if (result.error) {
+      alert(result.error)
+    }
+  }
 
   const rootMinistries = childrenOf(null)
   const selected = ministries.find(m => m.id === selectedId) ?? null
@@ -481,6 +490,7 @@ export function TrackPanel({ embedded = false }: { embedded?: boolean }) {
                       onSetMode={handleSetMode}
                       onSetParent={handleSetParent}
                       onSetOp={handleSetOp}
+                      onSetDemographic={handleSetDemographic}
                     />
                   )}
                 </div>

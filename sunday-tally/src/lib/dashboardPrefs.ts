@@ -17,7 +17,7 @@ export const SUMMARY_METRIC_LABELS: Record<SummaryMetricKey, string> = {
   grandTotal:         'Grand Total',
   adults:             'Adults',
   kids:               'Kids',
-  youth:              'Youth',
+  youth:              'Students',
   volunteers:         'Total Volunteers',
   firstTimeDecisions: 'First-Time Decisions',
   giving:             'Giving',

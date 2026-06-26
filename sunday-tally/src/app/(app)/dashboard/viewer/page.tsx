@@ -150,7 +150,7 @@ export default function ViewerDashboardPage() {
                     <FourColRow label="Grand Total" values={data.summary.grandTotal} hideComparisons={hideComparisons} />
                     <FourColRow label="Adults" values={data.summary.adults} hideComparisons={hideComparisons} />
                     <FourColRow label="Kids" values={data.summary.kids} hideComparisons={hideComparisons} />
-                    <FourColRow label="Youth" values={data.summary.youth} hideComparisons={hideComparisons} />
+                    <FourColRow label="Students" values={data.summary.youth} hideComparisons={hideComparisons} />
                     {church.tracks_responses && (
                       <FourColRow label="First-Time Decisions" values={data.summary.firstTimeDecisions} hideComparisons={hideComparisons} />
                     )}
