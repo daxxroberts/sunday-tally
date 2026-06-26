@@ -145,7 +145,7 @@ export default function LandingPage() {
                   <span className="font-['Playfair_Display'] italic font-black tracking-tighter text-[0.95em] block md:inline-block">Reveal thy numbers.</span>
                 </h1>
               </div>
-              <p className="text-2xl text-stone-500 mb-0 max-w-xl leading-relaxed font-medium">
+              <p className="text-lg md:text-xl lg:text-2xl text-stone-500 mb-0 max-w-xl leading-relaxed font-medium">
                 Built specifically for your ministry. Instantly track attendance for adults, youth, kids, and volunteers, monitor giving, and build a custom dashboard that fits your church's needs.
               </p>
             </motion.div>
@@ -303,13 +303,13 @@ export default function LandingPage() {
         </div>
         <div className="container mx-auto px-4 md:px-8 relative z-10 max-w-6xl">
           <div className="text-center mb-16 md:mb-24">
-            <h2 className="text-4xl md:text-5xl lg:text-7xl font-extrabold text-white tracking-tighter leading-none mb-6">
+            <h2 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-white tracking-tighter leading-none mb-6">
               Introducing Tally AI
             </h2>
-            <p className="text-xl md:text-2xl text-[#8FA5FF] font-bold max-w-2xl mx-auto leading-normal mb-8">
+            <p className="text-lg md:text-xl lg:text-2xl text-[#8FA5FF] font-bold max-w-2xl mx-auto leading-normal mb-8">
               A live conversation with your data. Not a weekly report.
             </p>
-            <p className="text-lg md:text-xl text-stone-300 font-medium max-w-3xl mx-auto leading-relaxed">
+            <p className="text-base md:text-lg text-stone-300 font-medium max-w-3xl mx-auto leading-relaxed">
               Tally AI is your dedicated church data assistant, active across three powerful modes. <strong className="text-white font-semibold">Instantly query your data by asking, visualize trends, and save findings as permanent dashboard widgets.</strong>
             </p>
           </div>
@@ -322,7 +322,7 @@ export default function LandingPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 8.25H7.5a2.25 2.25 0 0 0-2.25 2.25v9a2.25 2.25 0 0 0 2.25 2.25h9a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25H15M9 12l3 3m0 0l3-3m-3 3V2.25" />
                 </svg>
               </div>
-              <h3 className="text-xl font-bold text-white mb-3 tracking-tight">1. Import Mode</h3>
+              <h3 className="text-lg md:text-xl font-bold text-white mb-3 tracking-tight">1. Import Mode</h3>
               <p className="text-stone-400 text-sm font-medium leading-relaxed">
                 Drop in your spreadsheet exports from your ChMS, Planning Center, or Google Sheets. Tally AI reads the files, maps your structure, and sets up your metrics automatically. Your history comes with you—no manual data entry needed.
               </p>
@@ -335,7 +335,7 @@ export default function LandingPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 0 1-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8Z" />
                 </svg>
               </div>
-              <h3 className="text-xl font-bold text-white mb-3 tracking-tight">2. Ask Mode</h3>
+              <h3 className="text-lg md:text-xl font-bold text-white mb-3 tracking-tight">2. Ask Mode</h3>
               <p className="text-stone-400 text-sm font-medium leading-relaxed mb-4">
                 Talk to your data like a teammate. Instantly calculate volunteer ratios, uncover growth trends, or look up specific records without writing complex queries or wrestling with spreadsheets.
               </p>
@@ -352,7 +352,7 @@ export default function LandingPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                 </svg>
               </div>
-              <h3 className="text-xl font-bold text-white mb-3 tracking-tight">3. Build Mode</h3>
+              <h3 className="text-lg md:text-xl font-bold text-white mb-3 tracking-tight">3. Build Mode</h3>
               <p className="text-stone-400 text-sm font-medium leading-relaxed">
                 Turn any insight or chart from your conversation into a saved dashboard widget with a single click. Keep them in your private view or publish them to your team's shared library.
               </p>
@@ -366,14 +366,14 @@ export default function LandingPage() {
         <div className="container mx-auto px-4 md:px-8 max-w-6xl relative z-10">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-20 items-center">
             <div className="lg:col-span-5 space-y-6">
-              <h2 className="text-4xl md:text-5xl font-extrabold text-stone-900 tracking-tighter leading-none">
+              <h2 className="text-3xl md:text-4xl lg:text-5xl font-extrabold text-stone-900 tracking-tighter leading-none">
                 Up and running in 10 minutes.
               </h2>
-              <p className="text-lg text-stone-500 font-medium leading-relaxed">
+              <p className="text-base md:text-lg text-stone-500 font-medium leading-relaxed">
                 Our 10-minute setup promise is focused on initial configuration, not manual ongoing entries. Tally AI Import Mode and the auto-built data entry layout do the heavy lifting to get you configured immediately.
               </p>
               <div className="p-5 bg-white border border-stone-200 rounded-2xl">
-                <h4 className="font-bold text-stone-900 mb-1">Your data comes with you</h4>
+                <h4 className="text-base font-bold text-stone-900 mb-1">Your data comes with you</h4>
                 <p className="text-sm text-stone-600 font-medium">
                   We don't expect you to re-enter years of logs. Feed your spreadsheet exports to Tally AI Import Mode; it builds your metrics tree around how your church already operates.
                 </p>
@@ -407,10 +407,10 @@ export default function LandingPage() {
         </div>
         <div className="container mx-auto px-4 md:px-8 max-w-6xl relative z-10">
           <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-6xl font-extrabold text-white tracking-tighter leading-none mb-4">
+            <h2 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-white tracking-tighter leading-none mb-4">
               Live Interactive Demo
             </h2>
-            <h3 className="text-lg md:text-xl text-[#8FA5FF] font-extrabold tracking-tight mb-6">
+            <h3 className="text-lg md:text-xl lg:text-2xl text-[#8FA5FF] font-extrabold tracking-tight mb-6">
               Painless weekly logs. Instantly calculated.
             </h3>
             <p className="text-base md:text-lg text-stone-300 font-medium max-w-3xl mx-auto leading-relaxed mb-6">
@@ -448,10 +448,10 @@ export default function LandingPage() {
       <section className="py-24 md:py-32 bg-stone-50 border-b border-stone-200 relative overflow-hidden">
         <div className="container mx-auto px-4 md:px-8 max-w-6xl relative z-10">
           <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-extrabold text-stone-900 tracking-tighter leading-none mb-6">
+            <h2 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-stone-900 tracking-tighter leading-none mb-6">
               Track any metric your ministry defines.
             </h2>
-            <p className="text-lg md:text-xl text-stone-500 font-medium max-w-3xl mx-auto leading-relaxed">
+            <p className="text-base md:text-lg text-stone-500 font-medium max-w-3xl mx-auto leading-relaxed">
               Go beyond simple attendance. Capture the exact values that define your church's weekly momentum. If your ministry tracks it, Sunday Tally can hold it.
             </p>
           </div>
@@ -459,7 +459,7 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {/* Standard Metrics */}
             <div className="bg-white p-8 rounded-3xl border border-stone-200 shadow-sm flex flex-col">
-              <h3 className="text-xl font-bold text-stone-900 mb-6 pb-2 border-b border-stone-100">Standard Metrics</h3>
+              <h3 className="text-lg md:text-xl font-bold text-stone-900 mb-6 pb-2 border-b border-stone-100">Standard Metrics</h3>
               <ul className="space-y-3.5 text-sm text-stone-600 font-medium">
                 <li className="flex items-center gap-2.5"><CheckCircle2 className="text-[#4F6EF7] shrink-0" size={18} /> <span>Attendance & online viewers</span></li>
                 <li className="flex items-center gap-2.5"><CheckCircle2 className="text-[#4F6EF7] shrink-0" size={18} /> <span>Weekly giving</span></li>
@@ -474,7 +474,7 @@ export default function LandingPage() {
 
             {/* Spiritual Milestones */}
             <div className="bg-white p-8 rounded-3xl border border-stone-200 shadow-sm flex flex-col">
-              <h3 className="text-xl font-bold text-stone-900 mb-6 pb-2 border-b border-stone-100">Spiritual Milestones</h3>
+              <h3 className="text-lg md:text-xl font-bold text-stone-900 mb-6 pb-2 border-b border-stone-100">Spiritual Milestones</h3>
               <p className="text-xs text-stone-400 font-bold uppercase tracking-wider mb-4">Tracked as distinct categories:</p>
               <ul className="space-y-3.5 text-sm text-stone-600 font-medium">
                 <li className="flex items-center gap-2.5"><CheckCircle2 className="text-emerald-500 shrink-0" size={18} /> <span>Salvations</span></li>
@@ -487,7 +487,7 @@ export default function LandingPage() {
 
             {/* Custom Inspiration */}
             <div className="bg-white p-8 rounded-3xl border border-stone-200 shadow-sm flex flex-col">
-              <h3 className="text-xl font-bold text-stone-900 mb-6 pb-2 border-b border-stone-100">Custom Inspiration</h3>
+              <h3 className="text-lg md:text-xl font-bold text-stone-900 mb-6 pb-2 border-b border-stone-100">Custom Inspiration</h3>
               <p className="text-xs text-stone-400 font-bold uppercase tracking-wider mb-4">Less obvious metrics tracked by teams:</p>
               <ul className="space-y-3.5 text-sm text-stone-600 font-medium">
                 <li className="flex items-center gap-2.5"><span className="w-1.5 h-1.5 rounded-full bg-stone-450 shrink-0" /> <span>Food pantry visitors served</span></li>
@@ -505,15 +505,15 @@ export default function LandingPage() {
       <section className="py-24 md:py-32 bg-white relative border-b border-stone-200" id="pricing">
         <div className="container mx-auto px-4 md:px-8 max-w-6xl">
           <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-6xl font-bold text-stone-900 mb-6 tracking-tighter">Simple pricing.</h2>
-            <p className="text-xl text-stone-500 max-w-2xl mx-auto font-medium">Get started with a 45-day free trial. No credit card required.</p>
+            <h2 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-stone-900 mb-6 tracking-tighter">Simple pricing.</h2>
+            <p className="text-base md:text-lg text-stone-500 max-w-2xl mx-auto font-medium">Get started with a 45-day free trial. No credit card required.</p>
           </div>
 
           {/* Base Tier Card */}
           <div className="bg-stone-50 border border-stone-200 rounded-[2rem] p-8 md:p-12 mb-20 shadow-sm flex flex-col lg:flex-row gap-12 items-center">
             <div className="flex-1 text-center md:text-left">
-              <h3 className="text-3xl font-bold text-stone-900 mb-2">Base Platform</h3>
-              <p className="text-stone-500 text-lg mb-6 leading-relaxed">
+              <h3 className="text-2xl md:text-3xl font-extrabold text-stone-900 mb-2">Base Platform</h3>
+              <p className="text-base md:text-lg text-stone-500 mb-6 leading-relaxed">
                 Everything you need to log counts, track your core metrics, and see standard reports week over week.
               </p>
               <ul className="text-stone-600 font-medium flex flex-col gap-3">
@@ -546,8 +546,8 @@ export default function LandingPage() {
             <div className="inline-flex items-center justify-center p-3 bg-blue-50 text-[#4F6EF7] rounded-2xl mb-6">
               <Bot size={32} />
             </div>
-            <h3 className="text-3xl md:text-4xl font-extrabold text-stone-900 mb-4 tracking-tight">Tally AI Add-on</h3>
-            <p className="text-lg text-stone-500 max-w-3xl mx-auto leading-relaxed font-medium">
+            <h3 className="text-2xl md:text-3xl font-extrabold text-stone-900 mb-4 tracking-tight">Tally AI Add-on</h3>
+            <p className="text-base md:text-lg text-stone-500 max-w-3xl mx-auto leading-relaxed font-medium">
               Unlock Ask & Build modes, custom widgets, and auto-refreshing dashboards. Fully unlocked during your trial.
             </p>
           </div>
@@ -624,8 +624,8 @@ export default function LandingPage() {
       <section className="py-24 bg-stone-50 border-t border-stone-200 relative overflow-hidden" id="faq">
         <div className="container mx-auto px-4 md:px-8 max-w-4xl relative z-10">
           <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-extrabold text-stone-900 tracking-tighter leading-none mb-6">Frequently Asked Questions</h2>
-            <p className="text-lg text-stone-500 font-medium">Everything you need to know about Sunday Tally</p>
+            <h2 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-stone-900 tracking-tighter leading-none mb-6">Frequently Asked Questions</h2>
+            <p className="text-base md:text-lg text-stone-500 font-medium">Everything you need to know about Sunday Tally</p>
           </div>
           <div className="bg-white border border-stone-200 rounded-[2rem] p-6 md:p-10 shadow-sm">
             <FAQItem question="What is Tally AI Import Mode?" answer="Tally AI Import Mode allows you to drop in historical CSV or Excel spreadsheet data from Planning Center, Church Metrics, or other ChMS tools. Tally AI automatically analyzes and structures the data, so you carry your history with you in minutes." />
@@ -639,8 +639,8 @@ export default function LandingPage() {
       {/* Product Roadmap Section */}
       <section className="py-24 bg-white border-t border-stone-200 relative overflow-hidden">
         <div className="container mx-auto px-4 md:px-8 max-w-4xl text-center relative z-10">
-          <h2 className="text-3xl md:text-4xl font-extrabold text-stone-900 mb-6 tracking-tighter leading-none">Continuous Improvement</h2>
-          <p className="text-lg text-stone-500 font-medium mb-8 max-w-xl mx-auto">Our dashboard and AI layers are built to evolve with the needs of modern, data-driven ministries.</p>
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-extrabold text-stone-900 mb-6 tracking-tighter leading-none">Continuous Improvement</h2>
+          <p className="text-base md:text-lg text-stone-500 font-medium mb-8 max-w-xl mx-auto">Our dashboard and AI layers are built to evolve with the needs of modern, data-driven ministries.</p>
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-stone-50 border border-stone-200 rounded-full text-xs font-semibold text-stone-600">
             <span className="w-2 h-2 bg-emerald-500 rounded-full animate-ping"></span>
             <span>Next Release: Dynamic dashboard export and printable Sunday summaries.</span>
@@ -652,8 +652,8 @@ export default function LandingPage() {
       <section className="py-24 md:py-32 relative overflow-hidden bg-stone-950">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom,_var(--tw-gradient-stops))] from-blue-950/30 via-stone-950 to-stone-950 z-0"></div>
         <div className="container mx-auto px-4 text-center relative z-10 max-w-3xl">
-          <h2 className="text-4xl md:text-6xl font-extrabold text-white mb-6 tracking-tighter leading-none">See your ministry clearly.</h2>
-          <p className="text-xl md:text-2xl text-[#8fa5ff] mb-12 font-medium">Throw out the spreadsheets. Get clarity instantly.</p>
+          <h2 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-white mb-6 tracking-tighter leading-none">See your ministry clearly.</h2>
+          <p className="text-lg md:text-xl lg:text-2xl text-[#8fa5ff] mb-12 font-medium">Throw out the spreadsheets. Get clarity instantly.</p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link 
               href="/auth/login" 
