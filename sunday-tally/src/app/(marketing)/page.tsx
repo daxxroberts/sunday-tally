@@ -3,11 +3,11 @@
 import { useRef, useState, useEffect, useMemo } from 'react'
 import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
-import { ArrowRight, BarChart3, Bot, Database, CheckCircle2 } from 'lucide-react'
+import { ArrowRight, BarChart3, Bot, Database, CheckCircle2, Plus } from 'lucide-react'
 import { ParticleNetwork } from '@/components/ParticleNetwork'
 import { CometCosmos } from '@/components/CometCosmos'
 import { WidgetCard, type ReplayWidget } from '@/components/widgets/ui'
-import snapshotData from './dashboard_snapshot.json'
+import snapshotData from '@/app/dashboard_snapshot.json'
 
 function useCountUp(target: number, trigger: boolean, duration: number = 1000) {
   const [count, setCount] = useState(0)
@@ -91,27 +91,6 @@ export default function LandingPage() {
 
   return (
     <div className="flex flex-col min-h-screen">
-      <header className="absolute top-0 inset-x-0 z-50">
-        <nav className="container mx-auto px-4 md:px-8 py-6 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-stone-900 text-white flex items-center justify-center font-extrabold text-xl shadow-md">
-              S
-            </div>
-            <span className="text-2xl font-bold tracking-tight text-stone-900">SundayTally</span>
-          </div>
-          <div className="hidden md:flex items-center gap-8">
-            <Link href="#features" className="text-sm font-semibold text-stone-600 hover:text-stone-900 transition-colors">
-              Features
-            </Link>
-            <Link href="/auth/login" className="text-sm font-semibold text-stone-600 hover:text-stone-900 transition-colors">
-              Log in
-            </Link>
-            <Link href="/auth/login" className="px-5 py-2.5 rounded-full bg-stone-900 text-white text-sm font-bold hover:bg-[#4F6EF7] transition-all hover:-translate-y-0.5 shadow-sm">
-              Start free trial
-            </Link>
-          </div>
-        </nav>
-      </header>
       {/* Hero Section */}
       <section className="relative pt-32 pb-20 md:pt-48 md:pb-32 overflow-hidden bg-[#FAFAFA]">
         <div className="absolute inset-0 z-0">
@@ -164,7 +143,7 @@ export default function LandingPage() {
                 <ArrowRight size={24} className="group-hover:translate-x-1 transition-transform" />
               </Link>
               <Link 
-                href="#features" 
+                href="#demo" 
                 className="w-full sm:w-auto rounded-full bg-white border-2 border-stone-200 px-10 py-5 text-lg font-bold text-stone-900 shadow-sm hover:bg-stone-50 hover:border-stone-300 transition-all flex items-center justify-center"
               >
                 See how it works
@@ -367,7 +346,7 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-20 items-center">
             <div className="lg:col-span-5 space-y-6">
               <h2 className="text-3xl md:text-4xl lg:text-5xl font-extrabold text-stone-900 tracking-tighter leading-none">
-                Up and running in 10 minutes.
+                Tally AI gets you up and running in 10 minutes.
               </h2>
               <p className="text-base md:text-lg text-stone-500 font-medium leading-relaxed">
                 Our 10-minute setup promise is focused on initial configuration, not manual ongoing entries. Tally AI Import Mode and the auto-built data entry layout do the heavy lifting to get you configured immediately.
@@ -401,7 +380,7 @@ export default function LandingPage() {
       </section>
 
       {/* Painless Data Entry & Standard Reports - Interactive Demo Playground */}
-      <section className="py-24 md:py-32 bg-stone-950 bg-[radial-gradient(circle_at_center,rgba(79,110,247,0.18)_0%,transparent_65%)] relative border-b border-stone-900 overflow-hidden">
+      <section id="demo" className="py-24 md:py-32 bg-stone-950 bg-[radial-gradient(circle_at_center,rgba(79,110,247,0.18)_0%,transparent_65%)] relative border-b border-stone-900 overflow-hidden">
         <div className="absolute inset-0 z-0">
           <CometCosmos />
         </div>
@@ -517,9 +496,14 @@ export default function LandingPage() {
                 Everything you need to log counts, track your core metrics, and see standard reports week over week.
               </p>
               <ul className="text-stone-600 font-medium flex flex-col gap-3">
-                <li className="flex items-center gap-2 justify-center md:justify-start"><CheckCircle2 className="text-[#4F6EF7]" size={20} /> Up and running in 10 minutes</li>
+                <li className="flex items-center gap-2 justify-center md:justify-start"><CheckCircle2 className="text-[#4F6EF7]" size={20} /> Tally AI gets you up and running in 10 minutes</li>
                 <li className="flex items-center gap-2 justify-center md:justify-start"><CheckCircle2 className="text-[#4F6EF7]" size={20} /> Unlimited manual metric tracking</li>
-                <li className="flex items-center gap-2 justify-center md:justify-start"><CheckCircle2 className="text-[#4F6EF7]" size={20} /> Standard reporting & core dashboards</li>
+                <li className="flex items-center gap-2 justify-center md:justify-start">
+                  <CheckCircle2 className="text-[#4F6EF7]" size={20} /> 
+                  <span>
+                    <a href="#demo-standard" className="underline font-semibold hover:text-[#4F6EF7] transition-colors">Standard dashboard is included</a>
+                  </span>
+                </li>
                 <li className="flex items-center gap-2 justify-center md:justify-start"><CheckCircle2 className="text-[#4F6EF7]" size={20} /> Tally AI Import Mode for historical data</li>
               </ul>
             </div>
@@ -544,7 +528,7 @@ export default function LandingPage() {
           {/* AI Add-ons Header */}
           <div className="text-center mb-12">
             <div className="inline-flex items-center justify-center p-3 bg-blue-50 text-[#4F6EF7] rounded-2xl mb-6">
-              <Bot size={32} />
+              <Plus size={32} className="stroke-[3]" />
             </div>
             <h3 className="text-2xl md:text-3xl font-extrabold text-stone-900 mb-4 tracking-tight">Tally AI Add-on</h3>
             <p className="text-base md:text-lg text-stone-500 max-w-3xl mx-auto leading-relaxed font-medium">
@@ -1144,6 +1128,27 @@ function AiDashHeader() {
 
 function DemoDashboard() {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'entry' | 'ai-dashboard'>('entry')
+
+  useEffect(() => {
+    const handleHashChange = () => {
+      if (window.location.hash === '#demo-standard') {
+        setActiveTab('dashboard')
+        const el = document.getElementById('demo')
+        if (el) el.scrollIntoView({ behavior: 'smooth' })
+      } else if (window.location.hash === '#demo-entry') {
+        setActiveTab('entry')
+        const el = document.getElementById('demo')
+        if (el) el.scrollIntoView({ behavior: 'smooth' })
+      } else if (window.location.hash === '#demo-ai') {
+        setActiveTab('ai-dashboard')
+        const el = document.getElementById('demo')
+        if (el) el.scrollIntoView({ behavior: 'smooth' })
+      }
+    }
+    window.addEventListener('hashchange', handleHashChange)
+    handleHashChange()
+    return () => window.removeEventListener('hashchange', handleHashChange)
+  }, [])
   
   // Saved database values
   const [savedAdults, setSavedAdults] = useState(315)
@@ -1316,7 +1321,7 @@ function DemoDashboard() {
           <>
             <span className="h-2 w-2 rounded-full bg-[#4F6EF7] animate-pulse" />
             <p className="font-semibold text-center leading-relaxed">
-              Autosaves instantly on focus loss — click outside to save
+              Included in all plans, $22/month
             </p>
           </>
         )}
@@ -1324,7 +1329,7 @@ function DemoDashboard() {
           <>
             <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
             <p className="font-semibold text-center leading-relaxed">
-              Included in all plans — $22/month
+              Included in all plans, $22/month
             </p>
           </>
         )}
@@ -1332,7 +1337,7 @@ function DemoDashboard() {
           <>
             <span className="h-2 w-2 rounded-full bg-purple-500 animate-pulse" />
             <p className="font-semibold text-center leading-relaxed">
-              Tally AI add-on — starts at +$15/month
+              Get started plus
             </p>
           </>
         )}
@@ -1833,10 +1838,9 @@ function PricingCalculator() {
 
   return (
     <div className="bg-stone-50 border border-stone-200 rounded-3xl p-6 md:p-8 max-w-xl mx-auto shadow-sm text-stone-800">
-      <div className="flex items-center gap-3 mb-6">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-tr from-[#4F6EF7] to-[#8B5CF6] text-white font-bold text-sm shadow-sm">✦</span>
+      <div className="mb-6">
         <div className="text-left">
-          <h4 className="text-sm font-bold text-stone-900">Custom Plan Calculator</h4>
+          <h4 className="text-sm font-bold text-stone-900">Cost Calculator</h4>
           <p className="text-[11px] text-stone-500 font-medium leading-none mt-0.5">Estimate your church's custom plan cost</p>
         </div>
       </div>
