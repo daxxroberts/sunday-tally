@@ -1311,60 +1311,53 @@ function DemoDashboard() {
 
   return (
     <div className="bg-stone-50 border border-stone-200 rounded-[2rem] p-6 md:p-8 shadow-inner relative overflow-hidden flex flex-col gap-6 w-full">
-      {/* Tab Context Info Banner */}
-      <div className={`border rounded-2xl px-5 py-2.5 text-xs md:text-sm shadow-sm flex items-center justify-center gap-2.5 transition-all duration-500 ${
-        activeTab === 'entry' ? 'bg-blue-50/40 border-blue-150 text-[#3D5BD4]' :
-        activeTab === 'dashboard' ? 'bg-emerald-50/40 border-emerald-150 text-emerald-800' :
-        'bg-purple-50/40 border-purple-150 text-purple-800'
-      }`}>
-        {activeTab === 'entry' && (
-          <>
-            <span className="h-2 w-2 rounded-full bg-[#4F6EF7] animate-pulse" />
-            <p className="font-semibold text-center leading-relaxed">
-              Included in all plans, $22/month
-            </p>
-          </>
-        )}
-        {activeTab === 'dashboard' && (
-          <>
-            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-            <p className="font-semibold text-center leading-relaxed">
-              Included in all plans, $22/month
-            </p>
-          </>
-        )}
-        {activeTab === 'ai-dashboard' && (
-          <>
-            <span className="h-2 w-2 rounded-full bg-purple-500 animate-pulse" />
-            <p className="font-semibold text-center leading-relaxed">
-              Get started plus
-            </p>
-          </>
-        )}
-      </div>
-
       {/* Tab selectors */}
-      <div className="flex flex-wrap justify-center border-b border-stone-200 pb-6 gap-3 md:gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-b border-stone-200 pb-6 w-full max-w-4xl mx-auto">
         <button
           type="button"
           onClick={() => setActiveTab('entry')}
-          className={`px-6 py-2.5 rounded-full text-sm font-bold transition-all cursor-pointer ${activeTab === 'entry' ? 'bg-stone-900 text-white shadow-md' : 'bg-white text-stone-600 border border-stone-200 hover:text-stone-900'}`}
+          className={`flex flex-col items-center md:items-start text-center md:text-left p-5 rounded-[1.25rem] transition-all cursor-pointer border ${
+            activeTab === 'entry'
+              ? 'bg-stone-900 border-stone-900 text-white shadow-lg shadow-stone-900/20 scale-[1.02]'
+              : 'bg-white border-stone-200 text-stone-600 hover:border-stone-300 hover:text-stone-900'
+          }`}
         >
-          Weekly Data Entry
+          <span className="text-sm md:text-base font-bold">Weekly Data Entry</span>
+          <span className={`text-xs font-semibold mt-1 transition-colors ${activeTab === 'entry' ? 'text-[#8FA5FF]' : 'text-stone-400'}`}>
+            Included in all plans, $22/month
+          </span>
         </button>
+
         <button
           type="button"
           onClick={() => setActiveTab('dashboard')}
-          className={`px-6 py-2.5 rounded-full text-sm font-bold transition-all cursor-pointer ${activeTab === 'dashboard' ? 'bg-stone-900 text-white shadow-md' : 'bg-white text-stone-600 border border-stone-200 hover:text-stone-900'}`}
+          className={`flex flex-col items-center md:items-start text-center md:text-left p-5 rounded-[1.25rem] transition-all cursor-pointer border ${
+            activeTab === 'dashboard'
+              ? 'bg-stone-900 border-stone-900 text-white shadow-lg shadow-stone-900/20 scale-[1.02]'
+              : 'bg-white border-stone-200 text-stone-600 hover:border-stone-300 hover:text-stone-900'
+          }`}
         >
-          Standard Dashboard
+          <span className="text-sm md:text-base font-bold">Standard Dashboard</span>
+          <span className={`text-xs font-semibold mt-1 transition-colors ${activeTab === 'dashboard' ? 'text-emerald-400' : 'text-stone-400'}`}>
+            Included in all plans, $22/month
+          </span>
         </button>
+
         <button
           type="button"
           onClick={() => setActiveTab('ai-dashboard')}
-          className={`px-6 py-2.5 rounded-full text-sm font-bold transition-all cursor-pointer flex items-center gap-1.5 ${activeTab === 'ai-dashboard' ? 'bg-stone-900 text-white shadow-md' : 'bg-white text-stone-600 border border-stone-200 hover:text-stone-900'}`}
+          className={`flex flex-col items-center md:items-start text-center md:text-left p-5 rounded-[1.25rem] transition-all cursor-pointer border ${
+            activeTab === 'ai-dashboard'
+              ? 'bg-stone-900 border-stone-900 text-white shadow-lg shadow-stone-900/20 scale-[1.02]'
+              : 'bg-white border-stone-200 text-stone-600 hover:border-stone-300 hover:text-stone-900'
+          }`}
         >
-          <span>✦ Tally AI Dashboard</span>
+          <span className="text-sm md:text-base font-bold flex items-center gap-1.5 justify-center md:justify-start">
+            ✦ Get Tally AI Dashboard
+          </span>
+          <span className={`text-xs font-semibold mt-1 transition-colors ${activeTab === 'ai-dashboard' ? 'text-purple-300' : 'text-stone-400'}`}>
+            plus $15
+          </span>
         </button>
       </div>
 
