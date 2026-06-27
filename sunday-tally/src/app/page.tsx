@@ -307,7 +307,7 @@ export default function LandingPage() {
               Introducing Tally AI
             </h2>
             <p className="text-lg md:text-xl lg:text-2xl text-[#8FA5FF] font-bold max-w-2xl mx-auto leading-normal mb-8">
-              A live conversation with your data. Not a weekly report.
+              A live conversation with your data.
             </p>
             <p className="text-base md:text-lg text-stone-300 font-medium max-w-3xl mx-auto leading-relaxed">
               Tally AI is your dedicated church data assistant, active across three powerful modes. <strong className="text-white font-semibold">Instantly query your data by asking, visualize trends, and save findings as permanent dashboard widgets.</strong>
