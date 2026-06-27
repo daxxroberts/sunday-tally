@@ -135,7 +135,7 @@ export default function LandingPage() {
                   <br className="hidden lg:block" />
                   <span className="text-stone-300 font-['Playfair_Display'] italic font-black tracking-tighter text-[0.95em] block md:inline-block">Reveal thy numbers.</span>
                 </h1>
-                <h1 className="absolute inset-0 text-6xl md:text-8xl lg:text-[110px] font-extrabold tracking-tighter leading-[1.05] mb-4 pb-4 pointer-events-none select-none text-transparent bg-clip-text bg-gradient-to-r from-[#4F6EF7] via-[#06B6D4] to-[#10B981] z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                <span aria-hidden="true" className="absolute inset-0 text-6xl md:text-8xl lg:text-[110px] font-extrabold tracking-tighter leading-[1.05] mb-4 pb-4 pointer-events-none select-none text-transparent bg-clip-text bg-gradient-to-r from-[#4F6EF7] via-[#06B6D4] to-[#10B981] z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
                     style={{
                       WebkitMaskImage: `radial-gradient(circle 500px at ${mousePos.x}px ${mousePos.y}px, black 20%, transparent 80%)`,
                       maskImage: `radial-gradient(circle 500px at ${mousePos.x}px ${mousePos.y}px, black 20%, transparent 80%)`
@@ -143,7 +143,7 @@ export default function LandingPage() {
                   Stop guessing.
                   <br className="hidden lg:block" />
                   <span className="font-['Playfair_Display'] italic font-black tracking-tighter text-[0.95em] block md:inline-block">Reveal thy numbers.</span>
-                </h1>
+                </span>
               </div>
               <p className="text-lg md:text-xl lg:text-2xl text-stone-500 mb-0 max-w-xl leading-relaxed font-medium">
                 Built specifically for your ministry. Instantly track attendance for adults, youth, kids, and volunteers, monitor giving, and build a custom dashboard that fits your church's needs.
@@ -628,6 +628,19 @@ export default function LandingPage() {
             <p className="text-base md:text-lg text-stone-500 font-medium">Everything you need to know about Sunday Tally</p>
           </div>
           <div className="bg-white border border-stone-200 rounded-[2rem] p-6 md:p-10 shadow-sm">
+            <script
+              type="application/ld+json"
+              dangerouslySetInnerHTML={{ __html: JSON.stringify({
+                '@context': 'https://schema.org',
+                '@type': 'FAQPage',
+                mainEntity: [
+                  { '@type': 'Question', name: 'What is Tally AI Import Mode?', acceptedAnswer: { '@type': 'Answer', text: 'Tally AI Import Mode allows you to drop in historical CSV or Excel spreadsheet data from Planning Center, Church Metrics, or other ChMS tools. Tally AI automatically analyzes and structures the data, so you carry your history with you in minutes.' } },
+                  { '@type': 'Question', name: 'Can we track custom metrics specific to our church?', acceptedAnswer: { '@type': 'Answer', text: 'Yes! You can define and track any custom metrics your ministry uses, such as parking counts, benevolence requests, missions applications, or food pantry items. Setup is easy, and Tally AI integrates it all.' } },
+                  { '@type': 'Question', name: 'How does the 45-day free trial work?', acceptedAnswer: { '@type': 'Answer', text: 'You get full access to the Sunday Tally platform and the Tally AI add-on features for 45 days. No credit card is required to sign up. After 45 days, you can choose to subscribe to our Base plan and add-ons.' } },
+                  { '@type': 'Question', name: 'Does Sunday Tally support multiple locations?', acceptedAnswer: { '@type': 'Answer', text: 'Yes! The Pro plan is designed specifically for multi-campus rollups, allowing leadership teams to see aggregated data across all locations or filter down to specific campuses.' } },
+                ],
+              }) }}
+            />
             <FAQItem question="What is Tally AI Import Mode?" answer="Tally AI Import Mode allows you to drop in historical CSV or Excel spreadsheet data from Planning Center, Church Metrics, or other ChMS tools. Tally AI automatically analyzes and structures the data, so you carry your history with you in minutes." />
             <FAQItem question="Can we track custom metrics specific to our church?" answer="Yes! You can define and track any custom metrics your ministry uses, such as parking counts, benevolence requests, missions applications, or food pantry items. Setup is easy, and Tally AI integrates it all." />
             <FAQItem question="How does the 45-day free trial work?" answer="You get full access to the Sunday Tally platform and the Tally AI add-on features for 45 days. No credit card is required to sign up. After 45 days, you can choose to subscribe to our Base plan and add-ons." />
@@ -895,7 +908,7 @@ function DashHeader() {
           <div>
             <div className="text-[11px] font-semibold uppercase tracking-wider text-[#3D5BD4]">MAIN CAMPUS DASHBOARD</div>
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-lg font-extrabold leading-tight tracking-tight text-stone-900">SundayTally Demo Church</h1>
+              <h2 className="text-lg font-extrabold leading-tight tracking-tight text-stone-900">SundayTally Demo Church</h2>
               <span title="Campus is selected on the Locations page" className="inline-flex items-center gap-1 rounded-full border border-stone-200 bg-white px-2 py-0.5 text-[12px] font-semibold text-stone-600">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 text-[#4F6EF7]"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" /><circle cx="12" cy="10" r="3" /></svg>
                 Main Campus
@@ -1109,7 +1122,7 @@ function AiDashHeader() {
           <div>
             <div className="text-[11px] font-bold uppercase tracking-wider text-[#4F6EF7]">Tally AI custom dashboard</div>
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-lg font-extrabold leading-tight tracking-tight text-stone-900">Demo Church Custom Canvas</h1>
+              <h2 className="text-lg font-extrabold leading-tight tracking-tight text-stone-900">Demo Church Custom Canvas</h2>
               <span className="inline-flex items-center gap-1 rounded-full border border-[#4F6EF7]/20 bg-[#4F6EF7]/5 px-2.5 py-0.5 text-[11px] font-semibold text-[#4F6EF7]">
                 AI-Generated
               </span>
