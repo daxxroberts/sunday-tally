@@ -324,7 +324,7 @@ export default function LandingPage() {
               </div>
               <h3 className="text-lg md:text-xl font-bold text-white mb-3 tracking-tight">1. Import Mode</h3>
               <p className="text-stone-400 text-sm font-medium leading-relaxed">
-                Drop in your spreadsheet exports from your ChMS, Planning Center, or Google Sheets. Tally AI reads the files, maps your structure, and sets up your metrics automatically. Your history comes with you—no manual data entry needed.
+                Tally AI reads your spreadsheet files, uploads them, maps your structure, and sets up your metrics automatically.
               </p>
             </div>
 
@@ -337,7 +337,7 @@ export default function LandingPage() {
               </div>
               <h3 className="text-lg md:text-xl font-bold text-white mb-3 tracking-tight">2. Ask Mode</h3>
               <p className="text-stone-400 text-sm font-medium leading-relaxed mb-4">
-                Talk to your data like a teammate. Instantly calculate volunteer ratios, uncover growth trends, or look up specific records without writing complex queries or wrestling with spreadsheets.
+                Talk to your data like a teammate.
               </p>
               <div className="border-t border-white/[0.08] pt-4 mt-auto">
                 <p className="text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-2">Example:</p>
@@ -354,7 +354,7 @@ export default function LandingPage() {
               </div>
               <h3 className="text-lg md:text-xl font-bold text-white mb-3 tracking-tight">3. Build Mode</h3>
               <p className="text-stone-400 text-sm font-medium leading-relaxed">
-                Turn any insight or chart from your conversation into a saved dashboard widget with a single click. Keep them in your private view or publish them to your team's shared library.
+                Build any insight or chart from your conversations and save them into your dashboard.
               </p>
             </div>
           </div>
