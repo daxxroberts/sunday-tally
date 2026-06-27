@@ -124,12 +124,14 @@ export async function getEntitlements(
   const { tier, activeLocations } = await readTierAndLocations(supabase, churchId)
 
   if (billing.phase === 'trial') {
-    // Trial unlocks AI regardless of add-on, with starter-equivalent library
-    // limits. Spend is bounded by the separate trial buckets in budget.ts.
+    // Trial unlocks AI regardless of add-on, with a PRO-equivalent library cap
+    // (unlimited) so churches can build past 40 widgets and the cost banner can
+    // genuinely recommend plus/pro from real usage (H1). Spend stays bounded by
+    // the separate trial buckets in budget.ts; only the library cap is lifted.
     return {
       aiEnabled: true,
       tier,
-      widgetCap: widgetCapForTier('starter'),
+      widgetCap: widgetCapForTier('pro'),
       aiCeilingCents: ceilingCentsForTier('starter', activeLocations),
       isTrial: true,
     }

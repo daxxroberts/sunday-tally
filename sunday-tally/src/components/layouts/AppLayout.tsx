@@ -7,6 +7,9 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useBilling } from '@/components/billing/BillingProvider'
+import { resolveChrome } from '@/lib/billing/chrome'
+import { TrialBanner, BillingOverlay, SoftDeletedPanel } from '@/components/billing/BillingChrome'
 import type { UserRole } from '@/types'
 
 interface AppLayoutProps {
@@ -119,6 +122,10 @@ export default function AppLayout({ children, role, fillHeight }: AppLayoutProps
     }
   }, [supabase])
 
+  // Billing chrome (trial banner / blur-gating) — server-resolved via context.
+  const billing = useBilling()
+  const chrome = resolveChrome(billing, pathname)
+
   const visibleTabs = TABS.filter(tab => tab.roles.includes(role))
 
   function isActive(tab: Tab) {
@@ -136,15 +143,34 @@ export default function AppLayout({ children, role, fillHeight }: AppLayoutProps
     return tab.href
   }
 
+  const baseMain = fillHeight
+    ? 'flex-1 flex flex-col overflow-hidden'
+    : 'flex-1 pb-24 overflow-y-auto'
+  const mainClass = chrome.blurMain
+    ? `${baseMain} blur-sm pointer-events-none select-none`
+    : baseMain
+
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 w-full max-w-[100vw]">
-      {/* Main content */}
-      <main className={fillHeight
-        ? 'flex-1 flex flex-col overflow-hidden'
-        : 'flex-1 pb-24 overflow-y-auto'
-      }>
-        {children}
-      </main>
+      {/* Trial countdown + cost estimate banner */}
+      {chrome.mode === 'trial-banner' && billing && <TrialBanner summary={billing} />}
+
+      {/* Main content — replaced by the Reactivate screen when soft-deleted,
+          otherwise blurred (and made inert) when gated. Nav stays interactive. */}
+      {chrome.replaceBody && billing ? (
+        <main className="flex-1 pb-24 overflow-y-auto">
+          <SoftDeletedPanel summary={billing} />
+        </main>
+      ) : (
+        <main className={mainClass} aria-hidden={chrome.blurMain || undefined}>
+          {children}
+        </main>
+      )}
+
+      {/* Upgrade card over blurred content (Ask AI gate / expired wall) */}
+      {(chrome.mode === 'expired' || chrome.mode === 'ask-ai') && billing && (
+        <BillingOverlay summary={billing} mode={chrome.mode} />
+      )}
 
       {/* Bottom tab bar */}
       <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
