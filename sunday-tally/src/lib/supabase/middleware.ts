@@ -45,21 +45,29 @@ export async function updateSession(request: NextRequest) {
     '/contact',
     '/terms',
     '/privacy',
+    '/sitemap.xml',
+    '/robots.txt',
   ]
   const prefixPublicRoutes = [
     '/auth/',
     '/signup',
     '/api/',
     '/services-prototype',
+    '/blog',
   ]
   const isPublic = 
     exactPublicRoutes.includes(pathname) ||
     prefixPublicRoutes.some(r => pathname.startsWith(r))
 
-  // Not logged in and not on a public route → redirect to login
+  // Not logged in and not on a public route → redirect to login, preserving the
+  // intended destination as ?next= so post-login lands them where they clicked
+  // (e.g. an email "Choose your plan" → /settings/account?tab=billing).
   if (!user && !isPublic) {
     const url = request.nextUrl.clone()
+    const nextPath = pathname + (request.nextUrl.search || '')
     url.pathname = '/auth/login'
+    url.search = ''
+    url.searchParams.set('next', nextPath)
     return NextResponse.redirect(url)
   }
 

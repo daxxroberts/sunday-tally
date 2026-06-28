@@ -26,6 +26,7 @@
     "@webdatarocks/webdatarocks": "^1.4.23",
     "ai": "^6.0.189",
     "framer-motion": "^12.40.0",
+    "gray-matter": "^4.0.3",
     "lucide-react": "^1.21.0",
     "next": "16.2.3",
     "papaparse": "^5.5.3",
@@ -33,9 +34,15 @@
     "react-dom": "19.2.4",
     "react-grid-layout": "^2.2.3",
     "recharts": "^3.8.1",
+    "rehype-raw": "^7.0.0",
+    "rehype-stringify": "^10.0.1",
+    "remark-gfm": "^4.0.1",
+    "remark-parse": "^11.0.0",
+    "remark-rehype": "^11.1.2",
     "resend": "^6.12.0",
     "server-only": "^0.0.1",
-    "stripe": "^22.0.2"
+    "stripe": "^22.0.2",
+    "unified": "^11.0.5"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

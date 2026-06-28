@@ -23,6 +23,7 @@ export default function MarketingLayout({
           <nav className="hidden md:flex items-center gap-8 text-sm font-semibold text-stone-600">
             <Link href="/#features" className="hover:text-stone-900 transition-colors">Features</Link>
             <Link href="/#pricing" className="hover:text-stone-900 transition-colors">Pricing</Link>
+            <Link href="/blog" className="hover:text-stone-900 transition-colors">Blog</Link>
             <Link href="/contact" className="hover:text-stone-900 transition-colors">Contact</Link>
           </nav>
 
@@ -63,6 +64,7 @@ export default function MarketingLayout({
           <div className="flex gap-6 text-sm font-medium text-stone-500">
             <Link href="/#features" className="hover:text-stone-900 transition-colors">Features</Link>
             <Link href="/#pricing" className="hover:text-[#4F6EF7] transition-colors">Pricing</Link>
+            <Link href="/blog" className="hover:text-[#4F6EF7] transition-colors">Blog</Link>
             <Link href="/contact" className="hover:text-[#4F6EF7] transition-colors">Contact</Link>
           </div>
         </div>
