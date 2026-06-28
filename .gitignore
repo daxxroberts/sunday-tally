@@ -32,3 +32,9 @@ scratch/
 
 # Stray nested folder from a prior copy; safe to delete on disk
 sunday-tally/sunday-tally/
+
+# ─── Graphify internal/regenerable state (commit the map, not the cache) ──
+graphify-out/cache/
+graphify-out/.graphify_python
+graphify-out/cost.json
+src/graphify-out/
