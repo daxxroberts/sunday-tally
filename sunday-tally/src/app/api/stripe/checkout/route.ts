@@ -24,23 +24,32 @@ export async function POST(req: Request) {
     .eq('id', membership.church_id)
     .single()
 
-  let campuses = 1
   let aiTier = 'none'
 
   try {
     const body = await req.json()
-    if (body.campuses) campuses = body.campuses
     if (body.aiTier) aiTier = body.aiTier
   } catch (e) {
     // If no body provided, defaults apply
   }
+
+  // Bill the BASE on the church's real active-location count — never a
+  // client-supplied number, which could underpay. This must match
+  // getSetupEstimate() so the banner estimate == checkout total.
+  // The AI add-on is a FLAT org-wide rate (quantity 1) for all tiers.
+  const { count: locationCount } = await supabase
+    .from('church_locations')
+    .select('id', { count: 'exact', head: true })
+    .eq('church_id', membership.church_id)
+    .eq('is_active', true)
+  const campuses = Math.max(1, locationCount ?? 1)
 
   const lineItems: any[] = [
     { price: stripePriceId(), quantity: campuses }
   ]
 
   if (aiTier === 'starter' && process.env.STRIPE_PRICE_AI_STARTER) {
-    lineItems.push({ price: process.env.STRIPE_PRICE_AI_STARTER, quantity: campuses })
+    lineItems.push({ price: process.env.STRIPE_PRICE_AI_STARTER, quantity: 1 })
   } else if (aiTier === 'plus' && process.env.STRIPE_PRICE_AI_PLUS) {
     lineItems.push({ price: process.env.STRIPE_PRICE_AI_PLUS, quantity: 1 })
   } else if (aiTier === 'pro' && process.env.STRIPE_PRICE_AI_PRO) {
