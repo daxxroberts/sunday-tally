@@ -3,7 +3,7 @@
 // These MUST mirror the Stripe checkout line items in
 // src/app/api/stripe/checkout/route.ts:
 //   base    $22 / month  × locations
-//   starter $15 / month  × locations   (per-location add-on)
+//   starter $15 / month  × 1           (flat, org-wide)
 //   plus    $29 / month  × 1           (flat, org-wide)
 //   pro     $49 / month  × 1           (flat, org-wide)
 //
@@ -14,7 +14,7 @@ import { widgetCapForTier, type AiAddonTier } from './entitlements'
 
 export const BASE_PER_LOCATION_USD = 22
 
-/** Monthly add-on price (USD) PER UNIT. starter bills per location; plus/pro flat. */
+/** Monthly add-on price (USD). All AI tiers bill flat org-wide (quantity 1). */
 export const AI_TIER_PRICE_USD: Record<AiAddonTier, number> = {
   none: 0,
   starter: 15,
@@ -22,10 +22,11 @@ export const AI_TIER_PRICE_USD: Record<AiAddonTier, number> = {
   pro: 49,
 }
 
-/** Tiers that bill per active location (quantity = locations) vs flat org-wide. */
+/** Tiers that bill per active location (quantity = locations) vs flat org-wide.
+ *  All AI tiers are now flat org-wide (2026-06-28) — mirrors checkout quantity:1. */
 const AI_TIER_PER_LOCATION: Record<AiAddonTier, boolean> = {
   none: false,
-  starter: true,
+  starter: false,
   plus: false,
   pro: false,
 }
