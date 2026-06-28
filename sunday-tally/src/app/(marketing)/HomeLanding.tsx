@@ -334,7 +334,7 @@ export default function LandingPage() {
               </div>
               <h3 className="text-lg md:text-xl font-bold text-white mb-3 tracking-tight">3. Build Mode</h3>
               <p className="text-stone-400 text-sm font-medium leading-relaxed">
-                Build any insight or chart from your conversations and save them into your dashboard.
+                Build any insight or chart from your conversations and save them to your dashboard, giving you the power to report on any metric you track.
               </p>
             </div>
           </div>

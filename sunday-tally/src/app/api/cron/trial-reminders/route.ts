@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { sendEmail, type EmailTemplate } from '@/lib/email/resend'
+import { getChurchEmailData } from '@/lib/email/churchEmailData'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -71,17 +72,19 @@ export async function GET(req: Request) {
       const email = userData?.user?.email
       if (!email) continue
 
-      const { count } = await supabase
-        .from('church_locations')
-        .select('*', { count: 'exact', head: true })
-        .eq('church_id', church.id)
-        .eq('is_active', true)
-      
-      const activeLocations = count ?? 1
+      const ed = await getChurchEmailData(supabase, church.id, ownerUserId)
 
-      const result = await sendEmail(email, template, { 
+      const result = await sendEmail(email, template, {
         churchName: church.name,
-        activeLocations
+        firstName: ed.firstName,
+        stats: ed.stats,
+        recommendedTier: ed.recommendedTier,
+        planMonthly: ed.planMonthly,
+        locations: ed.locations,
+        billingUrl: ed.urls.billing,
+        dashboardUrl: ed.urls.dashboard,
+        accountUrl: ed.urls.account,
+        helpUrl: ed.urls.help,
       })
       if (result.error) continue
 

@@ -3,7 +3,14 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 
-export async function signInWithPasswordAction(email: string, password: string): Promise<{ error: string } | never> {
+/** Only allow same-origin relative paths as a post-login destination. */
+function safeNext(next?: string | null): string | null {
+  if (!next) return null
+  if (!next.startsWith('/') || next.startsWith('//')) return null
+  return next
+}
+
+export async function signInWithPasswordAction(email: string, password: string, next?: string): Promise<{ error: string } | never> {
   const supabase = await createClient()
 
   const { error } = await supabase.auth.signInWithPassword({ email, password })
@@ -28,6 +35,11 @@ export async function signInWithPasswordAction(email: string, password: string):
     .eq('user_id', user.id)
     .eq('is_active', true)
     .single()
+
+  // Honor a safe ?next= destination (e.g. an email CTA deep-link) over the
+  // role default.
+  const dest = safeNext(next)
+  if (dest) redirect(dest)
 
   // Role-aware landing — /services is retired. Viewers → viewer dashboard;
   // editors/admins/owners → /entries.

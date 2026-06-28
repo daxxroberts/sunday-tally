@@ -44,8 +44,9 @@ export default function AuthLoginPage() {
     e.preventDefault()
     if (isPending) return
     setError(null)
+    const next = new URLSearchParams(window.location.search).get('next') ?? undefined
     startTransition(async () => {
-      const result = await signInWithPasswordAction(email.trim().toLowerCase(), password)
+      const result = await signInWithPasswordAction(email.trim().toLowerCase(), password, next)
       if (result?.error) setError(result.error)
     })
   }

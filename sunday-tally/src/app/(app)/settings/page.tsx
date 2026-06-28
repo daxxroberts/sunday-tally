@@ -11,9 +11,12 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import AppLayout from '@/components/layouts/AppLayout'
 import { createClient } from '@/lib/supabase/client'
 import { Ico } from '@/app/(app)/entries/ui'
+import ConfirmTypeDialog from '@/components/ui/ConfirmTypeDialog'
+import { resetChurchData } from './actions'
 import type { UserRole } from '@/types'
 
 interface Counts {
@@ -29,10 +32,24 @@ function canWrite(role: UserRole) {
 
 export default function SettingsHubPage() {
   const supabase = useMemo(() => createClient(), [])
+  const router = useRouter()
   const [role, setRole] = useState<UserRole>('viewer')
   const [churchName, setChurchName] = useState<string>('')
   const [loading, setLoading] = useState(true)
   const [counts, setCounts] = useState<Counts>({ services: null, locations: null, members: null, ministries: null })
+  const [resetOpen, setResetOpen] = useState(false)
+  const [resetError, setResetError] = useState<string | null>(null)
+
+  async function handleReset() {
+    setResetError(null)
+    const res = await resetChurchData()
+    if (res.ok) {
+      router.push('/onboarding/import')
+    } else {
+      setResetError(res.error)
+      setResetOpen(false)
+    }
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -183,8 +200,48 @@ export default function SettingsHubPage() {
           <p className="mt-6 px-1 text-[12px] leading-relaxed text-slate-400">
             Counts are derived live from your active configuration. Owners and admins can edit; everyone else sees the structure read-only.
           </p>
+
+          {/* ── Danger zone (owner only) — start over with a clean church ──── */}
+          {role === 'owner' && (
+            <div className="mt-8 mb-4">
+              <p className="px-1 pb-2 pt-1 text-[11px] font-semibold uppercase tracking-wider text-amber-600">Danger zone</p>
+              <div className="overflow-hidden rounded-2xl border border-amber-200 bg-amber-50/40 shadow-sm">
+                <div className="flex items-start justify-between gap-4 p-4">
+                  <div className="min-w-0">
+                    <p className="text-[14px] font-semibold text-slate-800">Reset church data</p>
+                    <p className="mt-0.5 text-[12px] leading-snug text-slate-500">
+                      Clears your locations, services, what you track, and saved charts so you can start over and re-import. Your account and sign-in stay. This can&apos;t be undone.
+                    </p>
+                    {resetError && <p className="mt-1.5 text-[12px] text-amber-700">{resetError}</p>}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { setResetError(null); setResetOpen(true) }}
+                    className="shrink-0 rounded-xl border border-amber-300 bg-white px-3.5 py-2 text-[13px] font-semibold text-amber-700 transition-colors hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600/40"
+                  >
+                    Reset…
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </main>
       </div>
+
+      <ConfirmTypeDialog
+        open={resetOpen}
+        title="Reset church data?"
+        body={
+          <>
+            This permanently clears your locations, services, what you track, and saved charts.
+            Your account and sign-in stay, and you&apos;ll start fresh with an import. This can&apos;t be undone.
+          </>
+        }
+        confirmPhrase="Sunday Tally"
+        confirmLabel="Reset everything"
+        onConfirm={handleReset}
+        onCancel={() => setResetOpen(false)}
+      />
     </AppLayout>
   )
 }
