@@ -41,6 +41,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# graphify artifacts dumped into source tree (real graph lives at repo-parent graphify-out/)
+src/graphify-out/
+
 # throwaway widget mockups — service-role + demo data, never ship
 /mockup-widgets.png
 /screenshot-mockup.mjs
