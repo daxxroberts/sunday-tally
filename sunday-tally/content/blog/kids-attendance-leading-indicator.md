@@ -1,0 +1,76 @@
+---
+title: "Your Kids' Room Is Quietly Forecasting Your Church"
+description: "Children's attendance is a leading indicator. When the kids' room thins, young families are already drifting, and you'll see it in the auditorium months later."
+coverImage: "/blog/kids-attendance-leading-indicator-cover.png"
+coverImageAlt: "A children's attendance line dipping months ahead of the adult attendance line"
+ogImage: "/blog/kids-attendance-leading-indicator-cover.png"
+date: "2026-06-27"
+lastUpdated: "2026-06-27"
+author: "Daxx Roberts"
+tags: ["kids ministry attendance", "church attendance tracking", "church analytics", "young family retention"]
+status: "draft-pre-grove"
+---
+
+<!-- DRAFT. Clears the bar: insight = kids' attendance LEADS adult attendance (early warning for young-family retention); earned via founder reasoning + illustrative chart; Monday action = chart kids vs adults, reach the drifting families. No borrowed stats. Needs GROVE stamp. -->
+
+# Your kids' room is quietly forecasting your church
+
+If you want to know where your church is headed in a year, don't look at the auditorium. Look at the nursery and the kids' wing. Children's attendance tends to move first. The grown-up numbers follow, often months behind.
+
+I spent 13 years in analytics before building software for churches, and leading indicators are the whole game in that world. A leading indicator changes *before* the thing you actually care about does. For a church, the kids' room is one of the clearest you have, and almost nobody watches it that way.
+
+## Why the kids move first
+
+Young families make the quietest exit decisions in your church, and they make them through their kids. A family rarely announces they're leaving. They just start having slower Sunday mornings, and the first place that shows up is children's check-in, not the adult service. One skipped week becomes two. Mom and dad still come most weeks, so the adult count looks fine for a while.
+
+By the time the drop reaches the auditorium, those families have often been loosening their grip for months. The kids' room knew first.
+
+<figure>
+  <svg viewBox="0 0 560 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A children's attendance line dipping in the spring while the adult attendance line stays flat, then dips months later">
+    <rect width="560" height="220" fill="transparent"/>
+    <g font-family="system-ui, sans-serif" font-size="13">
+      <line x1="55" y1="30" x2="55" y2="180" stroke="#cbd5e1" stroke-width="1"/>
+      <line x1="55" y1="180" x2="510" y2="180" stroke="#cbd5e1" stroke-width="1"/>
+      <path d="M60 80 L160 84 L260 120 L360 140 L460 150" fill="none" stroke="#B8860B" stroke-width="3"/>
+      <text x="466" y="150" fill="#B8860B">Kids</text>
+      <path d="M60 70 L260 72 L360 74 L430 100 L460 120" fill="none" stroke="#4F6EF7" stroke-width="3"/>
+      <text x="466" y="120" fill="#4F6EF7">Adults</text>
+    </g>
+  </svg>
+  <figcaption>The kids' line bends down first. The adult line follows a season later. (Illustrative.)</figcaption>
+</figure>
+
+## What the gap is telling you
+
+When children's attendance softens while adult attendance holds, that's not noise. It's an early warning that young families, the future of the church, are starting to drift. You have a window to respond while they're still partly in.
+
+The reverse is just as useful. A growing kids' wing usually means young families are putting down roots, and adult growth is coming whether the auditorium shows it yet or not.
+
+## Why most churches miss it
+
+Most churches count kids for safety and room ratios, not as a signal. The number lives on a check-in screen, gets used to staff the rooms, and never sits next to the adult trend where the pattern would jump out. Nobody's ignoring it on purpose. It's just filed under "logistics" instead of "where are we headed."
+
+And remember what this really is. Watching the kids' room isn't forecasting for its own sake. It's noticing which young families are starting to slip while there's still time to put an arm around them.
+
+## What to do Monday
+
+Pull two lines for the last twelve months: total kids' attendance and total adult attendance, side by side.
+
+If the kids' line is sliding while adults hold flat, you've found something the auditorium won't tell you for another season. Pick the three or four families you've seen less of in the children's wing and reach out this week, not a mass email, a real "we've missed you."
+
+If both lines are climbing, say thank you and keep building for young families. They're voting with their kids.
+
+## Frequently asked questions
+
+### Why is children's attendance a leading indicator for a church?
+Young families often begin drifting through their kids first, so skipped Sundays show up in children's check-in before the adults stop coming. A dip in kids' attendance frequently predicts a dip in overall attendance months later, giving leaders an early window to respond while families are still partly engaged.
+
+### What should I compare kids' attendance to?
+Put children's attendance next to adult attendance over the same twelve months. When kids soften while adults hold, young families may be quietly disengaging. When the kids' wing grows, young-family roots are deepening and adult growth usually follows.
+
+### Does a strong kids' ministry really predict growth?
+It's one of the better early signals. Families with children make their staying-or-leaving decisions largely around their kids, so a healthy, growing children's ministry tends to lead overall church health rather than lag behind it.
+
+---
+
+*Daxx Roberts spent 13 years in data analytics before founding Sunday Tally, affordable church analytics software he built after watching his own church's board run on hand-built spreadsheets and no database.*

@@ -1,0 +1,76 @@
+---
+title: "You Can See Volunteer Burnout Before It Happens"
+description: "Volunteer burnout shows up in the numbers months before anyone quits. The ratio of people to roles flags it early, so you can protect your faithful few in time."
+coverImage: "/blog/volunteer-burnout-ratio-cover.png"
+coverImageAlt: "A steady line of filled serving slots above a falling line of unique volunteers"
+ogImage: "/blog/volunteer-burnout-ratio-cover.png"
+date: "2026-06-27"
+lastUpdated: "2026-06-27"
+author: "Daxx Roberts"
+tags: ["volunteer burnout church", "church volunteer management", "church analytics", "serving teams"]
+status: "draft-pre-grove"
+---
+
+<!-- DRAFT. Clears the bar: insight = the people-to-slots ratio predicts burnout before anyone quits; earned via founder reasoning + illustrative chart; Monday action = count unique volunteers vs slots filled. Care-not-surveillance. No borrowed stats. Needs GROVE stamp. -->
+
+# You can see volunteer burnout before it happens
+
+Volunteer burnout almost never arrives as a surprise. It feels like one, because the resignation lands out of nowhere. But the numbers were saying it for months. We just weren't reading them.
+
+I spent 13 years in analytics before building software for churches, and burnout is one of those things that's invisible in any single week and obvious across a few months, if you're looking at the right number.
+
+## The number that sees it coming
+
+Don't watch total volunteers. Watch the ratio of *people* to *slots*. How many unique people are covering how many serving roles? When the same names start covering more and more, your total volunteer count can look perfectly healthy while a smaller and smaller group quietly carries the weight.
+
+That concentration *is* burnout forming. Not when they quit, months before, when the load starts piling onto the faithful few who never say no.
+
+<figure>
+  <svg viewBox="0 0 560 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A flat line of filled serving slots above a downward-sloping line of unique volunteers, the gap widening">
+    <rect width="560" height="220" fill="transparent"/>
+    <g font-family="system-ui, sans-serif" font-size="13">
+      <line x1="55" y1="30" x2="55" y2="180" stroke="#cbd5e1" stroke-width="1"/>
+      <line x1="55" y1="180" x2="510" y2="180" stroke="#cbd5e1" stroke-width="1"/>
+      <path d="M60 70 L260 72 L510 70" fill="none" stroke="#4F6EF7" stroke-width="3"/>
+      <text x="300" y="60" fill="#4F6EF7" text-anchor="middle">Serving slots filled (steady)</text>
+      <path d="M60 90 L260 120 L510 150" fill="none" stroke="#B8860B" stroke-width="3"/>
+      <text x="300" y="170" fill="#B8860B" text-anchor="middle">Unique volunteers (shrinking)</text>
+    </g>
+  </svg>
+  <figcaption>Same work, fewer hands. The widening gap is burnout forming in plain sight. (Illustrative.)</figcaption>
+</figure>
+
+## Why the faithful are most at risk
+
+Here's the hard part: the people most likely to burn out are your best ones. They're the ones who say yes. So when a team gets thin, the gap gets filled by the same dependable handful, over and over, until they're serving three roles and running on empty. They won't tell you. They'll just quietly step back one day, and you'll wonder how you missed it.
+
+The numbers wouldn't have missed it. A thinning roster covering a steady set of slots is the clearest early-warning sign you have.
+
+## This is care, not staffing
+
+It's worth being honest about why you'd watch this. Not to optimize coverage. To protect people. A volunteer ratio is really a question: who's giving more than is sustainable, and how do we reach them before they break? Read that way, it's one of the most pastoral numbers in your church.
+
+## Why churches miss it
+
+Because the schedule looks full. Every slot has a name. The roster does its job, so nobody asks the harder question of *how many* names are doing all the filling. The warning hides inside a schedule that looks complete.
+
+## What to do Monday
+
+Count two things for this month: total serving slots filled, and the number of unique people who filled them. Compare to a few months ago.
+
+If the slots held steady but the people shrank, your faithful few are carrying more than they were, and that's your list. Go to them, name what you see, and take something off their plate before they ask. That one conversation, early, saves volunteers you'd otherwise lose.
+
+## Frequently asked questions
+
+### How can you predict volunteer burnout?
+Watch the ratio of unique volunteers to serving roles, not just the total. When the same shrinking group covers a steady or rising number of slots, the load is concentrating, the clearest early sign of burnout, often visible months before anyone steps down.
+
+### Why isn't a full volunteer schedule a good sign?
+A full schedule only means every slot has a name. It doesn't show how many people those names represent. A roster can look complete while a few faithful volunteers quietly cover everything, which is exactly the situation that leads to burnout.
+
+### What do we do when we spot concentration?
+Go to the people carrying the most, name what you see, and lighten their load before they ask, by recruiting alongside them or redistributing roles. Caught early, it's a caring conversation. Caught late, it's a resignation you didn't see coming.
+
+---
+
+*Daxx Roberts spent 13 years in data analytics before founding Sunday Tally, affordable church analytics software he built after watching his own church's board run on hand-built spreadsheets and no database.*

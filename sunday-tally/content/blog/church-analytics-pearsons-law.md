@@ -33,7 +33,7 @@ For a church, that second clause is the one nobody acts on. Counting heads on Su
 
 > Pearson's Law says measurement improves performance, and reporting that measurement back improves it faster. Named for statistician Karl Pearson and refined in practice by Deming and Drucker, it explains why a church that simply reviews its attendance and giving each month tends to grow faster than one that merely records them.
 
-[INTERNAL-LINK: what church metrics to track → pillar on core ministry metrics]
+*Not sure which numbers earn a place on the report? See [what to stop counting, and the few metrics worth keeping](/blog/what-church-should-track).*
 
 ## Why does simply paying attention change things?
 
@@ -57,7 +57,7 @@ This is the half of Pearson's Law churches skip, and it's the costly half to ski
 <!-- [PERSONAL EXPERIENCE] -->
 On our board, the week we started actually presenting the numbers instead of just collecting them, the conversation changed. We stopped guessing about which ministries were healthy and started knowing. Nobody worked harder that week. We just finally looked.
 
-[INTERNAL-LINK: how to run a ministry review → guide to monthly board reporting]
+*This is [the 20-minute monthly review that turns numbers into decisions](/blog/monthly-ministry-review), the reporting half most churches skip.*
 
 ## Why don't most churches do this already?
 
@@ -96,7 +96,7 @@ The same is true of giving. A steady total can mask a shift from broad participa
 
 > The church metrics that drive decisions are attendance by ministry and age group, volunteer coverage, giving trends, and key decisions like baptisms and guest follow-up. Reviewed together each month, they reveal whether a church is genuinely growing or just maintaining attendance while other ministries quietly decline.
 
-[INTERNAL-LINK: church giving dashboard → feature page on giving analytics]
+*More on why [giving per person tells you more than the total](/blog/giving-per-person-discipleship) ever can.*
 
 ## How do you start measuring and reporting without a data team?
 
@@ -106,7 +106,7 @@ You don't have to start with all of it. One metric, measured and reported on a r
 
 The barrier was never the idea. It was the hours. That's the specific problem I built Sunday Tally to remove. Log your ministry numbers in a few minutes, and the reports build themselves into a dashboard your board can read in seconds, with the history kept for you. I priced it so any church can afford it, regardless of size, because the churches that most need to see their numbers are usually the ones that can least afford expensive software. That was a conviction before it was a price.
 
-[INTERNAL-LINK: start tracking your ministry → Sunday Tally signup]
+*Not sure where to begin? [Start with one number, not a dashboard](/blog/start-with-one-metric).*
 
 ### A note on why this matters beyond the spreadsheet
 
@@ -136,7 +136,7 @@ Pearson's Law isn't complicated. Measure, report back, and watch the rate of imp
 
 You don't need a data team or an expensive platform to start. You need one metric, a consistent record, and a report your leadership will actually read. Close that loop, and the principle does the rest.
 
-[INTERNAL-LINK: see how it works → Sunday Tally product tour]
+*Seen a rising attendance number that still felt off? Here's [why a growing count can hide a shrinking church](/blog/attendance-up-church-shrinking).*
 
 ---
 

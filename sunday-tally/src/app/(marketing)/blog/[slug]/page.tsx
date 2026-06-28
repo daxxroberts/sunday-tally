@@ -10,8 +10,8 @@ export function generateStaticParams() {
   return getAllPostSlugs().map((slug) => ({ slug }))
 }
 
-// Only known post slugs are served; unknown URLs 404 instead of rendering on demand.
-export const dynamicParams = false
+// dynamicParams stays true (default): new post files render without a rebuild, and
+// getPostBySlug already 404s any non-post (no title+date frontmatter) by direct URL.
 
 export async function generateMetadata({
   params,
