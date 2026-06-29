@@ -145,10 +145,10 @@ export default async function BlogPostPage({
       <header className="mb-10">
         <div className="flex items-center gap-3 text-xs font-semibold uppercase tracking-wider text-stone-400 mb-4">
           <time dateTime={post.date}>{formatDate(post.date)}</time>
-          {post.tags[0] && (
+          {(post.category ?? post.tags[0]) && (
             <>
               <span aria-hidden>·</span>
-              <span className="text-[#4F6EF7]">{post.tags[0]}</span>
+              <span className="text-[#4F6EF7]">{post.category ?? post.tags[0]}</span>
             </>
           )}
         </div>
