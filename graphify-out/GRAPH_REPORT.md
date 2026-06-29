@@ -1,24 +1,24 @@
-# Graph Report - sunday-tally\src  (2026-06-28)
+# Graph Report - sunday-tally\src  (2026-06-29)
 
 ## Corpus Check
-- 205 files · ~239,034 words
+- 211 files · ~243,496 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 772 nodes · 1234 edges · 25 communities detected
+- 785 nodes · 1255 edges · 25 communities detected
 - Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 7 edges (avg confidence: 0.75)
 - Token cost: 0 input · 0 output
 
 ## God Nodes (most connected - your core abstractions)
-1. `POST()` - 19 edges
+1. `POST()` - 20 edges
 2. `requireOwnerAdmin()` - 14 edges
 3. `compileAndRun()` - 13 edges
 4. `buildRows()` - 9 edges
 5. `GridConfig / ChurchGridConfig Object` - 9 edges
 6. `resolveCaller()` - 8 edges
-7. `fetchMetricSeries()` - 8 edges
-8. `renderEmail()` - 8 edges
-9. `getPostBySlug()` - 7 edges
+7. `getPostBySlug()` - 8 edges
+8. `fetchMetricSeries()` - 8 edges
+9. `renderEmail()` - 8 edges
 10. `fetchDashboardData()` - 7 edges
 
 ## Surprising Connections (you probably didn't know these)
@@ -50,75 +50,75 @@ Nodes (39): activeOwnerCount(), addCount(), addLocationAction(), allCampusOwnerC
 
 ### Community 2 - "Community 2"
 Cohesion: 0.04
-Nodes (9): getDashboardHref(), isActive(), tabHref(), dayPhrase(), TrialBanner(), isPayReachable(), resolveChrome(), computeRollups() (+1 more)
+Nodes (4): fmt(), fmtNum(), fmtVal(), FourColRow()
 
 ### Community 3 - "Community 3"
 Cohesion: 0.05
-Nodes (28): AiBudgetExhaustedError, anthropic(), assertBudget(), bucketForKind(), runToolLoop(), attendanceByTemplateMonth(), attendanceByWeek(), givingByWeek() (+20 more)
+Nodes (7): getDashboardHref(), isActive(), tabHref(), dayPhrase(), TrialBanner(), isPayReachable(), resolveChrome()
 
 ### Community 4 - "Community 4"
 Cohesion: 0.06
 Nodes (48): AI Onboarding Pattern Recognition (Stage A / Stage B), buildConfigFromAnswers(), Cell State Resolution (EDITABLE / READ_ONLY / NA via RowÃ—Column Scope Intersection), church_period_entries / church_period_metrics (Proposed WK/MO Storage Table), Collapsible Volunteer Role Breakdown (Locked Vol Total + computedFrom), ColumnGroup Building Block (Parent Node, Infinitely Nestable), Column Composition Rules (Sibling / Parent-Child / Scope-Separated), Consolidation Auto-Fix Functions (consolidateWeekly/Monthly/SingleDayMetrics) (+40 more)
 
 ### Community 5 - "Community 5"
-Cohesion: 0.05
-Nodes (4): fmt(), fmtNum(), fmtVal(), FourColRow()
+Cohesion: 0.06
+Nodes (20): AiBudgetExhaustedError, anthropic(), assertBudget(), bucketForKind(), runToolLoop(), attendanceByTemplateMonth(), attendanceByWeek(), givingByWeek() (+12 more)
 
 ### Community 6 - "Community 6"
+Cohesion: 0.07
+Nodes (29): applyServiceNames(), applyServiceTimes(), reconcileAnswersIntoMapping(), buildNormalizedAreaIndex(), metricCodeFromDest(), normalizeCompoundKey(), routeTallRow(), routeWideRow() (+21 more)
+
+### Community 7 - "Community 7"
+Cohesion: 0.08
+Nodes (17): buildBoundaries(), buildWeeklyFrom(), delta(), emptyFourWin(), fetchDashboardData(), fetchEntriesPaged(), fourWinFromWeekly(), ratioFourWin() (+9 more)
+
+### Community 8 - "Community 8"
+Cohesion: 0.11
+Nodes (31): buildChurchContextPack(), formatContextPack(), activeMembership(), decodeKey(), DELETE(), extractChurchId(), findOrCreateOccurrence(), GET() (+23 more)
+
+### Community 9 - "Community 9"
 Cohesion: 0.09
 Nodes (19): buildColumnHeaders(), buildGrid(), buildRows(), flattenColumns(), formatMonth(), formatServiceDate(), formatWeek(), getMaxDepth() (+11 more)
 
-### Community 7 - "Community 7"
-Cohesion: 0.11
-Nodes (30): buildChurchContextPack(), formatContextPack(), activeMembership(), decodeKey(), DELETE(), extractChurchId(), findOrCreateOccurrence(), GET() (+22 more)
-
-### Community 8 - "Community 8"
+### Community 10 - "Community 10"
 Cohesion: 0.09
 Nodes (17): ensurePeriodRow(), getRemaining(), monthKey(), recordUsage(), resolveBucket(), appBase(), firstNameOf(), getChurchEmailData() (+9 more)
 
-### Community 9 - "Community 9"
+### Community 11 - "Community 11"
 Cohesion: 0.08
 Nodes (7): createAndSendInvite(), inviteExpiry(), inviteUrlFor(), newInviteToken(), sendInviteEmail(), createClient(), createServiceRoleClient()
 
-### Community 10 - "Community 10"
+### Community 12 - "Community 12"
 Cohesion: 0.12
 Nodes (24): aggregate(), bucketKey(), compileAndRun(), describeSpec(), explainQuery(), fetchPaged(), isObj(), isStringArray() (+16 more)
 
-### Community 11 - "Community 11"
-Cohesion: 0.11
-Nodes (15): buildBoundaries(), buildWeeklyFrom(), delta(), emptyFourWin(), fetchDashboardData(), fetchEntriesPaged(), fourWinFromWeekly(), ratioFourWin() (+7 more)
-
-### Community 12 - "Community 12"
-Cohesion: 0.11
-Nodes (16): applyServiceNames(), applyServiceTimes(), reconcileAnswersIntoMapping(), buildNormalizedAreaIndex(), metricCodeFromDest(), normalizeCompoundKey(), routeTallRow(), routeWideRow() (+8 more)
-
 ### Community 13 - "Community 13"
+Cohesion: 0.14
+Nodes (19): consolidateMonthlyMetrics(), consolidateSingleDayMetrics(), consolidateWeeklyMetrics(), findColumnById(), getAllColumnIds(), getAllGroupIds(), removeOrphanedColumns(), validateConfig() (+11 more)
+
+### Community 14 - "Community 14"
 Cohesion: 0.13
 Nodes (11): avgOfWeeks(), avgOfWeeksRaw(), buildSittingsFromEntries(), buildWeeklyFromEntries(), entryActiveDate(), enumerateWeeks(), fetchGivingWeekly(), fetchMetricSeries() (+3 more)
 
-### Community 14 - "Community 14"
-Cohesion: 0.17
-Nodes (19): consolidateMonthlyMetrics(), consolidateSingleDayMetrics(), consolidateWeeklyMetrics(), findColumnById(), getAllColumnIds(), getAllGroupIds(), removeOrphanedColumns(), validateConfig() (+11 more)
-
 ### Community 15 - "Community 15"
-Cohesion: 0.16
-Nodes (13): asArray(), buildNormalizedAreaIndex(), cachedUpsertOccurrence(), errMsg(), normalizeCompoundKey(), parseDateIso(), runSetupDeterministic(), runStageB() (+5 more)
-
-### Community 16 - "Community 16"
-Cohesion: 0.11
-Nodes (5): animate(), drawLines(), initParticles(), Particle, resize()
-
-### Community 17 - "Community 17"
 Cohesion: 0.12
 Nodes (4): isMissingColumn(), saveChurchPrefs(), ensureSinglePrimary(), resolveTotals()
 
+### Community 16 - "Community 16"
+Cohesion: 0.12
+Nodes (5): animate(), drawLines(), initParticles(), Particle, resize()
+
+### Community 17 - "Community 17"
+Cohesion: 0.16
+Nodes (8): aggregateMonths(), parseCount(), parseDateIso(), fetchGoogleSheetCsv(), getAllRows(), normalizeSource(), parseCsv(), stripBom()
+
 ### Community 18 - "Community 18"
-Cohesion: 0.26
-Nodes (13): from(), resend(), sendEmail(), appUrl(), backLink(), button(), chip(), fmt() (+5 more)
+Cohesion: 0.18
+Nodes (11): extractFaqs(), getAllPostSlugs(), getAllPostsMeta(), getFeaturedPostsMeta(), getPostBySlug(), readPostFile(), renderMarkdown(), stripAuthorFooter() (+3 more)
 
 ### Community 19 - "Community 19"
-Cohesion: 0.23
-Nodes (10): extractFaqs(), getAllPostSlugs(), getAllPostsMeta(), getFeaturedPostsMeta(), getPostBySlug(), readPostFile(), renderMarkdown(), stripComments() (+2 more)
+Cohesion: 0.26
+Nodes (13): from(), resend(), sendEmail(), appUrl(), backLink(), button(), chip(), fmt() (+5 more)
 
 ### Community 20 - "Community 20"
 Cohesion: 0.83

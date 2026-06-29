@@ -538,7 +538,7 @@ export default function LandingPage() {
           </div>
 
           {/* AI Add-ons Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
             {/* Starter */}
             <div className="bg-white border border-stone-200 rounded-3xl p-8 shadow-sm flex flex-col">
               <p className="text-[#4F6EF7] font-bold tracking-widest uppercase text-sm mb-2">Starter</p>
@@ -546,9 +546,9 @@ export default function LandingPage() {
                 <span className="text-4xl font-extrabold text-stone-900">+$29</span>
                 <span className="text-stone-500 font-medium">/mo</span>
               </div>
-              <p className="text-xs text-stone-400 font-bold mb-6 pb-6 border-b border-stone-100">per church</p>
+              <p className="text-xs text-stone-400 font-bold mb-6 pb-6 border-b border-stone-100">1 campus</p>
               <p className="text-stone-600 mb-8 leading-relaxed font-medium">
-                <strong>Best for a single church getting started.</strong> Turn your numbers into 15 saved dashboard widgets you can read in five seconds. Just ask.
+                <strong>Best for a single campus.</strong> Turn your numbers into 15 saved dashboard widgets you can read in five seconds. Just ask.
               </p>
               <ul className="flex flex-col gap-4 text-sm text-stone-600 mt-auto">
                 <li className="flex items-start gap-3"><CheckCircle2 className="text-emerald-500 shrink-0" size={18} /> <span><strong>15</strong> Saved dashboard widgets</span></li>
@@ -567,14 +567,15 @@ export default function LandingPage() {
                 <span className="text-4xl font-extrabold text-stone-900">+$59</span>
                 <span className="text-stone-500 font-medium">/mo</span>
               </div>
-              <p className="text-xs text-stone-400 font-bold mb-6 pb-6 border-b border-stone-100">per church</p>
+              <p className="text-xs text-stone-400 font-bold mb-6 pb-6 border-b border-stone-100">2 or less campuses</p>
               <p className="text-stone-600 mb-8 leading-relaxed font-medium">
-                <strong>Best for growing, multi-ministry teams.</strong> Room to grow, offering 40 saved dashboard widgets across every ministry, with the same plain-English AI.
+                <strong>Best for growing teams.</strong> Room to grow, offering 40 saved dashboard widgets across every ministry, with the same plain-English AI.
               </p>
               <ul className="flex flex-col gap-4 text-sm text-stone-600 mt-auto">
                 <li className="flex items-start gap-3"><CheckCircle2 className="text-emerald-500 shrink-0" size={18} /> <span><strong>40</strong> Saved dashboard widgets</span></li>
                 <li className="flex items-start gap-3"><CheckCircle2 className="text-emerald-500 shrink-0" size={18} /> <span>Tally AI Ask & Build modes</span></li>
                 <li className="flex items-start gap-3"><CheckCircle2 className="text-emerald-500 shrink-0" size={18} /> <span>Auto-refreshing dashboards</span></li>
+                <li className="flex items-start gap-3"><CheckCircle2 className="text-emerald-500 shrink-0" size={18} /> <span><strong>2x</strong> more Tally AI asks</span></li>
               </ul>
             </div>
 
@@ -585,16 +586,39 @@ export default function LandingPage() {
                 <span className="text-4xl font-extrabold text-white">+$99</span>
                 <span className="text-stone-400 font-medium">/mo</span>
               </div>
-              <p className="text-xs text-stone-550 font-bold mb-6 pb-6 border-b border-stone-800">per church</p>
+              <p className="text-xs text-stone-550 font-bold mb-6 pb-6 border-b border-stone-800">4 or less campuses</p>
               <p className="text-stone-300 mb-8 leading-relaxed font-medium">
-                <strong>Best for multi-campus churches and data-driven executive teams.</strong> Up to 120 saved widgets and our most capable AI. Built for churches that live in their data.
+                <strong>Best for larger multi-campus churches.</strong> Up to 120 saved widgets and our most capable AI. Built for churches that live in their data.
               </p>
               <ul className="flex flex-col gap-4 text-sm text-stone-300 mt-auto">
                 <li className="flex items-start gap-3"><CheckCircle2 className="text-emerald-400 shrink-0" size={18} /> <span><strong>120</strong> saved widgets</span></li>
                 <li className="flex items-start gap-3"><CheckCircle2 className="text-emerald-400 shrink-0" size={18} /> <span>Tally AI Ask & Build modes</span></li>
                 <li className="flex items-start gap-3"><CheckCircle2 className="text-emerald-400 shrink-0" size={18} /> <span>Most capable AI models</span></li>
-                <li className="flex items-start gap-3"><CheckCircle2 className="text-emerald-400 shrink-0" size={18} /> <span>Multi-campus rollup support</span></li>
+                <li className="flex items-start gap-3"><CheckCircle2 className="text-emerald-400 shrink-0" size={18} /> <span><strong>3x</strong> Tally AI asks</span></li>
               </ul>
+            </div>
+
+            {/* Enterprise */}
+            <div className="bg-white border border-stone-200 rounded-3xl p-8 shadow-sm flex flex-col text-stone-800">
+              <p className="text-stone-500 font-bold tracking-widest uppercase text-sm mb-2">Enterprise</p>
+              <div className="flex items-baseline gap-1 mb-2">
+                <span className="text-4xl font-extrabold text-stone-900">Custom</span>
+              </div>
+              <p className="text-xs text-stone-400 font-bold mb-6 pb-6 border-b border-stone-100">6+ campuses</p>
+              <p className="text-stone-600 mb-8 leading-relaxed font-medium">
+                <strong>Tailored plan for larger networks.</strong> Get custom widget limits, custom integrations, and dedicated support for your whole organization.
+              </p>
+              <ul className="flex flex-col gap-4 text-sm text-stone-600 mt-auto">
+                <li className="flex items-start gap-3"><CheckCircle2 className="text-emerald-500 shrink-0" size={18} /> <span>Custom saved widgets</span></li>
+                <li className="flex items-start gap-3"><CheckCircle2 className="text-emerald-500 shrink-0" size={18} /> <span>Tally AI Ask & Build modes</span></li>
+                <li className="flex items-start gap-3"><CheckCircle2 className="text-emerald-500 shrink-0" size={18} /> <span>Dedicated support & onboarding</span></li>
+              </ul>
+              <Link 
+                href="/contact" 
+                className="w-full text-center bg-stone-900 hover:bg-[#4F6EF7] text-white font-bold py-3.5 rounded-xl transition-all shadow-sm hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98] mt-6"
+              >
+                Contact SundayTally
+              </Link>
             </div>
           </div>
 

@@ -58,7 +58,7 @@
       "source_file": "sunday-tally\\src\\proxy.ts",
       "source_location": "L1",
       "id": "proxy",
-      "community": 9
+      "community": 11
     },
     {
       "label": "proxy()",
@@ -66,7 +66,7 @@
       "source_file": "sunday-tally\\src\\proxy.ts",
       "source_location": "L4",
       "id": "proxy_proxy",
-      "community": 9
+      "community": 11
     },
     {
       "label": "layout.tsx",
@@ -74,7 +74,7 @@
       "source_file": "sunday-tally\\src\\app\\(marketing)\\layout.tsx",
       "source_location": "L1",
       "id": "layout",
-      "community": 9
+      "community": 11
     },
     {
       "label": "robots.ts",
@@ -98,7 +98,7 @@
       "source_file": "sunday-tally\\src\\app\\sitemap.ts",
       "source_location": "L1",
       "id": "sitemap",
-      "community": 19
+      "community": 18
     },
     {
       "label": "sitemap()",
@@ -106,7 +106,7 @@
       "source_file": "sunday-tally\\src\\app\\sitemap.ts",
       "source_location": "L6",
       "id": "sitemap_sitemap",
-      "community": 19
+      "community": 18
     },
     {
       "label": "AppGroupLayout()",
@@ -114,7 +114,7 @@
       "source_file": "sunday-tally\\src\\app\\(app)\\layout.tsx",
       "source_location": "L15",
       "id": "layout_appgrouplayout",
-      "community": 9
+      "community": 11
     },
     {
       "label": "page.tsx",
@@ -154,7 +154,7 @@
       "source_file": "sunday-tally\\src\\app\\(app)\\dashboard\\drilldown.tsx",
       "source_location": "L1",
       "id": "drilldown",
-      "community": 13
+      "community": 14
     },
     {
       "label": "CloseIcon()",
@@ -162,7 +162,7 @@
       "source_file": "sunday-tally\\src\\app\\(app)\\dashboard\\drilldown.tsx",
       "source_location": "L21",
       "id": "drilldown_closeicon",
-      "community": 13
+      "community": 14
     },
     {
       "label": "fmtWeek()",
@@ -170,7 +170,7 @@
       "source_file": "sunday-tally\\src\\app\\(app)\\dashboard\\drilldown.tsx",
       "source_location": "L28",
       "id": "drilldown_fmtweek",
-      "community": 13
+      "community": 14
     },
     {
       "label": "fmtWeekFull()",
@@ -178,7 +178,7 @@
       "source_file": "sunday-tally\\src\\app\\(app)\\dashboard\\drilldown.tsx",
       "source_location": "L31",
       "id": "drilldown_fmtweekfull",
-      "community": 13
+      "community": 14
     },
     {
       "label": "pct()",
@@ -186,7 +186,7 @@
       "source_file": "sunday-tally\\src\\app\\(app)\\dashboard\\drilldown.tsx",
       "source_location": "L36",
       "id": "drilldown_pct",
-      "community": 13
+      "community": 14
     },
     {
       "label": "DeltaBadge()",
@@ -194,7 +194,7 @@
       "source_file": "sunday-tally\\src\\app\\(app)\\dashboard\\drilldown.tsx",
       "source_location": "L42",
       "id": "drilldown_deltabadge",
-      "community": 13
+      "community": 14
     },
     {
       "label": "xFor()",
@@ -202,7 +202,7 @@
       "source_file": "sunday-tally\\src\\app\\(app)\\dashboard\\drilldown.tsx",
       "source_location": "L61",
       "id": "drilldown_xfor",
-      "community": 13
+      "community": 14
     },
     {
       "label": "yFor()",
@@ -210,7 +210,7 @@
       "source_file": "sunday-tally\\src\\app\\(app)\\dashboard\\drilldown.tsx",
       "source_location": "L62",
       "id": "drilldown_yfor",
-      "community": 13
+      "community": 14
     },
     {
       "label": "pointsOf()",
@@ -218,7 +218,7 @@
       "source_file": "sunday-tally\\src\\app\\(app)\\dashboard\\drilldown.tsx",
       "source_location": "L65",
       "id": "drilldown_pointsof",
-      "community": 13
+      "community": 14
     },
     {
       "label": "onMove()",
@@ -226,7 +226,7 @@
       "source_file": "sunday-tally\\src\\app\\(app)\\dashboard\\drilldown.tsx",
       "source_location": "L76",
       "id": "drilldown_onmove",
-      "community": 13
+      "community": 14
     },
     {
       "label": "subtractFourWin()",
@@ -346,7 +346,7 @@
       "source_file": "sunday-tally\\src\\components\\widgets\\ui.tsx",
       "source_location": "L1",
       "id": "ui",
-      "community": 5
+      "community": 2
     },
     {
       "label": "fmtVal()",
@@ -354,7 +354,7 @@
       "source_file": "sunday-tally\\src\\app\\(app)\\dashboard\\ui.tsx",
       "source_location": "L23",
       "id": "ui_fmtval",
-      "community": 5
+      "community": 2
     },
     {
       "label": "DeltaBadge()",
@@ -362,7 +362,7 @@
       "source_file": "sunday-tally\\src\\app\\(app)\\dashboard\\ui.tsx",
       "source_location": "L31",
       "id": "ui_deltabadge",
-      "community": 5
+      "community": 2
     },
     {
       "label": "fmtRange()",
@@ -370,7 +370,7 @@
       "source_file": "sunday-tally\\src\\app\\(app)\\dashboard\\ui.tsx",
       "source_location": "L54",
       "id": "ui_fmtrange",
-      "community": 5
+      "community": 2
     },
     {
       "label": "ColumnHeaders()",
@@ -378,7 +378,7 @@
       "source_file": "sunday-tally\\src\\app\\(app)\\dashboard\\ui.tsx",
       "source_location": "L58",
       "id": "ui_columnheaders",
-      "community": 5
+      "community": 2
     },
     {
       "label": "FourColRow()",
@@ -386,7 +386,7 @@
       "source_file": "sunday-tally\\src\\app\\(app)\\dashboard\\ui.tsx",
       "source_location": "L108",
       "id": "ui_fourcolrow",
-      "community": 5
+      "community": 2
     },
     {
       "label": "CardHeader()",
@@ -394,7 +394,7 @@
       "source_file": "sunday-tally\\src\\app\\(app)\\dashboard\\ui.tsx",
       "source_location": "L170",
       "id": "ui_cardheader",
-      "community": 5
+      "community": 2
     },
     {
       "label": "NotInTotalTag()",
@@ -402,7 +402,7 @@
       "source_file": "sunday-tally\\src\\app\\(app)\\dashboard\\ui.tsx",
       "source_location": "L194",
       "id": "ui_notintotaltag",
-      "community": 5
+      "community": 2
     },
     {
       "label": "KpiCard()",
@@ -410,7 +410,7 @@
       "source_file": "sunday-tally\\src\\app\\(app)\\dashboard\\ui.tsx",
       "source_location": "L199",
       "id": "ui_kpicard",
-      "community": 5
+      "community": 2
     },
     {
       "label": "openEditor()",
@@ -418,7 +418,7 @@
       "source_file": "sunday-tally\\src\\app\\(app)\\dashboard\\ui.tsx",
       "source_location": "L249",
       "id": "ui_openeditor",
-      "community": 5
+      "community": 2
     },
     {
       "label": "save()",
@@ -426,7 +426,7 @@
       "source_file": "sunday-tally\\src\\app\\(app)\\dashboard\\ui.tsx",
       "source_location": "L253",
       "id": "ui_save",
-      "community": 5
+      "community": 2
     },
     {
       "label": "clear()",
@@ -434,7 +434,7 @@
       "source_file": "sunday-tally\\src\\app\\(app)\\dashboard\\ui.tsx",
       "source_location": "L260",
       "id": "ui_clear",
-      "community": 5
+      "community": 2
     },
     {
       "label": "DeltaBadge()",
@@ -498,7 +498,7 @@
       "source_file": "sunday-tally\\src\\app\\(app)\\entries\\ui.tsx",
       "source_location": "L51",
       "id": "ui_todatestr",
-      "community": 5
+      "community": 2
     },
     {
       "label": "ministryStatus()",
@@ -506,7 +506,7 @@
       "source_file": "sunday-tally\\src\\app\\(app)\\entries\\ui.tsx",
       "source_location": "L59",
       "id": "ui_ministrystatus",
-      "community": 5
+      "community": 2
     },
     {
       "label": "fmt()",
@@ -514,7 +514,7 @@
       "source_file": "sunday-tally\\src\\components\\widgets\\ui.tsx",
       "source_location": "L320",
       "id": "ui_fmt",
-      "community": 5
+      "community": 2
     },
     {
       "label": "membershipRoleLabel()",
@@ -522,7 +522,7 @@
       "source_file": "sunday-tally\\src\\app\\(app)\\entries\\ui.tsx",
       "source_location": "L102",
       "id": "ui_membershiprolelabel",
-      "community": 5
+      "community": 2
     },
     {
       "label": "Dot()",
@@ -530,7 +530,7 @@
       "source_file": "sunday-tally\\src\\app\\(app)\\entries\\ui.tsx",
       "source_location": "L113",
       "id": "ui_dot",
-      "community": 5
+      "community": 2
     },
     {
       "label": "accentForRole()",
@@ -538,7 +538,7 @@
       "source_file": "sunday-tally\\src\\app\\(app)\\entries\\ui.tsx",
       "source_location": "L121",
       "id": "ui_accentforrole",
-      "community": 5
+      "community": 2
     },
     {
       "label": "roleLabel()",
@@ -546,7 +546,7 @@
       "source_file": "sunday-tally\\src\\app\\(app)\\entries\\ui.tsx",
       "source_location": "L130",
       "id": "ui_rolelabel",
-      "community": 5
+      "community": 2
     },
     {
       "label": "Field()",
@@ -554,7 +554,7 @@
       "source_file": "sunday-tally\\src\\app\\(app)\\entries\\ui.tsx",
       "source_location": "L143",
       "id": "ui_field",
-      "community": 5
+      "community": 2
     },
     {
       "label": "MinistryCard.tsx",
@@ -562,7 +562,7 @@
       "source_file": "sunday-tally\\src\\app\\(app)\\entries\\components\\MinistryCard.tsx",
       "source_location": "L1",
       "id": "ministrycard",
-      "community": 5
+      "community": 2
     },
     {
       "label": "OccurrenceView.tsx",
@@ -570,7 +570,7 @@
       "source_file": "sunday-tally\\src\\app\\(app)\\entries\\components\\OccurrenceView.tsx",
       "source_location": "L1",
       "id": "occurrenceview",
-      "community": 5
+      "community": 2
     },
     {
       "label": "OccurrenceView()",
@@ -578,7 +578,7 @@
       "source_file": "sunday-tally\\src\\app\\(app)\\entries\\components\\OccurrenceView.tsx",
       "source_location": "L8",
       "id": "occurrenceview_occurrenceview",
-      "community": 5
+      "community": 2
     },
     {
       "label": "StatEntriesView.tsx",
@@ -586,7 +586,7 @@
       "source_file": "sunday-tally\\src\\app\\(app)\\entries\\components\\StatEntriesView.tsx",
       "source_location": "L1",
       "id": "statentriesview",
-      "community": 5
+      "community": 2
     },
     {
       "label": "cadenceLabel()",
@@ -594,7 +594,7 @@
       "source_file": "sunday-tally\\src\\app\\(app)\\entries\\components\\StatEntriesView.tsx",
       "source_location": "L7",
       "id": "statentriesview_cadencelabel",
-      "community": 5
+      "community": 2
     },
     {
       "label": "dimLabel()",
@@ -602,7 +602,7 @@
       "source_file": "sunday-tally\\src\\app\\(app)\\entries\\components\\StatEntriesView.tsx",
       "source_location": "L23",
       "id": "statentriesview_dimlabel",
-      "community": 5
+      "community": 2
     },
     {
       "label": "TotalsView.tsx",
@@ -610,7 +610,7 @@
       "source_file": "sunday-tally\\src\\app\\(app)\\entries\\components\\TotalsView.tsx",
       "source_location": "L1",
       "id": "totalsview",
-      "community": 5
+      "community": 2
     },
     {
       "label": "VolunteersGroup.tsx",
@@ -618,7 +618,7 @@
       "source_file": "sunday-tally\\src\\app\\(app)\\entries\\components\\VolunteersGroup.tsx",
       "source_location": "L1",
       "id": "volunteersgroup",
-      "community": 5
+      "community": 2
     },
     {
       "label": "VolunteersGroup()",
@@ -626,7 +626,7 @@
       "source_file": "sunday-tally\\src\\app\\(app)\\entries\\components\\VolunteersGroup.tsx",
       "source_location": "L8",
       "id": "volunteersgroup_volunteersgroup",
-      "community": 5
+      "community": 2
     },
     {
       "label": "toDateInput()",
@@ -722,7 +722,7 @@
       "source_file": "sunday-tally\\src\\app\\(app)\\settings\\billing\\BillingClient.tsx",
       "source_location": "L1",
       "id": "billingclient",
-      "community": 2
+      "community": 3
     },
     {
       "label": "resolveState()",
@@ -730,7 +730,7 @@
       "source_file": "sunday-tally\\src\\app\\(app)\\settings\\billing\\BillingClient.tsx",
       "source_location": "L32",
       "id": "billingclient_resolvestate",
-      "community": 2
+      "community": 3
     },
     {
       "label": "fmtDate()",
@@ -738,7 +738,7 @@
       "source_file": "sunday-tally\\src\\app\\(app)\\settings\\billing\\BillingClient.tsx",
       "source_location": "L37",
       "id": "billingclient_fmtdate",
-      "community": 2
+      "community": 3
     },
     {
       "label": "BillingPanel.tsx",
@@ -746,7 +746,7 @@
       "source_file": "sunday-tally\\src\\app\\(app)\\settings\\billing\\BillingPanel.tsx",
       "source_location": "L1",
       "id": "billingpanel",
-      "community": 2
+      "community": 3
     },
     {
       "label": "BillingPanel()",
@@ -754,7 +754,7 @@
       "source_file": "sunday-tally\\src\\app\\(app)\\settings\\billing\\BillingPanel.tsx",
       "source_location": "L27",
       "id": "billingpanel_billingpanel",
-      "community": 2
+      "community": 3
     },
     {
       "label": "BillingPage()",
@@ -994,7 +994,7 @@
       "source_file": "sunday-tally\\src\\app\\(app)\\settings\\setup\\TotalsRulesPanel.tsx",
       "source_location": "L1",
       "id": "totalsrulespanel",
-      "community": 17
+      "community": 15
     },
     {
       "label": "patch()",
@@ -1002,7 +1002,7 @@
       "source_file": "sunday-tally\\src\\app\\(app)\\settings\\setup\\TotalsRulesPanel.tsx",
       "source_location": "L64",
       "id": "totalsrulespanel_patch",
-      "community": 17
+      "community": 15
     },
     {
       "label": "toggleType()",
@@ -1010,7 +1010,7 @@
       "source_file": "sunday-tally\\src\\app\\(app)\\settings\\setup\\TotalsRulesPanel.tsx",
       "source_location": "L69",
       "id": "totalsrulespanel_toggletype",
-      "community": 17
+      "community": 15
     },
     {
       "label": "setPrimary()",
@@ -1018,7 +1018,7 @@
       "source_file": "sunday-tally\\src\\app\\(app)\\settings\\setup\\TotalsRulesPanel.tsx",
       "source_location": "L80",
       "id": "totalsrulespanel_setprimary",
-      "community": 17
+      "community": 15
     },
     {
       "label": "addTotal()",
@@ -1026,7 +1026,7 @@
       "source_file": "sunday-tally\\src\\app\\(app)\\settings\\setup\\TotalsRulesPanel.tsx",
       "source_location": "L85",
       "id": "totalsrulespanel_addtotal",
-      "community": 17
+      "community": 15
     },
     {
       "label": "removeTotal()",
@@ -1034,7 +1034,7 @@
       "source_file": "sunday-tally\\src\\app\\(app)\\settings\\setup\\TotalsRulesPanel.tsx",
       "source_location": "L94",
       "id": "totalsrulespanel_removetotal",
-      "community": 17
+      "community": 15
     },
     {
       "label": "save()",
@@ -1042,7 +1042,7 @@
       "source_file": "sunday-tally\\src\\app\\(app)\\settings\\setup\\TotalsRulesPanel.tsx",
       "source_location": "L104",
       "id": "totalsrulespanel_save",
-      "community": 17
+      "community": 15
     },
     {
       "label": "resolveCaller()",
@@ -1458,7 +1458,7 @@
       "source_file": "sunday-tally\\src\\app\\onboarding\\import\\confirm\\types.ts",
       "source_location": "L1",
       "id": "types",
-      "community": 2
+      "community": 3
     },
     {
       "label": "canWrite()",
@@ -1466,7 +1466,7 @@
       "source_file": "sunday-tally\\src\\app\\(app)\\settings\\track\\types.ts",
       "source_location": "L56",
       "id": "types_canwrite",
-      "community": 2
+      "community": 3
     },
     {
       "label": "rolePillClasses()",
@@ -1474,7 +1474,7 @@
       "source_file": "sunday-tally\\src\\app\\(app)\\settings\\track\\types.ts",
       "source_location": "L62",
       "id": "types_rolepillclasses",
-      "community": 2
+      "community": 3
     },
     {
       "label": "AddMetricControl.tsx",
@@ -1482,7 +1482,7 @@
       "source_file": "sunday-tally\\src\\app\\(app)\\settings\\track\\components\\AddMetricControl.tsx",
       "source_location": "L1",
       "id": "addmetriccontrol",
-      "community": 2
+      "community": 3
     },
     {
       "label": "submit()",
@@ -1490,7 +1490,7 @@
       "source_file": "sunday-tally\\src\\app\\(app)\\settings\\track\\components\\AddMetricControl.tsx",
       "source_location": "L24",
       "id": "addmetriccontrol_submit",
-      "community": 2
+      "community": 3
     },
     {
       "label": "AddNodeForm.tsx",
@@ -1498,7 +1498,7 @@
       "source_file": "sunday-tally\\src\\app\\(app)\\settings\\track\\components\\AddNodeForm.tsx",
       "source_location": "L1",
       "id": "addnodeform",
-      "community": 2
+      "community": 3
     },
     {
       "label": "DetailPanel.tsx",
@@ -1506,7 +1506,7 @@
       "source_file": "sunday-tally\\src\\app\\(app)\\settings\\track\\components\\DetailPanel.tsx",
       "source_location": "L1",
       "id": "detailpanel",
-      "community": 2
+      "community": 3
     },
     {
       "label": "KindSection.tsx",
@@ -1514,7 +1514,7 @@
       "source_file": "sunday-tally\\src\\app\\(app)\\settings\\track\\components\\KindSection.tsx",
       "source_location": "L1",
       "id": "kindsection",
-      "community": 2
+      "community": 3
     },
     {
       "label": "MetricRowItem.tsx",
@@ -1522,7 +1522,7 @@
       "source_file": "sunday-tally\\src\\app\\(app)\\settings\\track\\components\\MetricRowItem.tsx",
       "source_location": "L1",
       "id": "metricrowitem",
-      "community": 2
+      "community": 3
     },
     {
       "label": "roleLabel()",
@@ -1530,7 +1530,7 @@
       "source_file": "sunday-tally\\src\\app\\(app)\\settings\\track\\components\\MetricRowItem.tsx",
       "source_location": "L75",
       "id": "metricrowitem_rolelabel",
-      "community": 2
+      "community": 3
     },
     {
       "label": "MinistryTreeNode.tsx",
@@ -1538,7 +1538,7 @@
       "source_file": "sunday-tally\\src\\app\\(app)\\settings\\track\\components\\MinistryTreeNode.tsx",
       "source_location": "L1",
       "id": "ministrytreenode",
-      "community": 6
+      "community": 9
     },
     {
       "label": "WhereCountedModal.tsx",
@@ -1546,7 +1546,7 @@
       "source_file": "sunday-tally\\src\\app\\(app)\\settings\\track\\components\\WhereCountedModal.tsx",
       "source_location": "L1",
       "id": "wherecountedmodal",
-      "community": 2
+      "community": 7
     },
     {
       "label": "doorA()",
@@ -1554,7 +1554,7 @@
       "source_file": "sunday-tally\\src\\app\\(app)\\settings\\track\\components\\WhereCountedModal.tsx",
       "source_location": "L49",
       "id": "wherecountedmodal_doora",
-      "community": 2
+      "community": 7
     },
     {
       "label": "doorB()",
@@ -1562,7 +1562,7 @@
       "source_file": "sunday-tally\\src\\app\\(app)\\settings\\track\\components\\WhereCountedModal.tsx",
       "source_location": "L58",
       "id": "wherecountedmodal_doorb",
-      "community": 2
+      "community": 7
     },
     {
       "label": "HomeLanding.tsx",
@@ -1613,28 +1613,12 @@
       "community": 16
     },
     {
-      "label": "handleSend()",
-      "file_type": "code",
-      "source_file": "sunday-tally\\src\\app\\(marketing)\\HomeLanding.tsx",
-      "source_location": "L1966",
-      "id": "homelanding_handlesend",
-      "community": 16
-    },
-    {
-      "label": "handleToggleChat()",
-      "file_type": "code",
-      "source_file": "sunday-tally\\src\\app\\(marketing)\\HomeLanding.tsx",
-      "source_location": "L1994",
-      "id": "homelanding_handletogglechat",
-      "community": 16
-    },
-    {
       "label": "MarketingLayout()",
       "file_type": "code",
       "source_file": "sunday-tally\\src\\app\\(marketing)\\layout.tsx",
       "source_location": "L4",
       "id": "layout_marketinglayout",
-      "community": 9
+      "community": 11
     },
     {
       "label": "Page()",
@@ -1645,18 +1629,34 @@
       "community": 0
     },
     {
+      "label": "BlogIndex.tsx",
+      "file_type": "code",
+      "source_file": "sunday-tally\\src\\app\\(marketing)\\blog\\BlogIndex.tsx",
+      "source_location": "L1",
+      "id": "blogindex",
+      "community": 18
+    },
+    {
       "label": "formatDate()",
       "file_type": "code",
-      "source_file": "sunday-tally\\src\\app\\(marketing)\\blog\\[slug]\\page.tsx",
-      "source_location": "L54",
-      "id": "page_formatdate",
+      "source_file": "sunday-tally\\src\\app\\(marketing)\\blog\\BlogIndex.tsx",
+      "source_location": "L8",
+      "id": "blogindex_formatdate",
+      "community": 18
+    },
+    {
+      "label": "BlogIndexPage()",
+      "file_type": "code",
+      "source_file": "sunday-tally\\src\\app\\(marketing)\\blog\\page.tsx",
+      "source_location": "L20",
+      "id": "page_blogindexpage",
       "community": 0
     },
     {
       "label": "generateStaticParams()",
       "file_type": "code",
       "source_file": "sunday-tally\\src\\app\\(marketing)\\blog\\[slug]\\page.tsx",
-      "source_location": "L9",
+      "source_location": "L12",
       "id": "page_generatestaticparams",
       "community": 0
     },
@@ -1664,8 +1664,16 @@
       "label": "generateMetadata()",
       "file_type": "code",
       "source_file": "sunday-tally\\src\\app\\(marketing)\\blog\\[slug]\\page.tsx",
-      "source_location": "L16",
+      "source_location": "L19",
       "id": "page_generatemetadata",
+      "community": 0
+    },
+    {
+      "label": "formatDate()",
+      "file_type": "code",
+      "source_file": "sunday-tally\\src\\app\\(marketing)\\blog\\[slug]\\page.tsx",
+      "source_location": "L57",
+      "id": "page_formatdate",
       "community": 0
     },
     {
@@ -1690,7 +1698,7 @@
       "source_file": "sunday-tally\\src\\app\\auth\\callback\\route.ts",
       "source_location": "L1",
       "id": "route",
-      "community": 7
+      "community": 8
     },
     {
       "label": "POST()",
@@ -1698,7 +1706,7 @@
       "source_file": "sunday-tally\\src\\app\\api\\widgets\\[id]\\duplicate\\route.ts",
       "source_location": "L16",
       "id": "route_post",
-      "community": 7
+      "community": 8
     },
     {
       "label": "GET()",
@@ -1706,7 +1714,7 @@
       "source_file": "sunday-tally\\src\\app\\auth\\callback\\route.ts",
       "source_location": "L24",
       "id": "route_get",
-      "community": 7
+      "community": 8
     },
     {
       "label": "getActiveMembership()",
@@ -1714,7 +1722,7 @@
       "source_file": "sunday-tally\\src\\app\\api\\dashboards\\route.ts",
       "source_location": "L24",
       "id": "route_getactivemembership",
-      "community": 7
+      "community": 8
     },
     {
       "label": "activeMembership()",
@@ -1722,7 +1730,7 @@
       "source_file": "sunday-tally\\src\\app\\api\\dashboards\\[id]\\widgets\\route.ts",
       "source_location": "L28",
       "id": "route_activemembership",
-      "community": 7
+      "community": 8
     },
     {
       "label": "DELETE()",
@@ -1730,7 +1738,7 @@
       "source_file": "sunday-tally\\src\\app\\api\\widgets\\[id]\\route.ts",
       "source_location": "L81",
       "id": "route_delete",
-      "community": 7
+      "community": 8
     },
     {
       "label": "decodeKey()",
@@ -1738,7 +1746,7 @@
       "source_file": "sunday-tally\\src\\app\\api\\history\\save\\route.ts",
       "source_location": "L58",
       "id": "route_decodekey",
-      "community": 7
+      "community": 8
     },
     {
       "label": "isoToDateOnly()",
@@ -1746,7 +1754,7 @@
       "source_file": "sunday-tally\\src\\app\\api\\history\\save\\route.ts",
       "source_location": "L81",
       "id": "route_isotodateonly",
-      "community": 7
+      "community": 8
     },
     {
       "label": "sundayOfWeek()",
@@ -1754,7 +1762,7 @@
       "source_file": "sunday-tally\\src\\app\\api\\history\\save\\route.ts",
       "source_location": "L87",
       "id": "route_sundayofweek",
-      "community": 7
+      "community": 8
     },
     {
       "label": "parseNumber()",
@@ -1762,7 +1770,7 @@
       "source_file": "sunday-tally\\src\\app\\api\\history\\save\\route.ts",
       "source_location": "L94",
       "id": "route_parsenumber",
-      "community": 7
+      "community": 8
     },
     {
       "label": "loadCodeMaps()",
@@ -1770,7 +1778,7 @@
       "source_file": "sunday-tally\\src\\app\\api\\history\\save\\route.ts",
       "source_location": "L114",
       "id": "route_loadcodemaps",
-      "community": 7
+      "community": 8
     },
     {
       "label": "findOrCreateOccurrence()",
@@ -1778,7 +1786,7 @@
       "source_file": "sunday-tally\\src\\app\\api\\history\\save\\route.ts",
       "source_location": "L143",
       "id": "route_findorcreateoccurrence",
-      "community": 7
+      "community": 8
     },
     {
       "label": "upsertInstanceEntry()",
@@ -1786,7 +1794,7 @@
       "source_file": "sunday-tally\\src\\app\\api\\history\\save\\route.ts",
       "source_location": "L179",
       "id": "route_upsertinstanceentry",
-      "community": 7
+      "community": 8
     },
     {
       "label": "upsertPeriodEntry()",
@@ -1794,23 +1802,31 @@
       "source_file": "sunday-tally\\src\\app\\api\\history\\save\\route.ts",
       "source_location": "L219",
       "id": "route_upsertperiodentry",
-      "community": 7
+      "community": 8
+    },
+    {
+      "label": "getKb()",
+      "file_type": "code",
+      "source_file": "sunday-tally\\src\\app\\api\\marketing\\chat\\route.ts",
+      "source_location": "L20",
+      "id": "route_getkb",
+      "community": 8
     },
     {
       "label": "resolveChurch()",
       "file_type": "code",
       "source_file": "sunday-tally\\src\\app\\api\\onboarding\\import\\route.ts",
-      "source_location": "L12",
+      "source_location": "L15",
       "id": "route_resolvechurch",
-      "community": 7
+      "community": 8
     },
     {
       "label": "PATCH()",
       "file_type": "code",
       "source_file": "sunday-tally\\src\\app\\api\\onboarding\\import\\route.ts",
-      "source_location": "L100",
+      "source_location": "L119",
       "id": "route_patch",
-      "community": 7
+      "community": 8
     },
     {
       "label": "resolveAddonTier()",
@@ -1818,7 +1834,7 @@
       "source_file": "sunday-tally\\src\\app\\api\\stripe\\webhook\\route.ts",
       "source_location": "L13",
       "id": "route_resolveaddontier",
-      "community": 7
+      "community": 8
     },
     {
       "label": "extractChurchId()",
@@ -1826,7 +1842,7 @@
       "source_file": "sunday-tally\\src\\app\\api\\stripe\\webhook\\route.ts",
       "source_location": "L102",
       "id": "route_extractchurchid",
-      "community": 7
+      "community": 8
     },
     {
       "label": "handleCheckoutCompleted()",
@@ -1834,7 +1850,7 @@
       "source_file": "sunday-tally\\src\\app\\api\\stripe\\webhook\\route.ts",
       "source_location": "L111",
       "id": "route_handlecheckoutcompleted",
-      "community": 7
+      "community": 8
     },
     {
       "label": "handleSubscriptionChange()",
@@ -1842,7 +1858,7 @@
       "source_file": "sunday-tally\\src\\app\\api\\stripe\\webhook\\route.ts",
       "source_location": "L131",
       "id": "route_handlesubscriptionchange",
-      "community": 7
+      "community": 8
     },
     {
       "label": "handleSubscriptionDeleted()",
@@ -1850,7 +1866,7 @@
       "source_file": "sunday-tally\\src\\app\\api\\stripe\\webhook\\route.ts",
       "source_location": "L159",
       "id": "route_handlesubscriptiondeleted",
-      "community": 7
+      "community": 8
     },
     {
       "label": "handlePaymentFailed()",
@@ -1858,7 +1874,7 @@
       "source_file": "sunday-tally\\src\\app\\api\\stripe\\webhook\\route.ts",
       "source_location": "L176",
       "id": "route_handlepaymentfailed",
-      "community": 7
+      "community": 8
     },
     {
       "label": "handleInvoicePaid()",
@@ -1866,7 +1882,7 @@
       "source_file": "sunday-tally\\src\\app\\api\\stripe\\webhook\\route.ts",
       "source_location": "L199",
       "id": "route_handleinvoicepaid",
-      "community": 7
+      "community": 8
     },
     {
       "label": "handleListDimensions()",
@@ -1874,7 +1890,7 @@
       "source_file": "sunday-tally\\src\\app\\api\\test\\widget-scenarios\\route.ts",
       "source_location": "L71",
       "id": "route_handlelistdimensions",
-      "community": 7
+      "community": 8
     },
     {
       "label": "scoreResult()",
@@ -1882,7 +1898,7 @@
       "source_file": "sunday-tally\\src\\app\\api\\test\\widget-scenarios\\route.ts",
       "source_location": "L92",
       "id": "route_scoreresult",
-      "community": 7
+      "community": 8
     },
     {
       "label": "runScenario()",
@@ -1890,7 +1906,7 @@
       "source_file": "sunday-tally\\src\\app\\api\\test\\widget-scenarios\\route.ts",
       "source_location": "L162",
       "id": "route_runscenario",
-      "community": 7
+      "community": 8
     },
     {
       "label": "loadContext()",
@@ -1898,7 +1914,7 @@
       "source_file": "sunday-tally\\src\\app\\api\\widgets\\[id]\\route.ts",
       "source_location": "L17",
       "id": "route_loadcontext",
-      "community": 7
+      "community": 8
     },
     {
       "label": "PUT()",
@@ -1906,7 +1922,7 @@
       "source_file": "sunday-tally\\src\\app\\api\\widgets\\[id]\\route.ts",
       "source_location": "L57",
       "id": "route_put",
-      "community": 7
+      "community": 8
     },
     {
       "label": "safeNext()",
@@ -1914,7 +1930,7 @@
       "source_file": "sunday-tally\\src\\app\\auth\\callback\\route.ts",
       "source_location": "L18",
       "id": "route_safenext",
-      "community": 7
+      "community": 8
     },
     {
       "label": "startResendCooldown()",
@@ -2058,7 +2074,7 @@
       "source_file": "sunday-tally\\src\\app\\onboarding\\import\\confirm\\components\\EntityRow.tsx",
       "source_location": "L1",
       "id": "entityrow",
-      "community": 2
+      "community": 3
     },
     {
       "label": "EntityRow()",
@@ -2066,7 +2082,7 @@
       "source_file": "sunday-tally\\src\\app\\onboarding\\import\\confirm\\components\\EntityRow.tsx",
       "source_location": "L5",
       "id": "entityrow_entityrow",
-      "community": 2
+      "community": 3
     },
     {
       "label": "ImportingPanel.tsx",
@@ -2082,7 +2098,7 @@
       "source_file": "sunday-tally\\src\\app\\onboarding\\import\\confirm\\components\\OptionCard.tsx",
       "source_location": "L1",
       "id": "optioncard",
-      "community": 2
+      "community": 3
     },
     {
       "label": "OptionCard()",
@@ -2090,7 +2106,7 @@
       "source_file": "sunday-tally\\src\\app\\onboarding\\import\\confirm\\components\\OptionCard.tsx",
       "source_location": "L5",
       "id": "optioncard_optioncard",
-      "community": 2
+      "community": 3
     },
     {
       "label": "QuestionBlock.tsx",
@@ -2098,7 +2114,7 @@
       "source_file": "sunday-tally\\src\\app\\onboarding\\import\\confirm\\components\\QuestionBlock.tsx",
       "source_location": "L1",
       "id": "questionblock",
-      "community": 2
+      "community": 3
     },
     {
       "label": "Section1QuickMetrics.tsx",
@@ -2106,7 +2122,7 @@
       "source_file": "sunday-tally\\src\\app\\onboarding\\import\\confirm\\components\\Section1QuickMetrics.tsx",
       "source_location": "L1",
       "id": "section1quickmetrics",
-      "community": 2
+      "community": 3
     },
     {
       "label": "avgOf()",
@@ -2114,7 +2130,7 @@
       "source_file": "sunday-tally\\src\\app\\onboarding\\import\\confirm\\components\\Section1QuickMetrics.tsx",
       "source_location": "L22",
       "id": "section1quickmetrics_avgof",
-      "community": 2
+      "community": 3
     },
     {
       "label": "Section2DataOrganisation.tsx",
@@ -2122,7 +2138,7 @@
       "source_file": "sunday-tally\\src\\app\\onboarding\\import\\confirm\\components\\Section2DataOrganisation.tsx",
       "source_location": "L1",
       "id": "section2dataorganisation",
-      "community": 2
+      "community": 3
     },
     {
       "label": "Section3Decisions.tsx",
@@ -2130,7 +2146,7 @@
       "source_file": "sunday-tally\\src\\app\\onboarding\\import\\confirm\\components\\Section3Decisions.tsx",
       "source_location": "L1",
       "id": "section3decisions",
-      "community": 2
+      "community": 3
     },
     {
       "label": "isPatternQ()",
@@ -2138,7 +2154,7 @@
       "source_file": "sunday-tally\\src\\app\\onboarding\\import\\confirm\\components\\Section3Decisions.tsx",
       "source_location": "L21",
       "id": "section3decisions_ispatternq",
-      "community": 2
+      "community": 3
     },
     {
       "label": "applyMappingPatch()",
@@ -2240,7 +2256,7 @@
       "label": "handleConfirm()",
       "file_type": "code",
       "source_file": "sunday-tally\\src\\app\\onboarding\\import\\review\\page.tsx",
-      "source_location": "L442",
+      "source_location": "L490",
       "id": "page_handleconfirm",
       "community": 0
     },
@@ -2250,7 +2266,7 @@
       "source_file": "sunday-tally\\src\\app\\onboarding\\import\\review\\PreviewGrid.tsx",
       "source_location": "L1",
       "id": "previewgrid",
-      "community": 6
+      "community": 9
     },
     {
       "label": "PreviewGrid()",
@@ -2258,7 +2274,7 @@
       "source_file": "sunday-tally\\src\\app\\onboarding\\import\\review\\PreviewGrid.tsx",
       "source_location": "L71",
       "id": "previewgrid_previewgrid",
-      "community": 6
+      "community": 9
     },
     {
       "label": "BudgetExhaustedModal.tsx",
@@ -2274,7 +2290,7 @@
       "source_file": "sunday-tally\\src\\app\\onboarding\\import\\review\\components\\QuestionCard.tsx",
       "source_location": "L1",
       "id": "questioncard",
-      "community": 12
+      "community": 6
     },
     {
       "label": "handleFreeText()",
@@ -2282,7 +2298,7 @@
       "source_file": "sunday-tally\\src\\app\\onboarding\\import\\review\\components\\QuestionCard.tsx",
       "source_location": "L38",
       "id": "questioncard_handlefreetext",
-      "community": 12
+      "community": 6
     },
     {
       "label": "removeMemberAction()",
@@ -2586,7 +2602,7 @@
       "source_file": "sunday-tally\\src\\components\\billing\\BillingChrome.tsx",
       "source_location": "L1",
       "id": "billingchrome",
-      "community": 2
+      "community": 3
     },
     {
       "label": "dayPhrase()",
@@ -2594,7 +2610,7 @@
       "source_file": "sunday-tally\\src\\components\\billing\\BillingChrome.tsx",
       "source_location": "L22",
       "id": "billingchrome_dayphrase",
-      "community": 2
+      "community": 3
     },
     {
       "label": "TrialBanner()",
@@ -2602,7 +2618,7 @@
       "source_file": "sunday-tally\\src\\components\\billing\\BillingChrome.tsx",
       "source_location": "L28",
       "id": "billingchrome_trialbanner",
-      "community": 2
+      "community": 3
     },
     {
       "label": "BillingOverlay()",
@@ -2610,7 +2626,7 @@
       "source_file": "sunday-tally\\src\\components\\billing\\BillingChrome.tsx",
       "source_location": "L54",
       "id": "billingchrome_billingoverlay",
-      "community": 2
+      "community": 3
     },
     {
       "label": "BillingProvider.tsx",
@@ -2618,7 +2634,7 @@
       "source_file": "sunday-tally\\src\\components\\billing\\BillingProvider.tsx",
       "source_location": "L1",
       "id": "billingprovider",
-      "community": 9
+      "community": 11
     },
     {
       "label": "BillingProvider()",
@@ -2626,7 +2642,7 @@
       "source_file": "sunday-tally\\src\\components\\billing\\BillingProvider.tsx",
       "source_location": "L13",
       "id": "billingprovider_billingprovider",
-      "community": 9
+      "community": 11
     },
     {
       "label": "useBilling()",
@@ -2634,7 +2650,47 @@
       "source_file": "sunday-tally\\src\\components\\billing\\BillingProvider.tsx",
       "source_location": "L24",
       "id": "billingprovider_usebilling",
-      "community": 9
+      "community": 11
+    },
+    {
+      "label": "chartData.ts",
+      "file_type": "code",
+      "source_file": "sunday-tally\\src\\components\\blog\\chartData.ts",
+      "source_location": "L1",
+      "id": "chartdata",
+      "community": 2
+    },
+    {
+      "label": "ChartKit.tsx",
+      "file_type": "code",
+      "source_file": "sunday-tally\\src\\components\\blog\\ChartKit.tsx",
+      "source_location": "L1",
+      "id": "chartkit",
+      "community": 2
+    },
+    {
+      "label": "DeltaBadge()",
+      "file_type": "code",
+      "source_file": "sunday-tally\\src\\components\\blog\\ChartKit.tsx",
+      "source_location": "L21",
+      "id": "chartkit_deltabadge",
+      "community": 2
+    },
+    {
+      "label": "fmt()",
+      "file_type": "code",
+      "source_file": "sunday-tally\\src\\components\\blog\\ChartKit.tsx",
+      "source_location": "L80",
+      "id": "chartkit_fmt",
+      "community": 2
+    },
+    {
+      "label": "tick()",
+      "file_type": "code",
+      "source_file": "sunday-tally\\src\\components\\blog\\ChartKit.tsx",
+      "source_location": "L81",
+      "id": "chartkit_tick",
+      "community": 2
     },
     {
       "label": "AreaChart.tsx",
@@ -2642,7 +2698,7 @@
       "source_file": "sunday-tally\\src\\components\\charts\\AreaChart.tsx",
       "source_location": "L1",
       "id": "areachart",
-      "community": 5
+      "community": 2
     },
     {
       "label": "ChartTooltip()",
@@ -2650,7 +2706,7 @@
       "source_file": "sunday-tally\\src\\components\\charts\\AreaChart.tsx",
       "source_location": "L41",
       "id": "areachart_charttooltip",
-      "community": 5
+      "community": 2
     },
     {
       "label": "valueToPercent()",
@@ -2658,7 +2714,7 @@
       "source_file": "sunday-tally\\src\\components\\charts\\AreaChart.tsx",
       "source_location": "L149",
       "id": "areachart_valuetopercent",
-      "community": 5
+      "community": 2
     },
     {
       "label": "BarChart.tsx",
@@ -2666,7 +2722,7 @@
       "source_file": "sunday-tally\\src\\components\\charts\\BarChart.tsx",
       "source_location": "L1",
       "id": "barchart",
-      "community": 5
+      "community": 2
     },
     {
       "label": "ChartTooltip()",
@@ -2674,7 +2730,7 @@
       "source_file": "sunday-tally\\src\\components\\charts\\BarChart.tsx",
       "source_location": "L40",
       "id": "barchart_charttooltip",
-      "community": 5
+      "community": 2
     },
     {
       "label": "chartUtils.ts",
@@ -2682,7 +2738,7 @@
       "source_file": "sunday-tally\\src\\components\\charts\\chartUtils.ts",
       "source_location": "L1",
       "id": "chartutils",
-      "community": 5
+      "community": 2
     },
     {
       "label": "constructCategoryColors()",
@@ -2690,7 +2746,7 @@
       "source_file": "sunday-tally\\src\\components\\charts\\chartUtils.ts",
       "source_location": "L22",
       "id": "chartutils_constructcategorycolors",
-      "community": 5
+      "community": 2
     },
     {
       "label": "colorClass()",
@@ -2698,7 +2754,7 @@
       "source_file": "sunday-tally\\src\\components\\charts\\chartUtils.ts",
       "source_location": "L31",
       "id": "chartutils_colorclass",
-      "community": 5
+      "community": 2
     },
     {
       "label": "colorHex()",
@@ -2706,7 +2762,7 @@
       "source_file": "sunday-tally\\src\\components\\charts\\chartUtils.ts",
       "source_location": "L50",
       "id": "chartutils_colorhex",
-      "community": 5
+      "community": 2
     },
     {
       "label": "grid-builder.ts",
@@ -2714,7 +2770,7 @@
       "source_file": "sunday-tally\\src\\components\\history-grid\\grid-builder.ts",
       "source_location": "L1",
       "id": "grid_builder",
-      "community": 6
+      "community": 9
     },
     {
       "label": "flattenColumns()",
@@ -2722,7 +2778,7 @@
       "source_file": "sunday-tally\\src\\components\\history-grid\\grid-builder.ts",
       "source_location": "L80",
       "id": "grid_builder_flattencolumns",
-      "community": 6
+      "community": 9
     },
     {
       "label": "buildColumnHeaders()",
@@ -2730,7 +2786,7 @@
       "source_file": "sunday-tally\\src\\components\\history-grid\\grid-builder.ts",
       "source_location": "L141",
       "id": "grid_builder_buildcolumnheaders",
-      "community": 6
+      "community": 9
     },
     {
       "label": "getMaxDepth()",
@@ -2738,7 +2794,7 @@
       "source_file": "sunday-tally\\src\\components\\history-grid\\grid-builder.ts",
       "source_location": "L195",
       "id": "grid_builder_getmaxdepth",
-      "community": 6
+      "community": 9
     },
     {
       "label": "countLeafColumns()",
@@ -2746,7 +2802,7 @@
       "source_file": "sunday-tally\\src\\components\\history-grid\\grid-builder.ts",
       "source_location": "L214",
       "id": "grid_builder_countleafcolumns",
-      "community": 6
+      "community": 9
     },
     {
       "label": "buildRows()",
@@ -2754,7 +2810,7 @@
       "source_file": "sunday-tally\\src\\components\\history-grid\\grid-builder.ts",
       "source_location": "L248",
       "id": "grid_builder_buildrows",
-      "community": 6
+      "community": 9
     },
     {
       "label": "resolveCellState()",
@@ -2762,7 +2818,7 @@
       "source_file": "sunday-tally\\src\\components\\history-grid\\grid-builder.ts",
       "source_location": "L381",
       "id": "grid_builder_resolvecellstate",
-      "community": 6
+      "community": 9
     },
     {
       "label": "getMonthsInRange()",
@@ -2770,7 +2826,7 @@
       "source_file": "sunday-tally\\src\\components\\history-grid\\grid-builder.ts",
       "source_location": "L441",
       "id": "grid_builder_getmonthsinrange",
-      "community": 6
+      "community": 9
     },
     {
       "label": "getWeeksInMonth()",
@@ -2778,7 +2834,7 @@
       "source_file": "sunday-tally\\src\\components\\history-grid\\grid-builder.ts",
       "source_location": "L464",
       "id": "grid_builder_getweeksinmonth",
-      "community": 6
+      "community": 9
     },
     {
       "label": "isSameWeek()",
@@ -2786,7 +2842,7 @@
       "source_file": "sunday-tally\\src\\components\\history-grid\\grid-builder.ts",
       "source_location": "L497",
       "id": "grid_builder_issameweek",
-      "community": 6
+      "community": 9
     },
     {
       "label": "groupByDate()",
@@ -2794,7 +2850,7 @@
       "source_file": "sunday-tally\\src\\components\\history-grid\\grid-builder.ts",
       "source_location": "L507",
       "id": "grid_builder_groupbydate",
-      "community": 6
+      "community": 9
     },
     {
       "label": "formatMonth()",
@@ -2802,7 +2858,7 @@
       "source_file": "sunday-tally\\src\\components\\history-grid\\grid-builder.ts",
       "source_location": "L521",
       "id": "grid_builder_formatmonth",
-      "community": 6
+      "community": 9
     },
     {
       "label": "formatWeek()",
@@ -2810,7 +2866,7 @@
       "source_file": "sunday-tally\\src\\components\\history-grid\\grid-builder.ts",
       "source_location": "L525",
       "id": "grid_builder_formatweek",
-      "community": 6
+      "community": 9
     },
     {
       "label": "formatServiceDate()",
@@ -2818,7 +2874,7 @@
       "source_file": "sunday-tally\\src\\components\\history-grid\\grid-builder.ts",
       "source_location": "L531",
       "id": "grid_builder_formatservicedate",
-      "community": 6
+      "community": 9
     },
     {
       "label": "getWeekNumber()",
@@ -2826,7 +2882,7 @@
       "source_file": "sunday-tally\\src\\components\\history-grid\\grid-builder.ts",
       "source_location": "L535",
       "id": "grid_builder_getweeknumber",
-      "community": 6
+      "community": 9
     },
     {
       "label": "buildGrid()",
@@ -2834,7 +2890,7 @@
       "source_file": "sunday-tally\\src\\components\\history-grid\\grid-builder.ts",
       "source_location": "L548",
       "id": "grid_builder_buildgrid",
-      "community": 6
+      "community": 9
     },
     {
       "label": "grid-config-schema.ts",
@@ -2842,7 +2898,7 @@
       "source_file": "sunday-tally\\src\\components\\history-grid\\grid-config-schema.ts",
       "source_location": "L1",
       "id": "grid_config_schema",
-      "community": 14
+      "community": 13
     },
     {
       "label": "normalizeMetrics()",
@@ -2850,7 +2906,7 @@
       "source_file": "sunday-tally\\src\\components\\history-grid\\grid-config-schema.ts",
       "source_location": "L102",
       "id": "grid_config_schema_normalizemetrics",
-      "community": 14
+      "community": 13
     },
     {
       "label": "validateConfig()",
@@ -2858,7 +2914,7 @@
       "source_file": "sunday-tally\\src\\components\\history-grid\\grid-config-schema.ts",
       "source_location": "L124",
       "id": "grid_config_schema_validateconfig",
-      "community": 14
+      "community": 13
     },
     {
       "label": "consolidateWeeklyMetrics()",
@@ -2866,7 +2922,7 @@
       "source_file": "sunday-tally\\src\\components\\history-grid\\grid-config-schema.ts",
       "source_location": "L295",
       "id": "grid_config_schema_consolidateweeklymetrics",
-      "community": 14
+      "community": 13
     },
     {
       "label": "consolidateMonthlyMetrics()",
@@ -2874,7 +2930,7 @@
       "source_file": "sunday-tally\\src\\components\\history-grid\\grid-config-schema.ts",
       "source_location": "L328",
       "id": "grid_config_schema_consolidatemonthlymetrics",
-      "community": 14
+      "community": 13
     },
     {
       "label": "consolidateSingleDayMetrics()",
@@ -2882,7 +2938,7 @@
       "source_file": "sunday-tally\\src\\components\\history-grid\\grid-config-schema.ts",
       "source_location": "L357",
       "id": "grid_config_schema_consolidatesingledaymetrics",
-      "community": 14
+      "community": 13
     },
     {
       "label": "findColumnById()",
@@ -2890,7 +2946,7 @@
       "source_file": "sunday-tally\\src\\components\\history-grid\\grid-config-schema.ts",
       "source_location": "L387",
       "id": "grid_config_schema_findcolumnbyid",
-      "community": 14
+      "community": 13
     },
     {
       "label": "findParentGroup()",
@@ -2898,7 +2954,7 @@
       "source_file": "sunday-tally\\src\\components\\history-grid\\grid-config-schema.ts",
       "source_location": "L402",
       "id": "grid_config_schema_findparentgroup",
-      "community": 14
+      "community": 13
     },
     {
       "label": "getAllColumnIds()",
@@ -2906,7 +2962,7 @@
       "source_file": "sunday-tally\\src\\components\\history-grid\\grid-config-schema.ts",
       "source_location": "L418",
       "id": "grid_config_schema_getallcolumnids",
-      "community": 14
+      "community": 13
     },
     {
       "label": "getAllGroupIds()",
@@ -2914,7 +2970,7 @@
       "source_file": "sunday-tally\\src\\components\\history-grid\\grid-config-schema.ts",
       "source_location": "L435",
       "id": "grid_config_schema_getallgroupids",
-      "community": 14
+      "community": 13
     },
     {
       "label": "removeOrphanedColumns()",
@@ -2922,7 +2978,7 @@
       "source_file": "sunday-tally\\src\\components\\history-grid\\grid-config-schema.ts",
       "source_location": "L451",
       "id": "grid_config_schema_removeorphanedcolumns",
-      "community": 14
+      "community": 13
     },
     {
       "label": "group-colors.ts",
@@ -2930,7 +2986,7 @@
       "source_file": "sunday-tally\\src\\components\\history-grid\\group-colors.ts",
       "source_location": "L1",
       "id": "group_colors",
-      "community": 6
+      "community": 9
     },
     {
       "label": "extractRootKey()",
@@ -2938,7 +2994,7 @@
       "source_file": "sunday-tally\\src\\components\\history-grid\\group-colors.ts",
       "source_location": "L59",
       "id": "group_colors_extractrootkey",
-      "community": 6
+      "community": 9
     },
     {
       "label": "colorFromHex()",
@@ -2946,7 +3002,7 @@
       "source_file": "sunday-tally\\src\\components\\history-grid\\group-colors.ts",
       "source_location": "L66",
       "id": "group_colors_colorfromhex",
-      "community": 6
+      "community": 9
     },
     {
       "label": "buildGroupColorMap()",
@@ -2954,7 +3010,7 @@
       "source_file": "sunday-tally\\src\\components\\history-grid\\group-colors.ts",
       "source_location": "L94",
       "id": "group_colors_buildgroupcolormap",
-      "community": 6
+      "community": 9
     },
     {
       "label": "styleForGroup()",
@@ -2962,7 +3018,7 @@
       "source_file": "sunday-tally\\src\\components\\history-grid\\group-colors.ts",
       "source_location": "L118",
       "id": "group_colors_styleforgroup",
-      "community": 6
+      "community": 9
     },
     {
       "label": "GroupFilterPills.tsx",
@@ -2970,7 +3026,7 @@
       "source_file": "sunday-tally\\src\\components\\history-grid\\GroupFilterPills.tsx",
       "source_location": "L1",
       "id": "groupfilterpills",
-      "community": 6
+      "community": 9
     },
     {
       "label": "HistoryGrid.tsx",
@@ -2978,7 +3034,7 @@
       "source_file": "sunday-tally\\src\\components\\history-grid\\HistoryGrid.tsx",
       "source_location": "L1",
       "id": "historygrid",
-      "community": 6
+      "community": 9
     },
     {
       "label": "handleCellChange()",
@@ -2986,7 +3042,7 @@
       "source_file": "sunday-tally\\src\\components\\history-grid\\HistoryGrid.tsx",
       "source_location": "L99",
       "id": "historygrid_handlecellchange",
-      "community": 6
+      "community": 9
     },
     {
       "label": "getCellValue()",
@@ -2994,7 +3050,7 @@
       "source_file": "sunday-tally\\src\\components\\history-grid\\HistoryGrid.tsx",
       "source_location": "L108",
       "id": "historygrid_getcellvalue",
-      "community": 6
+      "community": 9
     },
     {
       "label": "handleSave()",
@@ -3002,7 +3058,7 @@
       "source_file": "sunday-tally\\src\\components\\history-grid\\HistoryGrid.tsx",
       "source_location": "L117",
       "id": "historygrid_handlesave",
-      "community": 6
+      "community": 9
     },
     {
       "label": "handleDiscard()",
@@ -3010,7 +3066,7 @@
       "source_file": "sunday-tally\\src\\components\\history-grid\\HistoryGrid.tsx",
       "source_location": "L133",
       "id": "historygrid_handlediscard",
-      "community": 6
+      "community": 9
     },
     {
       "label": "toggleCollapse()",
@@ -3018,7 +3074,7 @@
       "source_file": "sunday-tally\\src\\components\\history-grid\\HistoryGrid.tsx",
       "source_location": "L142",
       "id": "historygrid_togglecollapse",
-      "community": 6
+      "community": 9
     },
     {
       "label": "flush()",
@@ -3026,7 +3082,7 @@
       "source_file": "sunday-tally\\src\\components\\history-grid\\HistoryGrid.tsx",
       "source_location": "L281",
       "id": "historygrid_flush",
-      "community": 6
+      "community": 9
     },
     {
       "label": "if()",
@@ -3034,7 +3090,7 @@
       "source_file": "sunday-tally\\src\\components\\history-grid\\HistoryGrid.tsx",
       "source_location": "L540",
       "id": "historygrid_if",
-      "community": 6
+      "community": 9
     },
     {
       "label": "toggleTag()",
@@ -3042,7 +3098,7 @@
       "source_file": "sunday-tally\\src\\components\\history-grid\\HistoryGrid.tsx",
       "source_location": "L574",
       "id": "historygrid_toggletag",
-      "community": 6
+      "community": 9
     },
     {
       "label": "onboarding-questions.ts",
@@ -3050,7 +3106,7 @@
       "source_file": "sunday-tally\\src\\components\\history-grid\\_design\\onboarding-questions.ts",
       "source_location": "L1",
       "id": "onboarding_questions",
-      "community": 14
+      "community": 13
     },
     {
       "label": "buildConfigFromAnswers()",
@@ -3058,7 +3114,7 @@
       "source_file": "sunday-tally\\src\\components\\history-grid\\_design\\onboarding-questions.ts",
       "source_location": "L330",
       "id": "onboarding_questions_buildconfigfromanswers",
-      "community": 14
+      "community": 13
     },
     {
       "label": "buildExperienceGroupedColumns()",
@@ -3066,7 +3122,7 @@
       "source_file": "sunday-tally\\src\\components\\history-grid\\_design\\onboarding-questions.ts",
       "source_location": "L379",
       "id": "onboarding_questions_buildexperiencegroupedcolumns",
-      "community": 14
+      "community": 13
     },
     {
       "label": "buildServiceTimeGroupedColumns()",
@@ -3074,7 +3130,7 @@
       "source_file": "sunday-tally\\src\\components\\history-grid\\_design\\onboarding-questions.ts",
       "source_location": "L466",
       "id": "onboarding_questions_buildservicetimegroupedcolumns",
-      "community": 14
+      "community": 13
     },
     {
       "label": "buildMetricGroupedColumns()",
@@ -3082,7 +3138,7 @@
       "source_file": "sunday-tally\\src\\components\\history-grid\\_design\\onboarding-questions.ts",
       "source_location": "L538",
       "id": "onboarding_questions_buildmetricgroupedcolumns",
-      "community": 14
+      "community": 13
     },
     {
       "label": "buildStatsColumns()",
@@ -3090,7 +3146,7 @@
       "source_file": "sunday-tally\\src\\components\\history-grid\\_design\\onboarding-questions.ts",
       "source_location": "L626",
       "id": "onboarding_questions_buildstatscolumns",
-      "community": 14
+      "community": 13
     },
     {
       "label": "buildWeeklyColumns()",
@@ -3098,7 +3154,7 @@
       "source_file": "sunday-tally\\src\\components\\history-grid\\_design\\onboarding-questions.ts",
       "source_location": "L638",
       "id": "onboarding_questions_buildweeklycolumns",
-      "community": 14
+      "community": 13
     },
     {
       "label": "buildServiceTemplates()",
@@ -3106,7 +3162,7 @@
       "source_file": "sunday-tally\\src\\components\\history-grid\\_design\\onboarding-questions.ts",
       "source_location": "L684",
       "id": "onboarding_questions_buildservicetemplates",
-      "community": 14
+      "community": 13
     },
     {
       "label": "buildMetricDefinitions()",
@@ -3114,7 +3170,7 @@
       "source_file": "sunday-tally\\src\\components\\history-grid\\_design\\onboarding-questions.ts",
       "source_location": "L729",
       "id": "onboarding_questions_buildmetricdefinitions",
-      "community": 14
+      "community": 13
     },
     {
       "label": "experienceLabel()",
@@ -3122,7 +3178,7 @@
       "source_file": "sunday-tally\\src\\components\\history-grid\\_design\\onboarding-questions.ts",
       "source_location": "L775",
       "id": "onboarding_questions_experiencelabel",
-      "community": 14
+      "community": 13
     },
     {
       "label": "statLabel()",
@@ -3130,7 +3186,7 @@
       "source_file": "sunday-tally\\src\\components\\history-grid\\_design\\onboarding-questions.ts",
       "source_location": "L784",
       "id": "onboarding_questions_statlabel",
-      "community": 14
+      "community": 13
     },
     {
       "label": "parseRoleList()",
@@ -3138,7 +3194,7 @@
       "source_file": "sunday-tally\\src\\components\\history-grid\\_design\\onboarding-questions.ts",
       "source_location": "L795",
       "id": "onboarding_questions_parserolelist",
-      "community": 14
+      "community": 13
     },
     {
       "label": "AppLayout.tsx",
@@ -3146,7 +3202,7 @@
       "source_file": "sunday-tally\\src\\components\\layouts\\AppLayout.tsx",
       "source_location": "L1",
       "id": "applayout",
-      "community": 2
+      "community": 3
     },
     {
       "label": "CalendarIcon()",
@@ -3154,7 +3210,7 @@
       "source_file": "sunday-tally\\src\\components\\layouts\\AppLayout.tsx",
       "source_location": "L29",
       "id": "applayout_calendaricon",
-      "community": 2
+      "community": 3
     },
     {
       "label": "ChartIcon()",
@@ -3162,7 +3218,7 @@
       "source_file": "sunday-tally\\src\\components\\layouts\\AppLayout.tsx",
       "source_location": "L35",
       "id": "applayout_charticon",
-      "community": 2
+      "community": 3
     },
     {
       "label": "SparkleIcon()",
@@ -3170,7 +3226,7 @@
       "source_file": "sunday-tally\\src\\components\\layouts\\AppLayout.tsx",
       "source_location": "L41",
       "id": "applayout_sparkleicon",
-      "community": 2
+      "community": 3
     },
     {
       "label": "SettingsIcon()",
@@ -3178,7 +3234,7 @@
       "source_file": "sunday-tally\\src\\components\\layouts\\AppLayout.tsx",
       "source_location": "L47",
       "id": "applayout_settingsicon",
-      "community": 2
+      "community": 3
     },
     {
       "label": "getDashboardHref()",
@@ -3186,7 +3242,7 @@
       "source_file": "sunday-tally\\src\\components\\layouts\\AppLayout.tsx",
       "source_location": "L86",
       "id": "applayout_getdashboardhref",
-      "community": 2
+      "community": 3
     },
     {
       "label": "getInitials()",
@@ -3194,7 +3250,7 @@
       "source_file": "sunday-tally\\src\\components\\layouts\\AppLayout.tsx",
       "source_location": "L90",
       "id": "applayout_getinitials",
-      "community": 2
+      "community": 3
     },
     {
       "label": "isActive()",
@@ -3202,7 +3258,7 @@
       "source_file": "sunday-tally\\src\\components\\layouts\\AppLayout.tsx",
       "source_location": "L131",
       "id": "applayout_isactive",
-      "community": 2
+      "community": 3
     },
     {
       "label": "tabHref()",
@@ -3210,7 +3266,7 @@
       "source_file": "sunday-tally\\src\\components\\layouts\\AppLayout.tsx",
       "source_location": "L141",
       "id": "applayout_tabhref",
-      "community": 2
+      "community": 3
     },
     {
       "label": "AuthLayout.tsx",
@@ -3242,7 +3298,7 @@
       "source_file": "sunday-tally\\src\\components\\layouts\\MaybeLayout.tsx",
       "source_location": "L1",
       "id": "maybelayout",
-      "community": 2
+      "community": 3
     },
     {
       "label": "MaybeLayout()",
@@ -3250,7 +3306,7 @@
       "source_file": "sunday-tally\\src\\components\\layouts\\MaybeLayout.tsx",
       "source_location": "L10",
       "id": "maybelayout_maybelayout",
-      "community": 2
+      "community": 3
     },
     {
       "label": "OnboardingLayout.tsx",
@@ -3266,7 +3322,7 @@
       "source_file": "sunday-tally\\src\\components\\marketing\\FeaturedPosts.tsx",
       "source_location": "L1",
       "id": "featuredposts",
-      "community": 19
+      "community": 18
     },
     {
       "label": "DataReviewPanel.tsx",
@@ -3274,7 +3330,7 @@
       "source_file": "sunday-tally\\src\\components\\shared\\DataReviewPanel.tsx",
       "source_location": "L1",
       "id": "datareviewpanel",
-      "community": 9
+      "community": 11
     },
     {
       "label": "handleChoice()",
@@ -3282,7 +3338,7 @@
       "source_file": "sunday-tally\\src\\components\\shared\\DataReviewPanel.tsx",
       "source_location": "L34",
       "id": "datareviewpanel_handlechoice",
-      "community": 9
+      "community": 11
     },
     {
       "label": "InlineEditField.tsx",
@@ -3290,7 +3346,7 @@
       "source_file": "sunday-tally\\src\\components\\shared\\InlineEditField.tsx",
       "source_location": "L1",
       "id": "inlineeditfield",
-      "community": 2
+      "community": 3
     },
     {
       "label": "startEdit()",
@@ -3298,7 +3354,7 @@
       "source_file": "sunday-tally\\src\\components\\shared\\InlineEditField.tsx",
       "source_location": "L32",
       "id": "inlineeditfield_startedit",
-      "community": 2
+      "community": 3
     },
     {
       "label": "handleBlur()",
@@ -3306,7 +3362,7 @@
       "source_file": "sunday-tally\\src\\components\\shared\\InlineEditField.tsx",
       "source_location": "L39",
       "id": "inlineeditfield_handleblur",
-      "community": 2
+      "community": 3
     },
     {
       "label": "handleKeyDown()",
@@ -3314,7 +3370,7 @@
       "source_file": "sunday-tally\\src\\components\\shared\\InlineEditField.tsx",
       "source_location": "L53",
       "id": "inlineeditfield_handlekeydown",
-      "community": 2
+      "community": 3
     },
     {
       "label": "TrackingGate.tsx",
@@ -3322,7 +3378,7 @@
       "source_file": "sunday-tally\\src\\components\\shared\\TrackingGate.tsx",
       "source_location": "L1",
       "id": "trackinggate",
-      "community": 2
+      "community": 3
     },
     {
       "label": "TrackingGate()",
@@ -3330,7 +3386,7 @@
       "source_file": "sunday-tally\\src\\components\\shared\\TrackingGate.tsx",
       "source_location": "L17",
       "id": "trackinggate_trackinggate",
-      "community": 2
+      "community": 3
     },
     {
       "label": "WebDataRocksGrid.tsx",
@@ -3338,7 +3394,7 @@
       "source_file": "sunday-tally\\src\\components\\shared\\WebDataRocksGrid.tsx",
       "source_location": "L1",
       "id": "webdatarocksgrid",
-      "community": 9
+      "community": 11
     },
     {
       "label": "ConfirmTypeDialog.tsx",
@@ -3394,7 +3450,7 @@
       "source_file": "sunday-tally\\src\\components\\widgets\\ui.tsx",
       "source_location": "L66",
       "id": "ui_fmtnum",
-      "community": 5
+      "community": 2
     },
     {
       "label": "prettyCol()",
@@ -3402,7 +3458,7 @@
       "source_file": "sunday-tally\\src\\components\\widgets\\ui.tsx",
       "source_location": "L73",
       "id": "ui_prettycol",
-      "community": 5
+      "community": 2
     },
     {
       "label": "fmtBucket()",
@@ -3410,7 +3466,7 @@
       "source_file": "sunday-tally\\src\\components\\widgets\\ui.tsx",
       "source_location": "L80",
       "id": "ui_fmtbucket",
-      "community": 5
+      "community": 2
     },
     {
       "label": "isRolling()",
@@ -3418,7 +3474,7 @@
       "source_file": "sunday-tally\\src\\components\\widgets\\ui.tsx",
       "source_location": "L93",
       "id": "ui_isrolling",
-      "community": 5
+      "community": 2
     },
     {
       "label": "metricFormats()",
@@ -3426,7 +3482,7 @@
       "source_file": "sunday-tally\\src\\components\\widgets\\ui.tsx",
       "source_location": "L99",
       "id": "ui_metricformats",
-      "community": 5
+      "community": 2
     },
     {
       "label": "hasPrior()",
@@ -3434,7 +3490,7 @@
       "source_file": "sunday-tally\\src\\components\\widgets\\ui.tsx",
       "source_location": "L113",
       "id": "ui_hasprior",
-      "community": 5
+      "community": 2
     },
     {
       "label": "rollup()",
@@ -3442,7 +3498,7 @@
       "source_file": "sunday-tally\\src\\components\\widgets\\ui.tsx",
       "source_location": "L244",
       "id": "ui_rollup",
-      "community": 5
+      "community": 2
     },
     {
       "label": "WidgetChat.tsx",
@@ -3450,7 +3506,7 @@
       "source_file": "sunday-tally\\src\\components\\widgets\\WidgetChat.tsx",
       "source_location": "L1",
       "id": "widgetchat",
-      "community": 5
+      "community": 2
     },
     {
       "label": "send()",
@@ -3458,7 +3514,7 @@
       "source_file": "sunday-tally\\src\\components\\widgets\\WidgetChat.tsx",
       "source_location": "L94",
       "id": "widgetchat_send",
-      "community": 5
+      "community": 2
     },
     {
       "label": "DataReviewContext.tsx",
@@ -3466,7 +3522,7 @@
       "source_file": "sunday-tally\\src\\contexts\\DataReviewContext.tsx",
       "source_location": "L1",
       "id": "datareviewcontext",
-      "community": 9
+      "community": 11
     },
     {
       "label": "DataReviewProvider()",
@@ -3474,7 +3530,7 @@
       "source_file": "sunday-tally\\src\\contexts\\DataReviewContext.tsx",
       "source_location": "L23",
       "id": "datareviewcontext_datareviewprovider",
-      "community": 9
+      "community": 11
     },
     {
       "label": "SundaySessionContext.tsx",
@@ -3482,7 +3538,7 @@
       "source_file": "sunday-tally\\src\\contexts\\SundaySessionContext.tsx",
       "source_location": "L1",
       "id": "sundaysessioncontext",
-      "community": 9
+      "community": 11
     },
     {
       "label": "SundaySessionProvider()",
@@ -3490,7 +3546,7 @@
       "source_file": "sunday-tally\\src\\contexts\\SundaySessionContext.tsx",
       "source_location": "L23",
       "id": "sundaysessioncontext_sundaysessionprovider",
-      "community": 9
+      "community": 11
     },
     {
       "label": "useSundaySession()",
@@ -3498,7 +3554,7 @@
       "source_file": "sunday-tally\\src\\contexts\\SundaySessionContext.tsx",
       "source_location": "L78",
       "id": "sundaysessioncontext_usesundaysession",
-      "community": 9
+      "community": 11
     },
     {
       "label": "blog.ts",
@@ -3506,87 +3562,95 @@
       "source_file": "sunday-tally\\src\\lib\\blog.ts",
       "source_location": "L1",
       "id": "blog",
-      "community": 19
+      "community": 18
     },
     {
       "label": "stripComments()",
       "file_type": "code",
       "source_file": "sunday-tally\\src\\lib\\blog.ts",
-      "source_location": "L37",
+      "source_location": "L42",
       "id": "blog_stripcomments",
-      "community": 19
+      "community": 18
     },
     {
       "label": "stripLeadingH1()",
       "file_type": "code",
       "source_file": "sunday-tally\\src\\lib\\blog.ts",
-      "source_location": "L43",
+      "source_location": "L50",
       "id": "blog_stripleadingh1",
-      "community": 19
+      "community": 18
+    },
+    {
+      "label": "stripAuthorFooter()",
+      "file_type": "code",
+      "source_file": "sunday-tally\\src\\lib\\blog.ts",
+      "source_location": "L57",
+      "id": "blog_stripauthorfooter",
+      "community": 18
     },
     {
       "label": "extractFaqs()",
       "file_type": "code",
       "source_file": "sunday-tally\\src\\lib\\blog.ts",
-      "source_location": "L48",
+      "source_location": "L62",
       "id": "blog_extractfaqs",
-      "community": 19
+      "community": 18
     },
     {
       "label": "renderMarkdown()",
       "file_type": "code",
       "source_file": "sunday-tally\\src\\lib\\blog.ts",
-      "source_location": "L72",
+      "source_location": "L86",
       "id": "blog_rendermarkdown",
-      "community": 19
+      "community": 18
     },
     {
       "label": "getAllPostSlugs()",
       "file_type": "code",
       "source_file": "sunday-tally\\src\\lib\\blog.ts",
-      "source_location": "L83",
+      "source_location": "L97",
       "id": "blog_getallpostslugs",
-      "community": 19
+      "community": 18
     },
     {
       "label": "readPostFile()",
       "file_type": "code",
       "source_file": "sunday-tally\\src\\lib\\blog.ts",
-      "source_location": "L97",
+      "source_location": "L111",
       "id": "blog_readpostfile",
-      "community": 19
+      "community": 18
     },
     {
       "label": "toMeta()",
       "file_type": "code",
       "source_file": "sunday-tally\\src\\lib\\blog.ts",
-      "source_location": "L106",
+      "source_location": "L120",
       "id": "blog_tometa",
-      "community": 19
+      "community": 18
     },
     {
       "label": "getAllPostsMeta()",
       "file_type": "code",
       "source_file": "sunday-tally\\src\\lib\\blog.ts",
-      "source_location": "L124",
+      "source_location": "L139",
       "id": "blog_getallpostsmeta",
-      "community": 19
+      "community": 18
     },
     {
       "label": "getFeaturedPostsMeta()",
       "file_type": "code",
       "source_file": "sunday-tally\\src\\lib\\blog.ts",
-      "source_location": "L137",
+      "source_location": "L152",
       "id": "blog_getfeaturedpostsmeta",
-      "community": 19
+      "community": 18
     },
     {
       "label": "getPostBySlug()",
       "file_type": "code",
       "source_file": "sunday-tally\\src\\lib\\blog.ts",
-      "source_location": "L143",
+      "source_location": "L158",
       "id": "blog_getpostbyslug",
-      "community": 19
+      "community": 18
     },
     {
       "label": "churchPrefs.ts",
@@ -3594,7 +3658,7 @@
       "source_file": "sunday-tally\\src\\lib\\churchPrefs.ts",
       "source_location": "L1",
       "id": "churchprefs",
-      "community": 17
+      "community": 15
     },
     {
       "label": "readChurchPrefs()",
@@ -3602,7 +3666,7 @@
       "source_file": "sunday-tally\\src\\lib\\churchPrefs.ts",
       "source_location": "L37",
       "id": "churchprefs_readchurchprefs",
-      "community": 17
+      "community": 15
     },
     {
       "label": "isMissingColumn()",
@@ -3610,7 +3674,7 @@
       "source_file": "sunday-tally\\src\\lib\\churchPrefs.ts",
       "source_location": "L51",
       "id": "churchprefs_ismissingcolumn",
-      "community": 17
+      "community": 15
     },
     {
       "label": "saveChurchPrefs()",
@@ -3618,7 +3682,7 @@
       "source_file": "sunday-tally\\src\\lib\\churchPrefs.ts",
       "source_location": "L63",
       "id": "churchprefs_savechurchprefs",
-      "community": 17
+      "community": 15
     },
     {
       "label": "dashboard.ts",
@@ -3626,7 +3690,7 @@
       "source_file": "sunday-tally\\src\\lib\\dashboard.ts",
       "source_location": "L1",
       "id": "dashboard",
-      "community": 11
+      "community": 7
     },
     {
       "label": "firstRelated()",
@@ -3634,7 +3698,7 @@
       "source_file": "sunday-tally\\src\\lib\\dashboard.ts",
       "source_location": "L162",
       "id": "dashboard_firstrelated",
-      "community": 11
+      "community": 7
     },
     {
       "label": "delta()",
@@ -3642,7 +3706,7 @@
       "source_file": "sunday-tally\\src\\lib\\dashboard.ts",
       "source_location": "L169",
       "id": "dashboard_delta",
-      "community": 11
+      "community": 7
     },
     {
       "label": "roundOrNull()",
@@ -3650,7 +3714,7 @@
       "source_file": "sunday-tally\\src\\lib\\dashboard.ts",
       "source_location": "L174",
       "id": "dashboard_roundornull",
-      "community": 11
+      "community": 7
     },
     {
       "label": "buildBoundaries()",
@@ -3658,7 +3722,7 @@
       "source_file": "sunday-tally\\src\\lib\\dashboard.ts",
       "source_location": "L190",
       "id": "dashboard_buildboundaries",
-      "community": 11
+      "community": 7
     },
     {
       "label": "fourWinFromWeekly()",
@@ -3666,7 +3730,7 @@
       "source_file": "sunday-tally\\src\\lib\\dashboard.ts",
       "source_location": "L205",
       "id": "dashboard_fourwinfromweekly",
-      "community": 11
+      "community": 7
     },
     {
       "label": "buildWeeklyFrom()",
@@ -3674,7 +3738,7 @@
       "source_file": "sunday-tally\\src\\lib\\dashboard.ts",
       "source_location": "L241",
       "id": "dashboard_buildweeklyfrom",
-      "community": 11
+      "community": 7
     },
     {
       "label": "ratioFourWin()",
@@ -3682,7 +3746,7 @@
       "source_file": "sunday-tally\\src\\lib\\dashboard.ts",
       "source_location": "L265",
       "id": "dashboard_ratiofourwin",
-      "community": 11
+      "community": 7
     },
     {
       "label": "fetchEntriesPaged()",
@@ -3690,7 +3754,7 @@
       "source_file": "sunday-tally\\src\\lib\\dashboard.ts",
       "source_location": "L293",
       "id": "dashboard_fetchentriespaged",
-      "community": 11
+      "community": 7
     },
     {
       "label": "fetchDashboardData()",
@@ -3698,7 +3762,7 @@
       "source_file": "sunday-tally\\src\\lib\\dashboard.ts",
       "source_location": "L309",
       "id": "dashboard_fetchdashboarddata",
-      "community": 11
+      "community": 7
     },
     {
       "label": "emptyFourWin()",
@@ -3706,7 +3770,7 @@
       "source_file": "sunday-tally\\src\\lib\\dashboard.ts",
       "source_location": "L752",
       "id": "dashboard_emptyfourwin",
-      "community": 11
+      "community": 7
     },
     {
       "label": "dashboardDrilldown.ts",
@@ -3714,7 +3778,7 @@
       "source_file": "sunday-tally\\src\\lib\\dashboardDrilldown.ts",
       "source_location": "L1",
       "id": "dashboarddrilldown",
-      "community": 13
+      "community": 14
     },
     {
       "label": "avgOfWeeks()",
@@ -3722,7 +3786,7 @@
       "source_file": "sunday-tally\\src\\lib\\dashboardDrilldown.ts",
       "source_location": "L89",
       "id": "dashboarddrilldown_avgofweeks",
-      "community": 13
+      "community": 14
     },
     {
       "label": "enumerateWeeks()",
@@ -3730,7 +3794,7 @@
       "source_file": "sunday-tally\\src\\lib\\dashboardDrilldown.ts",
       "source_location": "L96",
       "id": "dashboarddrilldown_enumerateweeks",
-      "community": 13
+      "community": 14
     },
     {
       "label": "fetchPaged()",
@@ -3738,7 +3802,7 @@
       "source_file": "sunday-tally\\src\\lib\\dashboardDrilldown.ts",
       "source_location": "L108",
       "id": "dashboarddrilldown_fetchpaged",
-      "community": 13
+      "community": 14
     },
     {
       "label": "firstRelated()",
@@ -3746,7 +3810,7 @@
       "source_file": "sunday-tally\\src\\lib\\dashboardDrilldown.ts",
       "source_location": "L154",
       "id": "dashboarddrilldown_firstrelated",
-      "community": 13
+      "community": 14
     },
     {
       "label": "entryActiveDate()",
@@ -3754,7 +3818,7 @@
       "source_file": "sunday-tally\\src\\lib\\dashboardDrilldown.ts",
       "source_location": "L159",
       "id": "dashboarddrilldown_entryactivedate",
-      "community": 13
+      "community": 14
     },
     {
       "label": "buildWeeklyFromEntries()",
@@ -3762,7 +3826,7 @@
       "source_file": "sunday-tally\\src\\lib\\dashboardDrilldown.ts",
       "source_location": "L166",
       "id": "dashboarddrilldown_buildweeklyfromentries",
-      "community": 13
+      "community": 14
     },
     {
       "label": "buildSittingsFromEntries()",
@@ -3770,7 +3834,7 @@
       "source_file": "sunday-tally\\src\\lib\\dashboardDrilldown.ts",
       "source_location": "L182",
       "id": "dashboarddrilldown_buildsittingsfromentries",
-      "community": 13
+      "community": 14
     },
     {
       "label": "ratioWeekly()",
@@ -3778,7 +3842,7 @@
       "source_file": "sunday-tally\\src\\lib\\dashboardDrilldown.ts",
       "source_location": "L208",
       "id": "dashboarddrilldown_ratioweekly",
-      "community": 13
+      "community": 14
     },
     {
       "label": "avgOfWeeksRaw()",
@@ -3786,7 +3850,7 @@
       "source_file": "sunday-tally\\src\\lib\\dashboardDrilldown.ts",
       "source_location": "L226",
       "id": "dashboarddrilldown_avgofweeksraw",
-      "community": 13
+      "community": 14
     },
     {
       "label": "ratioWindowAvg()",
@@ -3794,7 +3858,7 @@
       "source_file": "sunday-tally\\src\\lib\\dashboardDrilldown.ts",
       "source_location": "L235",
       "id": "dashboarddrilldown_ratiowindowavg",
-      "community": 13
+      "community": 14
     },
     {
       "label": "fetchGivingWeekly()",
@@ -3802,7 +3866,7 @@
       "source_file": "sunday-tally\\src\\lib\\dashboardDrilldown.ts",
       "source_location": "L255",
       "id": "dashboarddrilldown_fetchgivingweekly",
-      "community": 13
+      "community": 14
     },
     {
       "label": "fetchMetricSeries()",
@@ -3810,7 +3874,7 @@
       "source_file": "sunday-tally\\src\\lib\\dashboardDrilldown.ts",
       "source_location": "L329",
       "id": "dashboarddrilldown_fetchmetricseries",
-      "community": 13
+      "community": 14
     },
     {
       "label": "dashboardKeyMetrics.ts",
@@ -3818,7 +3882,7 @@
       "source_file": "sunday-tally\\src\\lib\\dashboardKeyMetrics.ts",
       "source_location": "L1",
       "id": "dashboardkeymetrics",
-      "community": 11
+      "community": 7
     },
     {
       "label": "audienceTotalLabel()",
@@ -3826,7 +3890,7 @@
       "source_file": "sunday-tally\\src\\lib\\dashboardKeyMetrics.ts",
       "source_location": "L71",
       "id": "dashboardkeymetrics_audiencetotallabel",
-      "community": 11
+      "community": 7
     },
     {
       "label": "buildKeyMetricCatalog()",
@@ -3834,7 +3898,7 @@
       "source_file": "sunday-tally\\src\\lib\\dashboardKeyMetrics.ts",
       "source_location": "L87",
       "id": "dashboardkeymetrics_buildkeymetriccatalog",
-      "community": 11
+      "community": 7
     },
     {
       "label": "resolveKeyMetricKeys()",
@@ -3842,7 +3906,7 @@
       "source_file": "sunday-tally\\src\\lib\\dashboardKeyMetrics.ts",
       "source_location": "L168",
       "id": "dashboardkeymetrics_resolvekeymetrickeys",
-      "community": 11
+      "community": 7
     },
     {
       "label": "resolveKeyMetricTargets()",
@@ -3850,7 +3914,7 @@
       "source_file": "sunday-tally\\src\\lib\\dashboardKeyMetrics.ts",
       "source_location": "L177",
       "id": "dashboardkeymetrics_resolvekeymetrictargets",
-      "community": 11
+      "community": 7
     },
     {
       "label": "featuredEntries()",
@@ -3858,7 +3922,7 @@
       "source_file": "sunday-tally\\src\\lib\\dashboardKeyMetrics.ts",
       "source_location": "L187",
       "id": "dashboardkeymetrics_featuredentries",
-      "community": 11
+      "community": 7
     },
     {
       "label": "dashboardPrefs.ts",
@@ -3898,7 +3962,7 @@
       "source_file": "sunday-tally\\src\\lib\\date-window.ts",
       "source_location": "L1",
       "id": "date_window",
-      "community": 11
+      "community": 7
     },
     {
       "label": "weekStartOf()",
@@ -3906,7 +3970,7 @@
       "source_file": "sunday-tally\\src\\lib\\date-window.ts",
       "source_location": "L11",
       "id": "date_window_weekstartof",
-      "community": 11
+      "community": 7
     },
     {
       "label": "shiftDays()",
@@ -3914,7 +3978,7 @@
       "source_file": "sunday-tally\\src\\lib\\date-window.ts",
       "source_location": "L20",
       "id": "date_window_shiftdays",
-      "community": 11
+      "community": 7
     },
     {
       "label": "weekOf()",
@@ -3922,7 +3986,7 @@
       "source_file": "sunday-tally\\src\\lib\\date-window.ts",
       "source_location": "L27",
       "id": "date_window_weekof",
-      "community": 11
+      "community": 7
     },
     {
       "label": "isoDay()",
@@ -3930,7 +3994,7 @@
       "source_file": "sunday-tally\\src\\lib\\date-window.ts",
       "source_location": "L32",
       "id": "date_window_isoday",
-      "community": 11
+      "community": 7
     },
     {
       "label": "monthStartOf()",
@@ -3938,7 +4002,7 @@
       "source_file": "sunday-tally\\src\\lib\\date-window.ts",
       "source_location": "L39",
       "id": "date_window_monthstartof",
-      "community": 11
+      "community": 7
     },
     {
       "label": "yearStartOf()",
@@ -3946,7 +4010,7 @@
       "source_file": "sunday-tally\\src\\lib\\date-window.ts",
       "source_location": "L44",
       "id": "date_window_yearstartof",
-      "community": 11
+      "community": 7
     },
     {
       "label": "shiftMonths()",
@@ -3954,7 +4018,7 @@
       "source_file": "sunday-tally\\src\\lib\\date-window.ts",
       "source_location": "L49",
       "id": "date_window_shiftmonths",
-      "community": 11
+      "community": 7
     },
     {
       "label": "shiftYears()",
@@ -3962,7 +4026,7 @@
       "source_file": "sunday-tally\\src\\lib\\date-window.ts",
       "source_location": "L60",
       "id": "date_window_shiftyears",
-      "community": 11
+      "community": 7
     },
     {
       "label": "addDays()",
@@ -3970,7 +4034,7 @@
       "source_file": "sunday-tally\\src\\lib\\date-window.ts",
       "source_location": "L67",
       "id": "date_window_adddays",
-      "community": 11
+      "community": 7
     },
     {
       "label": "sundayOf()",
@@ -3978,7 +4042,7 @@
       "source_file": "sunday-tally\\src\\lib\\date-window.ts",
       "source_location": "L74",
       "id": "date_window_sundayof",
-      "community": 11
+      "community": 7
     },
     {
       "label": "invites.ts",
@@ -3986,7 +4050,7 @@
       "source_file": "sunday-tally\\src\\lib\\invites.ts",
       "source_location": "L1",
       "id": "invites",
-      "community": 9
+      "community": 11
     },
     {
       "label": "newInviteToken()",
@@ -3994,7 +4058,7 @@
       "source_file": "sunday-tally\\src\\lib\\invites.ts",
       "source_location": "L31",
       "id": "invites_newinvitetoken",
-      "community": 9
+      "community": 11
     },
     {
       "label": "inviteExpiry()",
@@ -4002,7 +4066,7 @@
       "source_file": "sunday-tally\\src\\lib\\invites.ts",
       "source_location": "L36",
       "id": "invites_inviteexpiry",
-      "community": 9
+      "community": 11
     },
     {
       "label": "inviteUrlFor()",
@@ -4010,7 +4074,7 @@
       "source_file": "sunday-tally\\src\\lib\\invites.ts",
       "source_location": "L41",
       "id": "invites_inviteurlfor",
-      "community": 9
+      "community": 11
     },
     {
       "label": "sendInviteEmail()",
@@ -4018,7 +4082,7 @@
       "source_file": "sunday-tally\\src\\lib\\invites.ts",
       "source_location": "L49",
       "id": "invites_sendinviteemail",
-      "community": 9
+      "community": 11
     },
     {
       "label": "createAndSendInvite()",
@@ -4026,7 +4090,7 @@
       "source_file": "sunday-tally\\src\\lib\\invites.ts",
       "source_location": "L94",
       "id": "invites_createandsendinvite",
-      "community": 9
+      "community": 11
     },
     {
       "label": "ministryLinks.ts",
@@ -4050,7 +4114,7 @@
       "source_file": "sunday-tally\\src\\lib\\rollups.ts",
       "source_location": "L1",
       "id": "rollups",
-      "community": 2
+      "community": 7
     },
     {
       "label": "firstRelated()",
@@ -4058,7 +4122,7 @@
       "source_file": "sunday-tally\\src\\lib\\rollups.ts",
       "source_location": "L59",
       "id": "rollups_firstrelated",
-      "community": 2
+      "community": 7
     },
     {
       "label": "computeRollups()",
@@ -4066,7 +4130,7 @@
       "source_file": "sunday-tally\\src\\lib\\rollups.ts",
       "source_location": "L68",
       "id": "rollups_computerollups",
-      "community": 2
+      "community": 7
     },
     {
       "label": "service-tags.ts",
@@ -4074,7 +4138,7 @@
       "source_file": "sunday-tally\\src\\lib\\service-tags.ts",
       "source_location": "L1",
       "id": "service_tags",
-      "community": 15
+      "community": 13
     },
     {
       "label": "fetchActiveServiceTags()",
@@ -4082,7 +4146,7 @@
       "source_file": "sunday-tally\\src\\lib\\service-tags.ts",
       "source_location": "L36",
       "id": "service_tags_fetchactiveservicetags",
-      "community": 15
+      "community": 13
     },
     {
       "label": "totals.test.ts",
@@ -4090,7 +4154,7 @@
       "source_file": "sunday-tally\\src\\lib\\totals.test.ts",
       "source_location": "L1",
       "id": "totals_test",
-      "community": 17
+      "community": 15
     },
     {
       "label": "totals.ts",
@@ -4098,7 +4162,7 @@
       "source_file": "sunday-tally\\src\\lib\\totals.ts",
       "source_location": "L1",
       "id": "totals",
-      "community": 17
+      "community": 15
     },
     {
       "label": "isValidRule()",
@@ -4106,7 +4170,7 @@
       "source_file": "sunday-tally\\src\\lib\\totals.ts",
       "source_location": "L68",
       "id": "totals_isvalidrule",
-      "community": 17
+      "community": 15
     },
     {
       "label": "ensureSinglePrimary()",
@@ -4114,7 +4178,7 @@
       "source_file": "sunday-tally\\src\\lib\\totals.ts",
       "source_location": "L87",
       "id": "totals_ensuresingleprimary",
-      "community": 17
+      "community": 15
     },
     {
       "label": "resolveTotals()",
@@ -4122,7 +4186,7 @@
       "source_file": "sunday-tally\\src\\lib\\totals.ts",
       "source_location": "L96",
       "id": "totals_resolvetotals",
-      "community": 17
+      "community": 15
     },
     {
       "label": "primaryTotal()",
@@ -4130,7 +4194,7 @@
       "source_file": "sunday-tally\\src\\lib\\totals.ts",
       "source_location": "L106",
       "id": "totals_primarytotal",
-      "community": 17
+      "community": 15
     },
     {
       "label": "describeTotalRule()",
@@ -4138,7 +4202,7 @@
       "source_file": "sunday-tally\\src\\lib\\totals.ts",
       "source_location": "L113",
       "id": "totals_describetotalrule",
-      "community": 17
+      "community": 15
     },
     {
       "label": "anthropic.ts",
@@ -4146,7 +4210,7 @@
       "source_file": "sunday-tally\\src\\lib\\ai\\anthropic.ts",
       "source_location": "L1",
       "id": "anthropic",
-      "community": 3
+      "community": 5
     },
     {
       "label": "anthropic()",
@@ -4154,7 +4218,7 @@
       "source_file": "sunday-tally\\src\\lib\\ai\\anthropic.ts",
       "source_location": "L9",
       "id": "anthropic_anthropic",
-      "community": 3
+      "community": 5
     },
     {
       "label": "AiBudgetExhaustedError",
@@ -4162,7 +4226,7 @@
       "source_file": "sunday-tally\\src\\lib\\ai\\anthropic.ts",
       "source_location": "L19",
       "id": "anthropic_aibudgetexhaustederror",
-      "community": 3
+      "community": 5
     },
     {
       "label": ".constructor()",
@@ -4170,7 +4234,7 @@
       "source_file": "sunday-tally\\src\\lib\\ai\\anthropic.ts",
       "source_location": "L20",
       "id": "anthropic_aibudgetexhaustederror_constructor",
-      "community": 3
+      "community": 5
     },
     {
       "label": "bucketForKind()",
@@ -4178,7 +4242,7 @@
       "source_file": "sunday-tally\\src\\lib\\ai\\anthropic.ts",
       "source_location": "L27",
       "id": "anthropic_bucketforkind",
-      "community": 3
+      "community": 5
     },
     {
       "label": "assertBudget()",
@@ -4186,7 +4250,7 @@
       "source_file": "sunday-tally\\src\\lib\\ai\\anthropic.ts",
       "source_location": "L32",
       "id": "anthropic_assertbudget",
-      "community": 3
+      "community": 5
     },
     {
       "label": "runToolLoop()",
@@ -4194,7 +4258,7 @@
       "source_file": "sunday-tally\\src\\lib\\ai\\anthropic.ts",
       "source_location": "L103",
       "id": "anthropic_runtoolloop",
-      "community": 3
+      "community": 5
     },
     {
       "label": "budget.ts",
@@ -4202,47 +4266,47 @@
       "source_file": "sunday-tally\\src\\lib\\ai\\budget.ts",
       "source_location": "L1",
       "id": "budget",
-      "community": 8
+      "community": 10
     },
     {
       "label": "resolveBucket()",
       "file_type": "code",
       "source_file": "sunday-tally\\src\\lib\\ai\\budget.ts",
-      "source_location": "L32",
+      "source_location": "L34",
       "id": "budget_resolvebucket",
-      "community": 8
+      "community": 10
     },
     {
       "label": "getRemaining()",
       "file_type": "code",
       "source_file": "sunday-tally\\src\\lib\\ai\\budget.ts",
-      "source_location": "L61",
+      "source_location": "L63",
       "id": "budget_getremaining",
-      "community": 8
+      "community": 10
     },
     {
       "label": "recordUsage()",
       "file_type": "code",
       "source_file": "sunday-tally\\src\\lib\\ai\\budget.ts",
-      "source_location": "L72",
+      "source_location": "L74",
       "id": "budget_recordusage",
-      "community": 8
+      "community": 10
     },
     {
       "label": "ensurePeriodRow()",
       "file_type": "code",
       "source_file": "sunday-tally\\src\\lib\\ai\\budget.ts",
-      "source_location": "L117",
+      "source_location": "L119",
       "id": "budget_ensureperiodrow",
-      "community": 8
+      "community": 10
     },
     {
       "label": "monthKey()",
       "file_type": "code",
       "source_file": "sunday-tally\\src\\lib\\ai\\budget.ts",
-      "source_location": "L165",
+      "source_location": "L167",
       "id": "budget_monthkey",
-      "community": 8
+      "community": 10
     },
     {
       "label": "churchContext.ts",
@@ -4250,7 +4314,7 @@
       "source_file": "sunday-tally\\src\\lib\\ai\\churchContext.ts",
       "source_location": "L1",
       "id": "churchcontext",
-      "community": 7
+      "community": 8
     },
     {
       "label": "formatContextPack()",
@@ -4258,7 +4322,7 @@
       "source_file": "sunday-tally\\src\\lib\\ai\\churchContext.ts",
       "source_location": "L47",
       "id": "churchcontext_formatcontextpack",
-      "community": 7
+      "community": 8
     },
     {
       "label": "buildChurchContextPack()",
@@ -4266,7 +4330,7 @@
       "source_file": "sunday-tally\\src\\lib\\ai\\churchContext.ts",
       "source_location": "L96",
       "id": "churchcontext_buildchurchcontextpack",
-      "community": 7
+      "community": 8
     },
     {
       "label": "metrics.ts",
@@ -4274,7 +4338,7 @@
       "source_file": "sunday-tally\\src\\lib\\ai\\metrics.ts",
       "source_location": "L1",
       "id": "metrics",
-      "community": 3
+      "community": 5
     },
     {
       "label": "runMetric()",
@@ -4282,7 +4346,7 @@
       "source_file": "sunday-tally\\src\\lib\\ai\\metrics.ts",
       "source_location": "L91",
       "id": "metrics_runmetric",
-      "community": 3
+      "community": 5
     },
     {
       "label": "attendanceByWeek()",
@@ -4290,7 +4354,7 @@
       "source_file": "sunday-tally\\src\\lib\\ai\\metrics.ts",
       "source_location": "L112",
       "id": "metrics_attendancebyweek",
-      "community": 3
+      "community": 5
     },
     {
       "label": "attendanceByTemplateMonth()",
@@ -4298,7 +4362,7 @@
       "source_file": "sunday-tally\\src\\lib\\ai\\metrics.ts",
       "source_location": "L189",
       "id": "metrics_attendancebytemplatemonth",
-      "community": 3
+      "community": 5
     },
     {
       "label": "givingByWeek()",
@@ -4306,7 +4370,7 @@
       "source_file": "sunday-tally\\src\\lib\\ai\\metrics.ts",
       "source_location": "L246",
       "id": "metrics_givingbyweek",
-      "community": 3
+      "community": 5
     },
     {
       "label": "ytdVsPrior()",
@@ -4314,7 +4378,7 @@
       "source_file": "sunday-tally\\src\\lib\\ai\\metrics.ts",
       "source_location": "L278",
       "id": "metrics_ytdvsprior",
-      "community": 3
+      "community": 5
     },
     {
       "label": "volunteerCountsMonth()",
@@ -4322,7 +4386,7 @@
       "source_file": "sunday-tally\\src\\lib\\ai\\metrics.ts",
       "source_location": "L338",
       "id": "metrics_volunteercountsmonth",
-      "community": 3
+      "community": 5
     },
     {
       "label": "responseTotalRange()",
@@ -4330,7 +4394,7 @@
       "source_file": "sunday-tally\\src\\lib\\ai\\metrics.ts",
       "source_location": "L432",
       "id": "metrics_responsetotalrange",
-      "community": 3
+      "community": 5
     },
     {
       "label": "sundayOf()",
@@ -4338,7 +4402,7 @@
       "source_file": "sunday-tally\\src\\lib\\ai\\metrics.ts",
       "source_location": "L500",
       "id": "metrics_sundayof",
-      "community": 3
+      "community": 5
     },
     {
       "label": "pricing.ts",
@@ -4346,7 +4410,7 @@
       "source_file": "sunday-tally\\src\\lib\\billing\\pricing.ts",
       "source_location": "L1",
       "id": "pricing",
-      "community": 8
+      "community": 10
     },
     {
       "label": "tokensToCents()",
@@ -4354,7 +4418,7 @@
       "source_file": "sunday-tally\\src\\lib\\ai\\pricing.ts",
       "source_location": "L51",
       "id": "pricing_tokenstocents",
-      "community": 8
+      "community": 10
     },
     {
       "label": "probe.ts",
@@ -4362,7 +4426,7 @@
       "source_file": "sunday-tally\\src\\lib\\ai\\probe.ts",
       "source_location": "L1",
       "id": "probe",
-      "community": 3
+      "community": 5
     },
     {
       "label": "probeData()",
@@ -4370,7 +4434,7 @@
       "source_file": "sunday-tally\\src\\lib\\ai\\probe.ts",
       "source_location": "L39",
       "id": "probe_probedata",
-      "community": 3
+      "community": 5
     },
     {
       "label": "widgetTools.ts",
@@ -4378,7 +4442,7 @@
       "source_file": "sunday-tally\\src\\lib\\ai\\widgetTools.ts",
       "source_location": "L1",
       "id": "widgettools",
-      "community": 3
+      "community": 5
     },
     {
       "label": "listDimensions()",
@@ -4386,7 +4450,7 @@
       "source_file": "sunday-tally\\src\\lib\\ai\\widgetTools.ts",
       "source_location": "L161",
       "id": "widgettools_listdimensions",
-      "community": 3
+      "community": 5
     },
     {
       "label": "buildExplainer()",
@@ -4394,7 +4458,7 @@
       "source_file": "sunday-tally\\src\\lib\\ai\\widgetTools.ts",
       "source_location": "L197",
       "id": "widgettools_buildexplainer",
-      "community": 3
+      "community": 5
     },
     {
       "label": "stableStringify()",
@@ -4402,7 +4466,7 @@
       "source_file": "sunday-tally\\src\\lib\\ai\\widgetTools.ts",
       "source_location": "L267",
       "id": "widgettools_stablestringify",
-      "community": 3
+      "community": 5
     },
     {
       "label": "makeWidgetHandlers()",
@@ -4410,7 +4474,7 @@
       "source_file": "sunday-tally\\src\\lib\\ai\\widgetTools.ts",
       "source_location": "L280",
       "id": "widgettools_makewidgethandlers",
-      "community": 3
+      "community": 5
     },
     {
       "label": "churchContext.test.ts",
@@ -4418,7 +4482,7 @@
       "source_file": "sunday-tally\\src\\lib\\ai\\__tests__\\churchContext.test.ts",
       "source_location": "L1",
       "id": "churchcontext_test",
-      "community": 7
+      "community": 8
     },
     {
       "label": "indent()",
@@ -4426,7 +4490,7 @@
       "source_file": "sunday-tally\\src\\lib\\ai\\__tests__\\churchContext.test.ts",
       "source_location": "L39",
       "id": "churchcontext_test_indent",
-      "community": 7
+      "community": 8
     },
     {
       "label": "chrome.ts",
@@ -4434,7 +4498,7 @@
       "source_file": "sunday-tally\\src\\lib\\billing\\chrome.ts",
       "source_location": "L1",
       "id": "chrome",
-      "community": 2
+      "community": 3
     },
     {
       "label": "isPayReachable()",
@@ -4442,7 +4506,7 @@
       "source_file": "sunday-tally\\src\\lib\\billing\\chrome.ts",
       "source_location": "L22",
       "id": "chrome_ispayreachable",
-      "community": 2
+      "community": 3
     },
     {
       "label": "resolveChrome()",
@@ -4450,7 +4514,7 @@
       "source_file": "sunday-tally\\src\\lib\\billing\\chrome.ts",
       "source_location": "L26",
       "id": "chrome_resolvechrome",
-      "community": 2
+      "community": 3
     },
     {
       "label": "entitlements.ts",
@@ -4458,47 +4522,47 @@
       "source_file": "sunday-tally\\src\\lib\\billing\\entitlements.ts",
       "source_location": "L1",
       "id": "entitlements",
-      "community": 8
+      "community": 10
     },
     {
       "label": "widgetCapForTier()",
       "file_type": "code",
       "source_file": "sunday-tally\\src\\lib\\billing\\entitlements.ts",
-      "source_location": "L59",
+      "source_location": "L72",
       "id": "entitlements_widgetcapfortier",
-      "community": 8
+      "community": 10
     },
     {
       "label": "ceilingCentsForTier()",
       "file_type": "code",
       "source_file": "sunday-tally\\src\\lib\\billing\\entitlements.ts",
-      "source_location": "L66",
+      "source_location": "L80",
       "id": "entitlements_ceilingcentsfortier",
-      "community": 8
+      "community": 10
     },
     {
       "label": "readTierAndLocations()",
       "file_type": "code",
       "source_file": "sunday-tally\\src\\lib\\billing\\entitlements.ts",
-      "source_location": "L79",
+      "source_location": "L87",
       "id": "entitlements_readtierandlocations",
-      "community": 8
+      "community": 10
     },
     {
       "label": "resolvePaidCeilingCents()",
       "file_type": "code",
       "source_file": "sunday-tally\\src\\lib\\billing\\entitlements.ts",
-      "source_location": "L99",
+      "source_location": "L107",
       "id": "entitlements_resolvepaidceilingcents",
-      "community": 8
+      "community": 10
     },
     {
       "label": "getEntitlements()",
       "file_type": "code",
       "source_file": "sunday-tally\\src\\lib\\billing\\entitlements.ts",
-      "source_location": "L114",
+      "source_location": "L122",
       "id": "entitlements_getentitlements",
-      "community": 8
+      "community": 10
     },
     {
       "label": "estimate.ts",
@@ -4506,7 +4570,7 @@
       "source_file": "sunday-tally\\src\\lib\\billing\\estimate.ts",
       "source_location": "L1",
       "id": "estimate",
-      "community": 8
+      "community": 10
     },
     {
       "label": "getSetupEstimate()",
@@ -4514,7 +4578,7 @@
       "source_file": "sunday-tally\\src\\lib\\billing\\estimate.ts",
       "source_location": "L26",
       "id": "estimate_getsetupestimate",
-      "community": 8
+      "community": 10
     },
     {
       "label": "lifecycle.ts",
@@ -4522,7 +4586,7 @@
       "source_file": "sunday-tally\\src\\lib\\billing\\lifecycle.ts",
       "source_location": "L1",
       "id": "lifecycle",
-      "community": 8
+      "community": 10
     },
     {
       "label": "hasLiveSubscription()",
@@ -4530,7 +4594,7 @@
       "source_file": "sunday-tally\\src\\lib\\billing\\lifecycle.ts",
       "source_location": "L30",
       "id": "lifecycle_haslivesubscription",
-      "community": 8
+      "community": 10
     },
     {
       "label": "computeCalendarExpiry()",
@@ -4538,7 +4602,7 @@
       "source_file": "sunday-tally\\src\\lib\\billing\\lifecycle.ts",
       "source_location": "L49",
       "id": "lifecycle_computecalendarexpiry",
-      "community": 8
+      "community": 10
     },
     {
       "label": "daysUntil()",
@@ -4546,31 +4610,31 @@
       "source_file": "sunday-tally\\src\\lib\\billing\\lifecycle.ts",
       "source_location": "L65",
       "id": "lifecycle_daysuntil",
-      "community": 8
+      "community": 10
     },
     {
       "label": "baseMonthly()",
       "file_type": "code",
       "source_file": "sunday-tally\\src\\lib\\billing\\pricing.ts",
-      "source_location": "L35",
+      "source_location": "L38",
       "id": "pricing_basemonthly",
-      "community": 8
+      "community": 10
     },
     {
       "label": "aiMonthly()",
       "file_type": "code",
       "source_file": "sunday-tally\\src\\lib\\billing\\pricing.ts",
-      "source_location": "L40",
+      "source_location": "L43",
       "id": "pricing_aimonthly",
-      "community": 8
+      "community": 10
     },
     {
       "label": "recommendedTierForWidgets()",
       "file_type": "code",
       "source_file": "sunday-tally\\src\\lib\\billing\\pricing.ts",
-      "source_location": "L52",
+      "source_location": "L55",
       "id": "pricing_recommendedtierforwidgets",
-      "community": 8
+      "community": 10
     },
     {
       "label": "status.ts",
@@ -4578,7 +4642,7 @@
       "source_file": "sunday-tally\\src\\lib\\billing\\status.ts",
       "source_location": "L1",
       "id": "status",
-      "community": 8
+      "community": 10
     },
     {
       "label": "getBillingStatus()",
@@ -4586,7 +4650,7 @@
       "source_file": "sunday-tally\\src\\lib\\billing\\status.ts",
       "source_location": "L18",
       "id": "status_getbillingstatus",
-      "community": 8
+      "community": 10
     },
     {
       "label": "isTrialBudgetExhausted()",
@@ -4594,7 +4658,7 @@
       "source_file": "sunday-tally\\src\\lib\\billing\\status.ts",
       "source_location": "L83",
       "id": "status_istrialbudgetexhausted",
-      "community": 8
+      "community": 10
     },
     {
       "label": "summary.ts",
@@ -4602,7 +4666,7 @@
       "source_file": "sunday-tally\\src\\lib\\billing\\summary.ts",
       "source_location": "L1",
       "id": "summary",
-      "community": 8
+      "community": 10
     },
     {
       "label": "readAnchors()",
@@ -4610,7 +4674,7 @@
       "source_file": "sunday-tally\\src\\lib\\billing\\summary.ts",
       "source_location": "L33",
       "id": "summary_readanchors",
-      "community": 8
+      "community": 10
     },
     {
       "label": "getBillingSummary()",
@@ -4618,7 +4682,7 @@
       "source_file": "sunday-tally\\src\\lib\\billing\\summary.ts",
       "source_location": "L54",
       "id": "summary_getbillingsummary",
-      "community": 8
+      "community": 10
     },
     {
       "label": "entitlements.test.ts",
@@ -4626,7 +4690,7 @@
       "source_file": "sunday-tally\\src\\lib\\billing\\__tests__\\entitlements.test.ts",
       "source_location": "L1",
       "id": "entitlements_test",
-      "community": 8
+      "community": 10
     },
     {
       "label": "churchEmailData.ts",
@@ -4634,7 +4698,7 @@
       "source_file": "sunday-tally\\src\\lib\\email\\churchEmailData.ts",
       "source_location": "L1",
       "id": "churchemaildata",
-      "community": 8
+      "community": 10
     },
     {
       "label": "appBase()",
@@ -4642,7 +4706,7 @@
       "source_file": "sunday-tally\\src\\lib\\email\\churchEmailData.ts",
       "source_location": "L32",
       "id": "churchemaildata_appbase",
-      "community": 8
+      "community": 10
     },
     {
       "label": "firstNameOf()",
@@ -4650,7 +4714,7 @@
       "source_file": "sunday-tally\\src\\lib\\email\\churchEmailData.ts",
       "source_location": "L36",
       "id": "churchemaildata_firstnameof",
-      "community": 8
+      "community": 10
     },
     {
       "label": "getChurchEmailData()",
@@ -4658,7 +4722,7 @@
       "source_file": "sunday-tally\\src\\lib\\email\\churchEmailData.ts",
       "source_location": "L41",
       "id": "churchemaildata_getchurchemaildata",
-      "community": 8
+      "community": 10
     },
     {
       "label": "resend.ts",
@@ -4666,7 +4730,7 @@
       "source_file": "sunday-tally\\src\\lib\\email\\resend.ts",
       "source_location": "L1",
       "id": "resend",
-      "community": 18
+      "community": 19
     },
     {
       "label": "resend()",
@@ -4674,7 +4738,7 @@
       "source_file": "sunday-tally\\src\\lib\\email\\resend.ts",
       "source_location": "L9",
       "id": "resend_resend",
-      "community": 18
+      "community": 19
     },
     {
       "label": "from()",
@@ -4682,7 +4746,7 @@
       "source_file": "sunday-tally\\src\\lib\\email\\resend.ts",
       "source_location": "L17",
       "id": "resend_from",
-      "community": 18
+      "community": 19
     },
     {
       "label": "sendEmail()",
@@ -4690,7 +4754,7 @@
       "source_file": "sunday-tally\\src\\lib\\email\\resend.ts",
       "source_location": "L21",
       "id": "resend_sendemail",
-      "community": 18
+      "community": 19
     },
     {
       "label": "templates.ts",
@@ -4698,7 +4762,7 @@
       "source_file": "sunday-tally\\src\\lib\\email\\templates.ts",
       "source_location": "L1",
       "id": "templates",
-      "community": 18
+      "community": 19
     },
     {
       "label": "appUrl()",
@@ -4706,7 +4770,7 @@
       "source_file": "sunday-tally\\src\\lib\\email\\templates.ts",
       "source_location": "L60",
       "id": "templates_appurl",
-      "community": 18
+      "community": 19
     },
     {
       "label": "fmt()",
@@ -4714,7 +4778,7 @@
       "source_file": "sunday-tally\\src\\lib\\email\\templates.ts",
       "source_location": "L64",
       "id": "templates_fmt",
-      "community": 18
+      "community": 19
     },
     {
       "label": "chip()",
@@ -4722,7 +4786,7 @@
       "source_file": "sunday-tally\\src\\lib\\email\\templates.ts",
       "source_location": "L66",
       "id": "templates_chip",
-      "community": 18
+      "community": 19
     },
     {
       "label": "button()",
@@ -4730,7 +4794,7 @@
       "source_file": "sunday-tally\\src\\lib\\email\\templates.ts",
       "source_location": "L70",
       "id": "templates_button",
-      "community": 18
+      "community": 19
     },
     {
       "label": "backLink()",
@@ -4738,7 +4802,7 @@
       "source_file": "sunday-tally\\src\\lib\\email\\templates.ts",
       "source_location": "L74",
       "id": "templates_backlink",
-      "community": 18
+      "community": 19
     },
     {
       "label": "statCell()",
@@ -4746,7 +4810,7 @@
       "source_file": "sunday-tally\\src\\lib\\email\\templates.ts",
       "source_location": "L79",
       "id": "templates_statcell",
-      "community": 18
+      "community": 19
     },
     {
       "label": "statStrip()",
@@ -4754,7 +4818,7 @@
       "source_file": "sunday-tally\\src\\lib\\email\\templates.ts",
       "source_location": "L86",
       "id": "templates_statstrip",
-      "community": 18
+      "community": 19
     },
     {
       "label": "planCard()",
@@ -4762,7 +4826,7 @@
       "source_file": "sunday-tally\\src\\lib\\email\\templates.ts",
       "source_location": "L101",
       "id": "templates_plancard",
-      "community": 18
+      "community": 19
     },
     {
       "label": "shell()",
@@ -4770,7 +4834,7 @@
       "source_file": "sunday-tally\\src\\lib\\email\\templates.ts",
       "source_location": "L117",
       "id": "templates_shell",
-      "community": 18
+      "community": 19
     },
     {
       "label": "renderEmail()",
@@ -4778,7 +4842,7 @@
       "source_file": "sunday-tally\\src\\lib\\email\\templates.ts",
       "source_location": "L151",
       "id": "templates_renderemail",
-      "community": 18
+      "community": 19
     },
     {
       "label": "derive_grid_config.ts",
@@ -4786,7 +4850,7 @@
       "source_file": "sunday-tally\\src\\lib\\history\\derive_grid_config.ts",
       "source_location": "L1",
       "id": "derive_grid_config",
-      "community": 15
+      "community": 13
     },
     {
       "label": "deriveGridConfigFromSchema()",
@@ -4794,7 +4858,7 @@
       "source_file": "sunday-tally\\src\\lib\\history\\derive_grid_config.ts",
       "source_location": "L101",
       "id": "derive_grid_config_derivegridconfigfromschema",
-      "community": 15
+      "community": 13
     },
     {
       "label": "apply_patch_op.ts",
@@ -4802,7 +4866,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\apply_patch_op.ts",
       "source_location": "L1",
       "id": "apply_patch_op",
-      "community": 12
+      "community": 6
     },
     {
       "label": "applyPatchOp()",
@@ -4810,7 +4874,31 @@
       "source_file": "sunday-tally\\src\\lib\\import\\apply_patch_op.ts",
       "source_location": "L36",
       "id": "apply_patch_op_applypatchop",
-      "community": 12
+      "community": 6
+    },
+    {
+      "label": "costEstimate.ts",
+      "file_type": "code",
+      "source_file": "sunday-tally\\src\\lib\\import\\costEstimate.ts",
+      "source_location": "L1",
+      "id": "costestimate",
+      "community": 17
+    },
+    {
+      "label": "estimateStageACents()",
+      "file_type": "code",
+      "source_file": "sunday-tally\\src\\lib\\import\\costEstimate.ts",
+      "source_location": "L37",
+      "id": "costestimate_estimatestageacents",
+      "community": 17
+    },
+    {
+      "label": "tooLargeMessage()",
+      "file_type": "code",
+      "source_file": "sunday-tally\\src\\lib\\import\\costEstimate.ts",
+      "source_location": "L53",
+      "id": "costestimate_toolargemessage",
+      "community": 17
     },
     {
       "label": "parsers.ts",
@@ -4818,7 +4906,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\parsers.ts",
       "source_location": "L1",
       "id": "parsers",
-      "community": 3
+      "community": 17
     },
     {
       "label": "parseDateIso()",
@@ -4826,7 +4914,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\parsers.ts",
       "source_location": "L6",
       "id": "parsers_parsedateiso",
-      "community": 3
+      "community": 17
     },
     {
       "label": "parseCount()",
@@ -4834,7 +4922,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\parsers.ts",
       "source_location": "L39",
       "id": "parsers_parsecount",
-      "community": 3
+      "community": 17
     },
     {
       "label": "fmtMonthLabel()",
@@ -4842,7 +4930,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\parsers.ts",
       "source_location": "L47",
       "id": "parsers_fmtmonthlabel",
-      "community": 3
+      "community": 17
     },
     {
       "label": "aggregateMonths()",
@@ -4850,7 +4938,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\parsers.ts",
       "source_location": "L72",
       "id": "parsers_aggregatemonths",
-      "community": 3
+      "community": 17
     },
     {
       "label": "pattern_questions.ts",
@@ -4858,7 +4946,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\pattern_questions.ts",
       "source_location": "L1",
       "id": "pattern_questions",
-      "community": 3
+      "community": 5
     },
     {
       "label": "generatePatternQuestions()",
@@ -4866,7 +4954,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\pattern_questions.ts",
       "source_location": "L46",
       "id": "pattern_questions_generatepatternquestions",
-      "community": 3
+      "community": 5
     },
     {
       "label": "reconcile_answers.ts",
@@ -4874,7 +4962,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\reconcile_answers.ts",
       "source_location": "L1",
       "id": "reconcile_answers",
-      "community": 12
+      "community": 6
     },
     {
       "label": "reconcileAnswersIntoMapping()",
@@ -4882,7 +4970,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\reconcile_answers.ts",
       "source_location": "L53",
       "id": "reconcile_answers_reconcileanswersintomapping",
-      "community": 12
+      "community": 6
     },
     {
       "label": "applyServiceNames()",
@@ -4890,7 +4978,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\reconcile_answers.ts",
       "source_location": "L110",
       "id": "reconcile_answers_applyservicenames",
-      "community": 12
+      "community": 6
     },
     {
       "label": "applyServiceTimes()",
@@ -4898,7 +4986,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\reconcile_answers.ts",
       "source_location": "L167",
       "id": "reconcile_answers_applyservicetimes",
-      "community": 12
+      "community": 6
     },
     {
       "label": "routing.ts",
@@ -4906,7 +4994,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\routing.ts",
       "source_location": "L1",
       "id": "routing",
-      "community": 12
+      "community": 6
     },
     {
       "label": "normalizeKeySegment()",
@@ -4914,7 +5002,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\routing.ts",
       "source_location": "L29",
       "id": "routing_normalizekeysegment",
-      "community": 12
+      "community": 6
     },
     {
       "label": "normalizeCompoundKey()",
@@ -4922,7 +5010,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\routing.ts",
       "source_location": "L35",
       "id": "routing_normalizecompoundkey",
-      "community": 12
+      "community": 6
     },
     {
       "label": "buildNormalizedAreaIndex()",
@@ -4930,7 +5018,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\routing.ts",
       "source_location": "L43",
       "id": "routing_buildnormalizedareaindex",
-      "community": 12
+      "community": 6
     },
     {
       "label": "metricCodeFromDest()",
@@ -4938,7 +5026,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\routing.ts",
       "source_location": "L65",
       "id": "routing_metriccodefromdest",
-      "community": 12
+      "community": 6
     },
     {
       "label": "routeTallRow()",
@@ -4946,7 +5034,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\routing.ts",
       "source_location": "L99",
       "id": "routing_routetallrow",
-      "community": 12
+      "community": 6
     },
     {
       "label": "routeWideRow()",
@@ -4954,7 +5042,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\routing.ts",
       "source_location": "L174",
       "id": "routing_routewiderow",
-      "community": 12
+      "community": 6
     },
     {
       "label": "sources.ts",
@@ -4962,7 +5050,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\sources.ts",
       "source_location": "L1",
       "id": "sources",
-      "community": 3
+      "community": 17
     },
     {
       "label": "stripBom()",
@@ -4970,7 +5058,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\sources.ts",
       "source_location": "L34",
       "id": "sources_stripbom",
-      "community": 3
+      "community": 17
     },
     {
       "label": "normalizeSource()",
@@ -4978,7 +5066,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\sources.ts",
       "source_location": "L38",
       "id": "sources_normalizesource",
-      "community": 3
+      "community": 17
     },
     {
       "label": "fetchGoogleSheetCsv()",
@@ -4986,7 +5074,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\sources.ts",
       "source_location": "L69",
       "id": "sources_fetchgooglesheetcsv",
-      "community": 3
+      "community": 17
     },
     {
       "label": "parseCsv()",
@@ -4994,7 +5082,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\sources.ts",
       "source_location": "L96",
       "id": "sources_parsecsv",
-      "community": 3
+      "community": 17
     },
     {
       "label": "getAllRows()",
@@ -5002,7 +5090,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\sources.ts",
       "source_location": "L120",
       "id": "sources_getallrows",
-      "community": 3
+      "community": 17
     },
     {
       "label": "stageA.ts",
@@ -5010,7 +5098,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\stageA.ts",
       "source_location": "L1",
       "id": "stagea",
-      "community": 3
+      "community": 5
     },
     {
       "label": "buildPreviewSample()",
@@ -5018,7 +5106,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\stageA.ts",
       "source_location": "L866",
       "id": "stagea_buildpreviewsample",
-      "community": 3
+      "community": 5
     },
     {
       "label": "validateStageAOutput()",
@@ -5026,7 +5114,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\stageA.ts",
       "source_location": "L1058",
       "id": "stagea_validatestageaoutput",
-      "community": 3
+      "community": 5
     },
     {
       "label": "runStageA()",
@@ -5034,7 +5122,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\stageA.ts",
       "source_location": "L1175",
       "id": "stagea_runstagea",
-      "community": 3
+      "community": 5
     },
     {
       "label": "stageA_pattern.ts",
@@ -5042,7 +5130,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\stageA_pattern.ts",
       "source_location": "L1",
       "id": "stagea_pattern",
-      "community": 3
+      "community": 5
     },
     {
       "label": "columnStats()",
@@ -5050,7 +5138,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\stageA_pattern.ts",
       "source_location": "L348",
       "id": "stagea_pattern_columnstats",
-      "community": 3
+      "community": 5
     },
     {
       "label": "perDatePartitionProfile()",
@@ -5058,7 +5146,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\stageA_pattern.ts",
       "source_location": "L403",
       "id": "stagea_pattern_perdatepartitionprofile",
-      "community": 3
+      "community": 5
     },
     {
       "label": "conditionalColumnStats()",
@@ -5066,7 +5154,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\stageA_pattern.ts",
       "source_location": "L480",
       "id": "stagea_pattern_conditionalcolumnstats",
-      "community": 3
+      "community": 5
     },
     {
       "label": "runPatternReader()",
@@ -5074,7 +5162,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\stageA_pattern.ts",
       "source_location": "L536",
       "id": "stagea_pattern_runpatternreader",
-      "community": 3
+      "community": 5
     },
     {
       "label": "stageA_round2.ts",
@@ -5082,7 +5170,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\stageA_round2.ts",
       "source_location": "L1",
       "id": "stagea_round2",
-      "community": 3
+      "community": 5
     },
     {
       "label": "runStageARound2()",
@@ -5090,7 +5178,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\stageA_round2.ts",
       "source_location": "L59",
       "id": "stagea_round2_runstagearound2",
-      "community": 3
+      "community": 5
     },
     {
       "label": "stageA_validate.ts",
@@ -5098,7 +5186,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\stageA_validate.ts",
       "source_location": "L1",
       "id": "stagea_validate",
-      "community": 12
+      "community": 6
     },
     {
       "label": "isNonTrivial()",
@@ -5106,7 +5194,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\stageA_validate.ts",
       "source_location": "L132",
       "id": "stagea_validate_isnontrivial",
-      "community": 12
+      "community": 6
     },
     {
       "label": "distinctValues()",
@@ -5114,7 +5202,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\stageA_validate.ts",
       "source_location": "L139",
       "id": "stagea_validate_distinctvalues",
-      "community": 12
+      "community": 6
     },
     {
       "label": "jaccard()",
@@ -5122,7 +5210,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\stageA_validate.ts",
       "source_location": "L148",
       "id": "stagea_validate_jaccard",
-      "community": 12
+      "community": 6
     },
     {
       "label": "metricRefsInMapping()",
@@ -5130,7 +5218,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\stageA_validate.ts",
       "source_location": "L156",
       "id": "stagea_validate_metricrefsinmapping",
-      "community": 12
+      "community": 6
     },
     {
       "label": "pass1Source()",
@@ -5138,7 +5226,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\stageA_validate.ts",
       "source_location": "L174",
       "id": "stagea_validate_pass1source",
-      "community": 12
+      "community": 6
     },
     {
       "label": "pass2Setup()",
@@ -5146,7 +5234,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\stageA_validate.ts",
       "source_location": "L350",
       "id": "stagea_validate_pass2setup",
-      "community": 12
+      "community": 6
     },
     {
       "label": "computeMetricVocabulary()",
@@ -5154,7 +5242,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\stageA_validate.ts",
       "source_location": "L578",
       "id": "stagea_validate_computemetricvocabulary",
-      "community": 12
+      "community": 6
     },
     {
       "label": "computeIndependenceRate()",
@@ -5162,7 +5250,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\stageA_validate.ts",
       "source_location": "L603",
       "id": "stagea_validate_computeindependencerate",
-      "community": 12
+      "community": 6
     },
     {
       "label": "validateMapping()",
@@ -5170,7 +5258,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\stageA_validate.ts",
       "source_location": "L650",
       "id": "stagea_validate_validatemapping",
-      "community": 12
+      "community": 6
     },
     {
       "label": "interpretViolations()",
@@ -5178,7 +5266,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\stageA_validate.ts",
       "source_location": "L921",
       "id": "stagea_validate_interpretviolations",
-      "community": 12
+      "community": 6
     },
     {
       "label": "dedupeClarifications()",
@@ -5186,7 +5274,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\stageA_validate.ts",
       "source_location": "L990",
       "id": "stagea_validate_dedupeclarifications",
-      "community": 12
+      "community": 6
     },
     {
       "label": "applyPatches()",
@@ -5194,7 +5282,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\stageA_validate.ts",
       "source_location": "L1046",
       "id": "stagea_validate_applypatches",
-      "community": 12
+      "community": 6
     },
     {
       "label": "stageB.ts",
@@ -5202,7 +5290,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\stageB.ts",
       "source_location": "L1",
       "id": "stageb",
-      "community": 15
+      "community": 6
     },
     {
       "label": "normalizeKeySegment()",
@@ -5210,7 +5298,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\stageB.ts",
       "source_location": "L13",
       "id": "stageb_normalizekeysegment",
-      "community": 15
+      "community": 6
     },
     {
       "label": "normalizeCompoundKey()",
@@ -5218,7 +5306,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\stageB.ts",
       "source_location": "L17",
       "id": "stageb_normalizecompoundkey",
-      "community": 15
+      "community": 6
     },
     {
       "label": "buildNormalizedAreaIndex()",
@@ -5226,7 +5314,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\stageB.ts",
       "source_location": "L21",
       "id": "stageb_buildnormalizedareaindex",
-      "community": 15
+      "community": 6
     },
     {
       "label": "runStageB()",
@@ -5234,7 +5322,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\stageB.ts",
       "source_location": "L155",
       "id": "stageb_runstageb",
-      "community": 15
+      "community": 6
     },
     {
       "label": "asArray()",
@@ -5242,7 +5330,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\stageB.ts",
       "source_location": "L744",
       "id": "stageb_asarray",
-      "community": 15
+      "community": 6
     },
     {
       "label": "str()",
@@ -5250,7 +5338,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\stageB.ts",
       "source_location": "L747",
       "id": "stageb_str",
-      "community": 15
+      "community": 6
     },
     {
       "label": "runSetupDeterministic()",
@@ -5258,7 +5346,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\stageB.ts",
       "source_location": "L763",
       "id": "stageb_runsetupdeterministic",
-      "community": 15
+      "community": 6
     },
     {
       "label": "topoSortTags()",
@@ -5266,7 +5354,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\stageB.ts",
       "source_location": "L1006",
       "id": "stageb_toposorttags",
-      "community": 15
+      "community": 6
     },
     {
       "label": "errMsg()",
@@ -5274,7 +5362,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\stageB.ts",
       "source_location": "L1045",
       "id": "stageb_errmsg",
-      "community": 15
+      "community": 6
     },
     {
       "label": "setupSlug()",
@@ -5282,7 +5370,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\stageB.ts",
       "source_location": "L1051",
       "id": "stageb_setupslug",
-      "community": 15
+      "community": 6
     },
     {
       "label": "sundayOfWeek()",
@@ -5290,7 +5378,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\stageB.ts",
       "source_location": "L1062",
       "id": "stageb_sundayofweek",
-      "community": 15
+      "community": 6
     },
     {
       "label": "slug()",
@@ -5298,7 +5386,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\stageB.ts",
       "source_location": "L1072",
       "id": "stageb_slug",
-      "community": 15
+      "community": 6
     },
     {
       "label": "parseMoney()",
@@ -5306,7 +5394,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\stageB.ts",
       "source_location": "L1080",
       "id": "stageb_parsemoney",
-      "community": 15
+      "community": 6
     },
     {
       "label": "parseCount()",
@@ -5314,7 +5402,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\stageB.ts",
       "source_location": "L1087",
       "id": "stageb_parsecount",
-      "community": 15
+      "community": 6
     },
     {
       "label": "parseDateIso()",
@@ -5322,7 +5410,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\stageB.ts",
       "source_location": "L1095",
       "id": "stageb_parsedateiso",
-      "community": 15
+      "community": 6
     },
     {
       "label": "cachedUpsertOccurrence()",
@@ -5330,7 +5418,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\stageB.ts",
       "source_location": "L1124",
       "id": "stageb_cachedupsertoccurrence",
-      "community": 15
+      "community": 6
     },
     {
       "label": "upsertOccurrence()",
@@ -5338,7 +5426,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\stageB.ts",
       "source_location": "L1138",
       "id": "stageb_upsertoccurrence",
-      "community": 15
+      "community": 6
     },
     {
       "label": "walkthrough_ui.tsx",
@@ -5362,7 +5450,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\writers.ts",
       "source_location": "L1",
       "id": "writers",
-      "community": 3
+      "community": 5
     },
     {
       "label": "slug()",
@@ -5370,7 +5458,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\writers.ts",
       "source_location": "L20",
       "id": "writers_slug",
-      "community": 3
+      "community": 5
     },
     {
       "label": "church-import.test.ts",
@@ -5378,7 +5466,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\__tests__\\church-import.test.ts",
       "source_location": "L1",
       "id": "church_import_test",
-      "community": 3
+      "community": 17
     },
     {
       "label": "makeRows()",
@@ -5386,7 +5474,23 @@
       "source_file": "sunday-tally\\src\\lib\\import\\__tests__\\church-import.test.ts",
       "source_location": "L339",
       "id": "church_import_test_makerows",
-      "community": 3
+      "community": 17
+    },
+    {
+      "label": "costEstimate.test.ts",
+      "file_type": "code",
+      "source_file": "sunday-tally\\src\\lib\\import\\__tests__\\costEstimate.test.ts",
+      "source_location": "L1",
+      "id": "costestimate_test",
+      "community": 17
+    },
+    {
+      "label": "src()",
+      "file_type": "code",
+      "source_file": "sunday-tally\\src\\lib\\import\\__tests__\\costEstimate.test.ts",
+      "source_location": "L5",
+      "id": "costestimate_test_src",
+      "community": 17
     },
     {
       "label": "writers.test.ts",
@@ -5394,7 +5498,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\__tests__\\writers.test.ts",
       "source_location": "L1",
       "id": "writers_test",
-      "community": 3
+      "community": 5
     },
     {
       "label": "makeSupabase()",
@@ -5402,7 +5506,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\__tests__\\writers.test.ts",
       "source_location": "L22",
       "id": "writers_test_makesupabase",
-      "community": 3
+      "community": 5
     },
     {
       "label": "ctx()",
@@ -5410,7 +5514,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\__tests__\\writers.test.ts",
       "source_location": "L49",
       "id": "writers_test_ctx",
-      "community": 3
+      "community": 5
     },
     {
       "label": "firstOp()",
@@ -5418,7 +5522,7 @@
       "source_file": "sunday-tally\\src\\lib\\import\\__tests__\\writers.test.ts",
       "source_location": "L52",
       "id": "writers_test_firstop",
-      "community": 3
+      "community": 5
     },
     {
       "label": "scheduleVersions.ts",
@@ -5426,7 +5530,7 @@
       "source_file": "sunday-tally\\src\\lib\\schedule\\scheduleVersions.ts",
       "source_location": "L1",
       "id": "scheduleversions",
-      "community": 3
+      "community": 5
     },
     {
       "label": "clampScheduleEnd()",
@@ -5434,7 +5538,7 @@
       "source_file": "sunday-tally\\src\\lib\\schedule\\scheduleVersions.ts",
       "source_location": "L13",
       "id": "scheduleversions_clampscheduleend",
-      "community": 3
+      "community": 5
     },
     {
       "label": "scheduleVersions.test.ts",
@@ -5442,7 +5546,7 @@
       "source_file": "sunday-tally\\src\\lib\\schedule\\__tests__\\scheduleVersions.test.ts",
       "source_location": "L1",
       "id": "scheduleversions_test",
-      "community": 3
+      "community": 5
     },
     {
       "label": "server.ts",
@@ -5450,7 +5554,7 @@
       "source_file": "sunday-tally\\src\\lib\\supabase\\server.ts",
       "source_location": "L1",
       "id": "server",
-      "community": 9
+      "community": 11
     },
     {
       "label": "stripe()",
@@ -5458,7 +5562,7 @@
       "source_file": "sunday-tally\\src\\lib\\stripe\\server.ts",
       "source_location": "L6",
       "id": "server_stripe",
-      "community": 9
+      "community": 11
     },
     {
       "label": "stripePriceId()",
@@ -5466,7 +5570,7 @@
       "source_file": "sunday-tally\\src\\lib\\stripe\\server.ts",
       "source_location": "L16",
       "id": "server_stripepriceid",
-      "community": 9
+      "community": 11
     },
     {
       "label": "appUrl()",
@@ -5474,7 +5578,7 @@
       "source_file": "sunday-tally\\src\\lib\\stripe\\server.ts",
       "source_location": "L22",
       "id": "server_appurl",
-      "community": 9
+      "community": 11
     },
     {
       "label": "auth-helpers.ts",
@@ -5482,7 +5586,7 @@
       "source_file": "sunday-tally\\src\\lib\\supabase\\auth-helpers.ts",
       "source_location": "L1",
       "id": "auth_helpers",
-      "community": 9
+      "community": 11
     },
     {
       "label": "resolveMember()",
@@ -5490,7 +5594,7 @@
       "source_file": "sunday-tally\\src\\lib\\supabase\\auth-helpers.ts",
       "source_location": "L32",
       "id": "auth_helpers_resolvemember",
-      "community": 9
+      "community": 11
     },
     {
       "label": "isOwnerAdmin()",
@@ -5498,7 +5602,7 @@
       "source_file": "sunday-tally\\src\\lib\\supabase\\auth-helpers.ts",
       "source_location": "L56",
       "id": "auth_helpers_isowneradmin",
-      "community": 9
+      "community": 11
     },
     {
       "label": "client.ts",
@@ -5506,7 +5610,7 @@
       "source_file": "sunday-tally\\src\\lib\\supabase\\client.ts",
       "source_location": "L1",
       "id": "client",
-      "community": 2
+      "community": 7
     },
     {
       "label": "createClient()",
@@ -5514,7 +5618,7 @@
       "source_file": "sunday-tally\\src\\lib\\supabase\\client.ts",
       "source_location": "L3",
       "id": "client_createclient",
-      "community": 2
+      "community": 7
     },
     {
       "label": "middleware.ts",
@@ -5522,7 +5626,7 @@
       "source_file": "sunday-tally\\src\\lib\\supabase\\middleware.ts",
       "source_location": "L1",
       "id": "middleware",
-      "community": 9
+      "community": 11
     },
     {
       "label": "updateSession()",
@@ -5530,7 +5634,7 @@
       "source_file": "sunday-tally\\src\\lib\\supabase\\middleware.ts",
       "source_location": "L5",
       "id": "middleware_updatesession",
-      "community": 9
+      "community": 11
     },
     {
       "label": "createClient()",
@@ -5538,7 +5642,7 @@
       "source_file": "sunday-tally\\src\\lib\\supabase\\server.ts",
       "source_location": "L4",
       "id": "server_createclient",
-      "community": 9
+      "community": 11
     },
     {
       "label": "createServiceRoleClient()",
@@ -5546,7 +5650,7 @@
       "source_file": "sunday-tally\\src\\lib\\supabase\\server.ts",
       "source_location": "L33",
       "id": "server_createserviceroleclient",
-      "community": 9
+      "community": 11
     },
     {
       "label": "compile.test.ts",
@@ -5554,7 +5658,7 @@
       "source_file": "sunday-tally\\src\\lib\\widgets\\__tests__\\compile.test.ts",
       "source_location": "L1",
       "id": "compile_test",
-      "community": 10
+      "community": 12
     },
     {
       "label": "localToday()",
@@ -5562,7 +5666,7 @@
       "source_file": "sunday-tally\\src\\lib\\widgets\\compile.test.ts",
       "source_location": "L24",
       "id": "compile_test_localtoday",
-      "community": 10
+      "community": 12
     },
     {
       "label": "localMonthStart()",
@@ -5570,7 +5674,7 @@
       "source_file": "sunday-tally\\src\\lib\\widgets\\compile.test.ts",
       "source_location": "L29",
       "id": "compile_test_localmonthstart",
-      "community": 10
+      "community": 12
     },
     {
       "label": "localYearStart()",
@@ -5578,7 +5682,7 @@
       "source_file": "sunday-tally\\src\\lib\\widgets\\compile.test.ts",
       "source_location": "L32",
       "id": "compile_test_localyearstart",
-      "community": 10
+      "community": 12
     },
     {
       "label": "localWeekStart()",
@@ -5586,7 +5690,7 @@
       "source_file": "sunday-tally\\src\\lib\\widgets\\compile.test.ts",
       "source_location": "L35",
       "id": "compile_test_localweekstart",
-      "community": 10
+      "community": 12
     },
     {
       "label": "compile.ts",
@@ -5594,7 +5698,7 @@
       "source_file": "sunday-tally\\src\\lib\\widgets\\compile.ts",
       "source_location": "L1",
       "id": "compile",
-      "community": 10
+      "community": 12
     },
     {
       "label": "resolveWindow()",
@@ -5602,7 +5706,7 @@
       "source_file": "sunday-tally\\src\\lib\\widgets\\compile.ts",
       "source_location": "L72",
       "id": "compile_resolvewindow",
-      "community": 10
+      "community": 12
     },
     {
       "label": "isObj()",
@@ -5610,7 +5714,7 @@
       "source_file": "sunday-tally\\src\\lib\\widgets\\compile.ts",
       "source_location": "L130",
       "id": "compile_isobj",
-      "community": 10
+      "community": 12
     },
     {
       "label": "validateMeasure()",
@@ -5618,7 +5722,7 @@
       "source_file": "sunday-tally\\src\\lib\\widgets\\compile.ts",
       "source_location": "L134",
       "id": "compile_validatemeasure",
-      "community": 10
+      "community": 12
     },
     {
       "label": "validateSpec()",
@@ -5626,7 +5730,7 @@
       "source_file": "sunday-tally\\src\\lib\\widgets\\compile.ts",
       "source_location": "L152",
       "id": "compile_validatespec",
-      "community": 10
+      "community": 12
     },
     {
       "label": "isStringArray()",
@@ -5634,7 +5738,7 @@
       "source_file": "sunday-tally\\src\\lib\\widgets\\compile.ts",
       "source_location": "L294",
       "id": "compile_isstringarray",
-      "community": 10
+      "community": 12
     },
     {
       "label": "validateWindow()",
@@ -5642,7 +5746,7 @@
       "source_file": "sunday-tally\\src\\lib\\widgets\\compile.ts",
       "source_location": "L298",
       "id": "compile_validatewindow",
-      "community": 10
+      "community": 12
     },
     {
       "label": "monthLabel()",
@@ -5650,7 +5754,7 @@
       "source_file": "sunday-tally\\src\\lib\\widgets\\compile.ts",
       "source_location": "L350",
       "id": "compile_monthlabel",
-      "community": 10
+      "community": 12
     },
     {
       "label": "timeBucketOf()",
@@ -5658,7 +5762,7 @@
       "source_file": "sunday-tally\\src\\lib\\widgets\\compile.ts",
       "source_location": "L356",
       "id": "compile_timebucketof",
-      "community": 10
+      "community": 12
     },
     {
       "label": "describeSpec()",
@@ -5666,7 +5770,7 @@
       "source_file": "sunday-tally\\src\\lib\\widgets\\compile.ts",
       "source_location": "L367",
       "id": "compile_describespec",
-      "community": 10
+      "community": 12
     },
     {
       "label": "explainQuery()",
@@ -5674,7 +5778,7 @@
       "source_file": "sunday-tally\\src\\lib\\widgets\\compile.ts",
       "source_location": "L445",
       "id": "compile_explainquery",
-      "community": 10
+      "community": 12
     },
     {
       "label": "isRollingWindow()",
@@ -5682,7 +5786,7 @@
       "source_file": "sunday-tally\\src\\lib\\widgets\\compile.ts",
       "source_location": "L515",
       "id": "compile_isrollingwindow",
-      "community": 10
+      "community": 12
     },
     {
       "label": "relativeDateClause()",
@@ -5690,7 +5794,7 @@
       "source_file": "sunday-tally\\src\\lib\\widgets\\compile.ts",
       "source_location": "L525",
       "id": "compile_relativedateclause",
-      "community": 10
+      "community": 12
     },
     {
       "label": "planFor()",
@@ -5698,7 +5802,7 @@
       "source_file": "sunday-tally\\src\\lib\\widgets\\compile.ts",
       "source_location": "L570",
       "id": "compile_planfor",
-      "community": 10
+      "community": 12
     },
     {
       "label": "num()",
@@ -5706,7 +5810,7 @@
       "source_file": "sunday-tally\\src\\lib\\widgets\\compile.ts",
       "source_location": "L647",
       "id": "compile_num",
-      "community": 10
+      "community": 12
     },
     {
       "label": "str()",
@@ -5714,7 +5818,7 @@
       "source_file": "sunday-tally\\src\\lib\\widgets\\compile.ts",
       "source_location": "L653",
       "id": "compile_str",
-      "community": 10
+      "community": 12
     },
     {
       "label": "bucketKey()",
@@ -5722,7 +5826,7 @@
       "source_file": "sunday-tally\\src\\lib\\widgets\\compile.ts",
       "source_location": "L658",
       "id": "compile_bucketkey",
-      "community": 10
+      "community": 12
     },
     {
       "label": "aggregate()",
@@ -5730,7 +5834,7 @@
       "source_file": "sunday-tally\\src\\lib\\widgets\\compile.ts",
       "source_location": "L665",
       "id": "compile_aggregate",
-      "community": 10
+      "community": 12
     },
     {
       "label": "weeklyAvg()",
@@ -5738,7 +5842,7 @@
       "source_file": "sunday-tally\\src\\lib\\widgets\\compile.ts",
       "source_location": "L675",
       "id": "compile_weeklyavg",
-      "community": 10
+      "community": 12
     },
     {
       "label": "weeklyAvgByCode()",
@@ -5746,7 +5850,7 @@
       "source_file": "sunday-tally\\src\\lib\\widgets\\compile.ts",
       "source_location": "L690",
       "id": "compile_weeklyavgbycode",
-      "community": 10
+      "community": 12
     },
     {
       "label": "weeklyAvgByBucket()",
@@ -5754,7 +5858,7 @@
       "source_file": "sunday-tally\\src\\lib\\widgets\\compile.ts",
       "source_location": "L716",
       "id": "compile_weeklyavgbybucket",
-      "community": 10
+      "community": 12
     },
     {
       "label": "roundTidy()",
@@ -5762,7 +5866,7 @@
       "source_file": "sunday-tally\\src\\lib\\widgets\\compile.ts",
       "source_location": "L741",
       "id": "compile_roundtidy",
-      "community": 10
+      "community": 12
     },
     {
       "label": "mergeCompare()",
@@ -5770,7 +5874,7 @@
       "source_file": "sunday-tally\\src\\lib\\widgets\\compile.ts",
       "source_location": "L755",
       "id": "compile_mergecompare",
-      "community": 10
+      "community": 12
     },
     {
       "label": "compileAndRun()",
@@ -5778,7 +5882,7 @@
       "source_file": "sunday-tally\\src\\lib\\widgets\\compile.ts",
       "source_location": "L786",
       "id": "compile_compileandrun",
-      "community": 10
+      "community": 12
     },
     {
       "label": "timeDimBucket()",
@@ -5786,7 +5890,7 @@
       "source_file": "sunday-tally\\src\\lib\\widgets\\compile.ts",
       "source_location": "L1051",
       "id": "compile_timedimbucket",
-      "community": 10
+      "community": 12
     },
     {
       "label": "fetchPaged()",
@@ -5794,7 +5898,7 @@
       "source_file": "sunday-tally\\src\\lib\\widgets\\compile.ts",
       "source_location": "L1057",
       "id": "compile_fetchpaged",
-      "community": 10
+      "community": 12
     },
     {
       "label": "runRatio()",
@@ -5802,7 +5906,7 @@
       "source_file": "sunday-tally\\src\\lib\\widgets\\compile.ts",
       "source_location": "L1089",
       "id": "compile_runratio",
-      "community": 10
+      "community": 12
     },
     {
       "label": "spec.ts",
@@ -5810,7 +5914,7 @@
       "source_file": "sunday-tally\\src\\lib\\widgets\\spec.ts",
       "source_location": "L1",
       "id": "spec",
-      "community": 10
+      "community": 12
     },
     {
       "label": "index.ts",
@@ -5842,7 +5946,7 @@
       "source_file": "sunday-tally\\src\\__mocks__\\server-only.ts",
       "source_location": "L1",
       "id": "server_only",
-      "community": 3
+      "community": 5
     },
     {
       "label": "History Grid Design Chat Transcript",
@@ -7854,7 +7958,7 @@
       "relation": "imports_from",
       "confidence": "EXTRACTED",
       "source_file": "sunday-tally\\src\\app\\(marketing)\\blog\\[slug]\\page.tsx",
-      "source_location": "L5",
+      "source_location": "L7",
       "weight": 1.0,
       "_src": "page",
       "_tgt": "blog",
@@ -7875,22 +7979,46 @@
       "confidence_score": 1.0
     },
     {
-      "relation": "contains",
+      "relation": "imports_from",
       "confidence": "EXTRACTED",
-      "source_file": "sunday-tally\\src\\app\\(marketing)\\blog\\[slug]\\page.tsx",
-      "source_location": "L54",
+      "source_file": "sunday-tally\\src\\app\\(marketing)\\blog\\page.tsx",
+      "source_location": "L3",
       "weight": 1.0,
       "_src": "page",
-      "_tgt": "page_formatdate",
+      "_tgt": "blogindex",
       "source": "page",
-      "target": "page_formatdate",
+      "target": "blogindex",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "sunday-tally\\src\\app\\(marketing)\\blog\\page.tsx",
+      "source_location": "L20",
+      "weight": 1.0,
+      "_src": "page",
+      "_tgt": "page_blogindexpage",
+      "source": "page",
+      "target": "page_blogindexpage",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "sunday-tally\\src\\app\\(marketing)\\blog\\[slug]\\page.tsx",
+      "source_location": "L8",
+      "weight": 1.0,
+      "_src": "page",
+      "_tgt": "chartkit",
+      "source": "page",
+      "target": "chartkit",
       "confidence_score": 1.0
     },
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sunday-tally\\src\\app\\(marketing)\\blog\\[slug]\\page.tsx",
-      "source_location": "L9",
+      "source_location": "L12",
       "weight": 1.0,
       "_src": "page",
       "_tgt": "page_generatestaticparams",
@@ -7902,7 +8030,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sunday-tally\\src\\app\\(marketing)\\blog\\[slug]\\page.tsx",
-      "source_location": "L16",
+      "source_location": "L19",
       "weight": 1.0,
       "_src": "page",
       "_tgt": "page_generatemetadata",
@@ -7911,15 +8039,15 @@
       "confidence_score": 1.0
     },
     {
-      "relation": "imports_from",
+      "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "sunday-tally\\src\\app\\(marketing)\\contact\\page.tsx",
-      "source_location": "L5",
+      "source_file": "sunday-tally\\src\\app\\(marketing)\\blog\\[slug]\\page.tsx",
+      "source_location": "L57",
       "weight": 1.0,
       "_src": "page",
-      "_tgt": "particlenetwork",
+      "_tgt": "page_formatdate",
       "source": "page",
-      "target": "particlenetwork",
+      "target": "page_formatdate",
       "confidence_score": 1.0
     },
     {
@@ -8418,7 +8546,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sunday-tally\\src\\app\\onboarding\\import\\review\\page.tsx",
-      "source_location": "L442",
+      "source_location": "L490",
       "weight": 1.0,
       "_src": "page",
       "_tgt": "page_handleconfirm",
@@ -11487,27 +11615,27 @@
       "confidence_score": 1.0
     },
     {
-      "relation": "contains",
+      "relation": "imports_from",
       "confidence": "EXTRACTED",
-      "source_file": "sunday-tally\\src\\app\\(marketing)\\HomeLanding.tsx",
-      "source_location": "L1966",
+      "source_file": "sunday-tally\\src\\app\\(marketing)\\blog\\BlogIndex.tsx",
+      "source_location": "L6",
       "weight": 1.0,
-      "_src": "homelanding",
-      "_tgt": "homelanding_handlesend",
-      "source": "homelanding",
-      "target": "homelanding_handlesend",
+      "_src": "blogindex",
+      "_tgt": "blog",
+      "source": "blogindex",
+      "target": "blog",
       "confidence_score": 1.0
     },
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "sunday-tally\\src\\app\\(marketing)\\HomeLanding.tsx",
-      "source_location": "L1994",
+      "source_file": "sunday-tally\\src\\app\\(marketing)\\blog\\BlogIndex.tsx",
+      "source_location": "L8",
       "weight": 1.0,
-      "_src": "homelanding",
-      "_tgt": "homelanding_handletogglechat",
-      "source": "homelanding",
-      "target": "homelanding_handletogglechat",
+      "_src": "blogindex",
+      "_tgt": "blogindex_formatdate",
+      "source": "blogindex",
+      "target": "blogindex_formatdate",
       "confidence_score": 1.0
     },
     {
@@ -11847,10 +11975,22 @@
       "confidence_score": 1.0
     },
     {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "sunday-tally\\src\\app\\api\\marketing\\chat\\route.ts",
+      "source_location": "L20",
+      "weight": 1.0,
+      "_src": "route",
+      "_tgt": "route_getkb",
+      "source": "route",
+      "target": "route_getkb",
+      "confidence_score": 1.0
+    },
+    {
       "relation": "imports_from",
       "confidence": "EXTRACTED",
-      "source_file": "sunday-tally\\src\\app\\api\\onboarding\\chat\\route.ts",
-      "source_location": "L4",
+      "source_file": "sunday-tally\\src\\app\\api\\onboarding\\import\\route.ts",
+      "source_location": "L8",
       "weight": 1.0,
       "_src": "route",
       "_tgt": "budget",
@@ -11861,8 +12001,8 @@
     {
       "relation": "imports_from",
       "confidence": "EXTRACTED",
-      "source_file": "sunday-tally\\src\\app\\api\\onboarding\\import\\route.ts",
-      "source_location": "L3",
+      "source_file": "sunday-tally\\src\\app\\api\\onboarding\\import\\preview\\route.ts",
+      "source_location": "L15",
       "weight": 1.0,
       "_src": "route",
       "_tgt": "sources",
@@ -11873,8 +12013,8 @@
     {
       "relation": "imports_from",
       "confidence": "EXTRACTED",
-      "source_file": "sunday-tally\\src\\app\\api\\onboarding\\import\\route.ts",
-      "source_location": "L4",
+      "source_file": "sunday-tally\\src\\app\\api\\onboarding\\import\\preview\\route.ts",
+      "source_location": "L17",
       "weight": 1.0,
       "_src": "route",
       "_tgt": "stagea",
@@ -11885,8 +12025,8 @@
     {
       "relation": "imports_from",
       "confidence": "EXTRACTED",
-      "source_file": "sunday-tally\\src\\app\\api\\onboarding\\import\\route.ts",
-      "source_location": "L5",
+      "source_file": "sunday-tally\\src\\app\\api\\onboarding\\import\\preview\\route.ts",
+      "source_location": "L18",
       "weight": 1.0,
       "_src": "route",
       "_tgt": "stageb",
@@ -11897,8 +12037,8 @@
     {
       "relation": "imports_from",
       "confidence": "EXTRACTED",
-      "source_file": "sunday-tally\\src\\app\\api\\onboarding\\import\\route.ts",
-      "source_location": "L6",
+      "source_file": "sunday-tally\\src\\app\\api\\onboarding\\import\\preview\\route.ts",
+      "source_location": "L16",
       "weight": 1.0,
       "_src": "route",
       "_tgt": "reconcile_answers",
@@ -11907,10 +12047,34 @@
       "confidence_score": 1.0
     },
     {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "sunday-tally\\src\\app\\api\\onboarding\\import\\route.ts",
+      "source_location": "L9",
+      "weight": 1.0,
+      "_src": "route",
+      "_tgt": "status",
+      "source": "route",
+      "target": "status",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "sunday-tally\\src\\app\\api\\onboarding\\import\\route.ts",
+      "source_location": "L10",
+      "weight": 1.0,
+      "_src": "route",
+      "_tgt": "costestimate",
+      "source": "route",
+      "target": "costestimate",
+      "confidence_score": 1.0
+    },
+    {
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sunday-tally\\src\\app\\api\\onboarding\\import\\route.ts",
-      "source_location": "L12",
+      "source_location": "L15",
       "weight": 1.0,
       "_src": "route",
       "_tgt": "route_resolvechurch",
@@ -11922,7 +12086,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sunday-tally\\src\\app\\api\\onboarding\\import\\route.ts",
-      "source_location": "L100",
+      "source_location": "L119",
       "weight": 1.0,
       "_src": "route",
       "_tgt": "route_patch",
@@ -12221,8 +12385,20 @@
     {
       "relation": "calls",
       "confidence": "EXTRACTED",
+      "source_file": "sunday-tally\\src\\app\\api\\marketing\\chat\\route.ts",
+      "source_location": "L60",
+      "weight": 1.0,
+      "_src": "route_post",
+      "_tgt": "route_getkb",
+      "source": "route_post",
+      "target": "route_getkb",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
       "source_file": "sunday-tally\\src\\app\\api\\onboarding\\import\\route.ts",
-      "source_location": "L31",
+      "source_location": "L34",
       "weight": 1.0,
       "_src": "route_post",
       "_tgt": "route_resolvechurch",
@@ -12330,7 +12506,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "sunday-tally\\src\\app\\api\\onboarding\\import\\route.ts",
-      "source_location": "L175",
+      "source_location": "L194",
       "weight": 1.0,
       "_src": "route_get",
       "_tgt": "route_resolvechurch",
@@ -12390,7 +12566,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "sunday-tally\\src\\app\\api\\onboarding\\import\\route.ts",
-      "source_location": "L102",
+      "source_location": "L121",
       "weight": 1.0,
       "_src": "route_patch",
       "_tgt": "route_resolvechurch",
@@ -12618,7 +12794,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "sunday-tally\\src\\app\\onboarding\\import\\review\\page.tsx",
-      "source_location": "L480",
+      "source_location": "L528",
       "weight": 1.0,
       "_src": "page_handleconfirm",
       "_tgt": "page_isbudgetexhausted",
@@ -13056,6 +13232,90 @@
       "_tgt": "billingprovider",
       "source": "billingprovider",
       "target": "applayout",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "sunday-tally\\src\\components\\blog\\chartData.ts",
+      "source_location": "L1",
+      "weight": 1.0,
+      "_src": "chartdata",
+      "_tgt": "chartutils",
+      "source": "chartdata",
+      "target": "chartutils",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "sunday-tally\\src\\components\\blog\\ChartKit.tsx",
+      "source_location": "L15",
+      "weight": 1.0,
+      "_src": "chartkit",
+      "_tgt": "chartdata",
+      "source": "chartdata",
+      "target": "chartkit",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "sunday-tally\\src\\components\\blog\\ChartKit.tsx",
+      "source_location": "L13",
+      "weight": 1.0,
+      "_src": "chartkit",
+      "_tgt": "areachart",
+      "source": "chartkit",
+      "target": "areachart",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "sunday-tally\\src\\components\\blog\\ChartKit.tsx",
+      "source_location": "L14",
+      "weight": 1.0,
+      "_src": "chartkit",
+      "_tgt": "chartutils",
+      "source": "chartkit",
+      "target": "chartutils",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "sunday-tally\\src\\components\\blog\\ChartKit.tsx",
+      "source_location": "L21",
+      "weight": 1.0,
+      "_src": "chartkit",
+      "_tgt": "chartkit_deltabadge",
+      "source": "chartkit",
+      "target": "chartkit_deltabadge",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "sunday-tally\\src\\components\\blog\\ChartKit.tsx",
+      "source_location": "L80",
+      "weight": 1.0,
+      "_src": "chartkit",
+      "_tgt": "chartkit_fmt",
+      "source": "chartkit",
+      "target": "chartkit_fmt",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "sunday-tally\\src\\components\\blog\\ChartKit.tsx",
+      "source_location": "L81",
+      "weight": 1.0,
+      "_src": "chartkit",
+      "_tgt": "chartkit_tick",
+      "source": "chartkit",
+      "target": "chartkit_tick",
       "confidence_score": 1.0
     },
     {
@@ -14754,7 +15014,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sunday-tally\\src\\lib\\blog.ts",
-      "source_location": "L37",
+      "source_location": "L42",
       "weight": 1.0,
       "_src": "blog",
       "_tgt": "blog_stripcomments",
@@ -14766,7 +15026,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sunday-tally\\src\\lib\\blog.ts",
-      "source_location": "L43",
+      "source_location": "L50",
       "weight": 1.0,
       "_src": "blog",
       "_tgt": "blog_stripleadingh1",
@@ -14778,7 +15038,19 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sunday-tally\\src\\lib\\blog.ts",
-      "source_location": "L48",
+      "source_location": "L57",
+      "weight": 1.0,
+      "_src": "blog",
+      "_tgt": "blog_stripauthorfooter",
+      "source": "blog",
+      "target": "blog_stripauthorfooter",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "sunday-tally\\src\\lib\\blog.ts",
+      "source_location": "L62",
       "weight": 1.0,
       "_src": "blog",
       "_tgt": "blog_extractfaqs",
@@ -14790,7 +15062,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sunday-tally\\src\\lib\\blog.ts",
-      "source_location": "L72",
+      "source_location": "L86",
       "weight": 1.0,
       "_src": "blog",
       "_tgt": "blog_rendermarkdown",
@@ -14802,7 +15074,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sunday-tally\\src\\lib\\blog.ts",
-      "source_location": "L83",
+      "source_location": "L97",
       "weight": 1.0,
       "_src": "blog",
       "_tgt": "blog_getallpostslugs",
@@ -14814,7 +15086,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sunday-tally\\src\\lib\\blog.ts",
-      "source_location": "L97",
+      "source_location": "L111",
       "weight": 1.0,
       "_src": "blog",
       "_tgt": "blog_readpostfile",
@@ -14826,7 +15098,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sunday-tally\\src\\lib\\blog.ts",
-      "source_location": "L106",
+      "source_location": "L120",
       "weight": 1.0,
       "_src": "blog",
       "_tgt": "blog_tometa",
@@ -14838,7 +15110,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sunday-tally\\src\\lib\\blog.ts",
-      "source_location": "L124",
+      "source_location": "L139",
       "weight": 1.0,
       "_src": "blog",
       "_tgt": "blog_getallpostsmeta",
@@ -14850,7 +15122,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sunday-tally\\src\\lib\\blog.ts",
-      "source_location": "L137",
+      "source_location": "L152",
       "weight": 1.0,
       "_src": "blog",
       "_tgt": "blog_getfeaturedpostsmeta",
@@ -14862,7 +15134,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sunday-tally\\src\\lib\\blog.ts",
-      "source_location": "L143",
+      "source_location": "L158",
       "weight": 1.0,
       "_src": "blog",
       "_tgt": "blog_getpostbyslug",
@@ -14874,7 +15146,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "sunday-tally\\src\\lib\\blog.ts",
-      "source_location": "L149",
+      "source_location": "L164",
       "weight": 1.0,
       "_src": "blog_getpostbyslug",
       "_tgt": "blog_stripcomments",
@@ -14886,7 +15158,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "sunday-tally\\src\\lib\\blog.ts",
-      "source_location": "L149",
+      "source_location": "L164",
       "weight": 1.0,
       "_src": "blog_getpostbyslug",
       "_tgt": "blog_stripleadingh1",
@@ -14898,7 +15170,19 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "sunday-tally\\src\\lib\\blog.ts",
-      "source_location": "L151",
+      "source_location": "L164",
+      "weight": 1.0,
+      "_src": "blog_getpostbyslug",
+      "_tgt": "blog_stripauthorfooter",
+      "source": "blog_stripauthorfooter",
+      "target": "blog_getpostbyslug",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "sunday-tally\\src\\lib\\blog.ts",
+      "source_location": "L165",
       "weight": 1.0,
       "_src": "blog_getpostbyslug",
       "_tgt": "blog_extractfaqs",
@@ -14910,7 +15194,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "sunday-tally\\src\\lib\\blog.ts",
-      "source_location": "L150",
+      "source_location": "L172",
       "weight": 1.0,
       "_src": "blog_getpostbyslug",
       "_tgt": "blog_rendermarkdown",
@@ -14922,7 +15206,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "sunday-tally\\src\\lib\\blog.ts",
-      "source_location": "L126",
+      "source_location": "L141",
       "weight": 1.0,
       "_src": "blog_getallpostsmeta",
       "_tgt": "blog_getallpostslugs",
@@ -14934,7 +15218,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "sunday-tally\\src\\lib\\blog.ts",
-      "source_location": "L144",
+      "source_location": "L159",
       "weight": 1.0,
       "_src": "blog_getpostbyslug",
       "_tgt": "blog_readpostfile",
@@ -14946,7 +15230,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "sunday-tally\\src\\lib\\blog.ts",
-      "source_location": "L148",
+      "source_location": "L163",
       "weight": 1.0,
       "_src": "blog_getpostbyslug",
       "_tgt": "blog_tometa",
@@ -14958,7 +15242,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "sunday-tally\\src\\lib\\blog.ts",
-      "source_location": "L138",
+      "source_location": "L153",
       "weight": 1.0,
       "_src": "blog_getfeaturedpostsmeta",
       "_tgt": "blog_getallpostsmeta",
@@ -16470,7 +16754,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sunday-tally\\src\\lib\\ai\\budget.ts",
-      "source_location": "L32",
+      "source_location": "L34",
       "weight": 1.0,
       "_src": "budget",
       "_tgt": "budget_resolvebucket",
@@ -16482,7 +16766,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sunday-tally\\src\\lib\\ai\\budget.ts",
-      "source_location": "L61",
+      "source_location": "L63",
       "weight": 1.0,
       "_src": "budget",
       "_tgt": "budget_getremaining",
@@ -16494,7 +16778,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sunday-tally\\src\\lib\\ai\\budget.ts",
-      "source_location": "L72",
+      "source_location": "L74",
       "weight": 1.0,
       "_src": "budget",
       "_tgt": "budget_recordusage",
@@ -16506,7 +16790,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sunday-tally\\src\\lib\\ai\\budget.ts",
-      "source_location": "L117",
+      "source_location": "L119",
       "weight": 1.0,
       "_src": "budget",
       "_tgt": "budget_ensureperiodrow",
@@ -16518,7 +16802,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sunday-tally\\src\\lib\\ai\\budget.ts",
-      "source_location": "L165",
+      "source_location": "L167",
       "weight": 1.0,
       "_src": "budget",
       "_tgt": "budget_monthkey",
@@ -16542,7 +16826,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "sunday-tally\\src\\lib\\ai\\budget.ts",
-      "source_location": "L45",
+      "source_location": "L47",
       "weight": 1.0,
       "_src": "budget_resolvebucket",
       "_tgt": "budget_monthkey",
@@ -16554,7 +16838,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "sunday-tally\\src\\lib\\ai\\budget.ts",
-      "source_location": "L66",
+      "source_location": "L68",
       "weight": 1.0,
       "_src": "budget_getremaining",
       "_tgt": "budget_resolvebucket",
@@ -16566,7 +16850,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "sunday-tally\\src\\lib\\ai\\budget.ts",
-      "source_location": "L81",
+      "source_location": "L83",
       "weight": 1.0,
       "_src": "budget_recordusage",
       "_tgt": "budget_resolvebucket",
@@ -16578,7 +16862,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "sunday-tally\\src\\lib\\ai\\budget.ts",
-      "source_location": "L67",
+      "source_location": "L69",
       "weight": 1.0,
       "_src": "budget_getremaining",
       "_tgt": "budget_ensureperiodrow",
@@ -16590,7 +16874,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "sunday-tally\\src\\lib\\ai\\budget.ts",
-      "source_location": "L82",
+      "source_location": "L84",
       "weight": 1.0,
       "_src": "budget_recordusage",
       "_tgt": "budget_ensureperiodrow",
@@ -16878,7 +17162,7 @@
       "relation": "imports_from",
       "confidence": "EXTRACTED",
       "source_file": "sunday-tally\\src\\lib\\billing\\pricing.ts",
-      "source_location": "L13",
+      "source_location": "L15",
       "weight": 1.0,
       "_src": "pricing",
       "_tgt": "entitlements",
@@ -16890,7 +17174,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sunday-tally\\src\\lib\\billing\\pricing.ts",
-      "source_location": "L35",
+      "source_location": "L38",
       "weight": 1.0,
       "_src": "pricing",
       "_tgt": "pricing_basemonthly",
@@ -16902,7 +17186,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sunday-tally\\src\\lib\\billing\\pricing.ts",
-      "source_location": "L40",
+      "source_location": "L43",
       "weight": 1.0,
       "_src": "pricing",
       "_tgt": "pricing_aimonthly",
@@ -16914,7 +17198,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sunday-tally\\src\\lib\\billing\\pricing.ts",
-      "source_location": "L52",
+      "source_location": "L55",
       "weight": 1.0,
       "_src": "pricing",
       "_tgt": "pricing_recommendedtierforwidgets",
@@ -17142,7 +17426,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sunday-tally\\src\\lib\\billing\\entitlements.ts",
-      "source_location": "L59",
+      "source_location": "L72",
       "weight": 1.0,
       "_src": "entitlements",
       "_tgt": "entitlements_widgetcapfortier",
@@ -17154,7 +17438,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sunday-tally\\src\\lib\\billing\\entitlements.ts",
-      "source_location": "L66",
+      "source_location": "L80",
       "weight": 1.0,
       "_src": "entitlements",
       "_tgt": "entitlements_ceilingcentsfortier",
@@ -17166,7 +17450,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sunday-tally\\src\\lib\\billing\\entitlements.ts",
-      "source_location": "L79",
+      "source_location": "L87",
       "weight": 1.0,
       "_src": "entitlements",
       "_tgt": "entitlements_readtierandlocations",
@@ -17178,7 +17462,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sunday-tally\\src\\lib\\billing\\entitlements.ts",
-      "source_location": "L99",
+      "source_location": "L107",
       "weight": 1.0,
       "_src": "entitlements",
       "_tgt": "entitlements_resolvepaidceilingcents",
@@ -17190,7 +17474,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sunday-tally\\src\\lib\\billing\\entitlements.ts",
-      "source_location": "L114",
+      "source_location": "L122",
       "weight": 1.0,
       "_src": "entitlements",
       "_tgt": "entitlements_getentitlements",
@@ -17238,7 +17522,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "sunday-tally\\src\\lib\\billing\\entitlements.ts",
-      "source_location": "L134",
+      "source_location": "L142",
       "weight": 1.0,
       "_src": "entitlements_getentitlements",
       "_tgt": "entitlements_widgetcapfortier",
@@ -17250,7 +17534,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "sunday-tally\\src\\lib\\billing\\entitlements.ts",
-      "source_location": "L104",
+      "source_location": "L112",
       "weight": 1.0,
       "_src": "entitlements_resolvepaidceilingcents",
       "_tgt": "entitlements_ceilingcentsfortier",
@@ -17262,7 +17546,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "sunday-tally\\src\\lib\\billing\\entitlements.ts",
-      "source_location": "L135",
+      "source_location": "L143",
       "weight": 1.0,
       "_src": "entitlements_getentitlements",
       "_tgt": "entitlements_ceilingcentsfortier",
@@ -17274,7 +17558,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "sunday-tally\\src\\lib\\billing\\entitlements.ts",
-      "source_location": "L103",
+      "source_location": "L111",
       "weight": 1.0,
       "_src": "entitlements_resolvepaidceilingcents",
       "_tgt": "entitlements_readtierandlocations",
@@ -17286,7 +17570,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "sunday-tally\\src\\lib\\billing\\entitlements.ts",
-      "source_location": "L124",
+      "source_location": "L132",
       "weight": 1.0,
       "_src": "entitlements_getentitlements",
       "_tgt": "entitlements_readtierandlocations",
@@ -17931,6 +18215,54 @@
       "confidence_score": 1.0
     },
     {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "sunday-tally\\src\\lib\\import\\costEstimate.ts",
+      "source_location": "L1",
+      "weight": 1.0,
+      "_src": "costestimate",
+      "_tgt": "sources",
+      "source": "costestimate",
+      "target": "sources",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "sunday-tally\\src\\lib\\import\\costEstimate.ts",
+      "source_location": "L37",
+      "weight": 1.0,
+      "_src": "costestimate",
+      "_tgt": "costestimate_estimatestageacents",
+      "source": "costestimate",
+      "target": "costestimate_estimatestageacents",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "sunday-tally\\src\\lib\\import\\costEstimate.ts",
+      "source_location": "L53",
+      "weight": 1.0,
+      "_src": "costestimate",
+      "_tgt": "costestimate_toolargemessage",
+      "source": "costestimate",
+      "target": "costestimate_toolargemessage",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "sunday-tally\\src\\lib\\import\\__tests__\\costEstimate.test.ts",
+      "source_location": "L2",
+      "weight": 1.0,
+      "_src": "costestimate_test",
+      "_tgt": "costestimate",
+      "source": "costestimate",
+      "target": "costestimate_test",
+      "confidence_score": 1.0
+    },
+    {
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "sunday-tally\\src\\lib\\import\\parsers.ts",
@@ -18420,6 +18752,18 @@
       "_tgt": "sources",
       "source": "sources",
       "target": "church_import_test",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "sunday-tally\\src\\lib\\import\\__tests__\\costEstimate.test.ts",
+      "source_location": "L3",
+      "weight": 1.0,
+      "_src": "costestimate_test",
+      "_tgt": "sources",
+      "source": "sources",
+      "target": "costestimate_test",
       "confidence_score": 1.0
     },
     {
@@ -19428,6 +19772,18 @@
       "_tgt": "church_import_test_makerows",
       "source": "church_import_test",
       "target": "church_import_test_makerows",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "sunday-tally\\src\\lib\\import\\__tests__\\costEstimate.test.ts",
+      "source_location": "L5",
+      "weight": 1.0,
+      "_src": "costestimate_test",
+      "_tgt": "costestimate_test_src",
+      "source": "costestimate_test",
+      "target": "costestimate_test_src",
       "confidence_score": 1.0
     },
     {
