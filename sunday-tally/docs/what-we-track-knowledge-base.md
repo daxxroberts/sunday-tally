@@ -106,6 +106,28 @@ The rule is simple: don't do both. Don't create a Roll-up for something you're a
 
 ---
 
+## The Grand Total — Your Dashboard's Headline
+
+A roll-up combines entries *inside one ministry*. The **grand total** is the next level up — the headline number on the dashboard that combines *across* ministries.
+
+You define it in **Settings → Setup → Totals** ("Grand total rules"). Each rule sets:
+
+- **Adds up** — any mix of the four types: Attendance, Volunteers, Stats, Giving.
+- **Shown as** — **Weekly average** or **Running total**.
+- **Across all included ministries** — every top-level ministry by default.
+
+One rule is marked the **primary "Grand total"** — that's the headline figure on the dashboard. You can keep more than one rule. Out of the box there are two defaults: **Total Attendance** (attendance only, primary) and **Total Present** (attendance + volunteers).
+
+**Excluding a ministry:** if a ministry shouldn't count toward the grand total — a side count, a satellite gathering you watch but don't want inflating the church-wide number — leave it out. You toggle it off the total from the dashboard; it keeps its own card and trend line, it just doesn't add into the headline.
+
+**Roll-up vs. grand total, side by side:**
+- **Roll-up** — combines entries *within* one ministry (Experience 9am + 11am → Experience).
+- **Grand total** — combines *across* ministries into the dashboard headline, per your rules.
+
+**Where it lives:** rules are edited at Settings → Setup → Totals (stored in `churches.dashboard_prefs.totals`); the per-ministry exclusions (`excludedTotalMinistries`) are toggled from the dashboard. Full data model in `TOTALS_RULES_PLAN.md`.
+
+---
+
 ## Blank Is Not Zero
 
 > If a service didn't meet, leave it blank. Don't enter zero.
@@ -157,6 +179,15 @@ No. Same reason.
 
 **I run two services and want one combined attendance number.**
 Add an Entry count per service, then add a Roll-up count on the parent ministry. The Roll-up does the math.
+
+**What's the difference between a roll-up and the grand total?**
+A roll-up combines entries inside one ministry. The grand total combines across ministries into the dashboard's headline number. Set what it adds up in Settings → Setup → Totals.
+
+**How do I keep a ministry out of the church-wide total?**
+Leave it out of the total from the dashboard. It keeps its own card and trend line but doesn't add into the grand total.
+
+**Where do I change what the big dashboard number means?**
+Settings → Setup → Totals ("Grand total rules") — choose the types it adds up and whether it shows as a weekly average or a running total.
 
 **The service didn't meet this week. What do I enter?**
 Nothing. Leave it blank.
