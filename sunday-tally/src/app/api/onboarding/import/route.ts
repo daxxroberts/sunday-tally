@@ -5,6 +5,9 @@ import { runStageA } from '@/lib/import/stageA'
 import { runStageB, type ConfirmedMapping } from '@/lib/import/stageB'
 import { reconcileAnswersIntoMapping } from '@/lib/import/reconcile_answers'
 import { AiBudgetExhaustedError } from '@/lib/ai/anthropic'
+import { getRemaining } from '@/lib/ai/budget'
+import { getBillingStatus } from '@/lib/billing/status'
+import { estimateStageACents, tooLargeMessage } from '@/lib/import/costEstimate'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -49,6 +52,22 @@ export async function POST(req: Request) {
   }
 
   const normalized = await Promise.all(rawSources.map(normalizeSource))
+
+  // Pre-flight size guard (trial only): estimate Stage A cost from tabs × columns
+  // and stop an oversized import BEFORE spending a cent, with a reduce-tabs note.
+  // Rows don't drive Stage A cost (it reads them as stats + a 20-row sample), so
+  // deep history is never penalized — only too many tabs/columns in one go.
+  const billing = await getBillingStatus(supabase, ctx.churchId)
+  if (billing.phase === 'trial') {
+    const est = estimateStageACents(normalized)
+    const remaining = await getRemaining(supabase, ctx.churchId, 'import_stage_a')
+    if (est.cents > remaining) {
+      return NextResponse.json(
+        { error: 'import_too_large', tabs: est.tabs, columns: est.columns, message: tooLargeMessage(est) },
+        { status: 413 },
+      )
+    }
+  }
 
   const { data: job, error: jobErr } = await supabase
     .from('import_jobs')

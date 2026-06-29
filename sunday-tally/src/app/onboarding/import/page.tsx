@@ -92,6 +92,7 @@ export default function ImportUploaderPage() {
           ai_budget_exhausted: 'This period\'s setup allowance is used up. An owner can override to continue.',
           no_sources:          'Add at least one CSV, Google Sheets link, or description first.',
           job_create_failed:   'We could not start the import. Please try again.',
+          import_too_large:    'This is a large import for a free-trial setup. Import one or two tabs now — you can add the rest once you\'re set up.',
           forbidden:           'Only an owner or admin can import data.',
           unauthorized:        'Please sign in again to import.',
         }

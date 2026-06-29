@@ -6,6 +6,30 @@ import path from 'path'
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
+// This is a PUBLIC, unauthenticated endpoint (middleware allowlists /api/*), so it
+// sits outside the per-church assertBudget() net the authed AI routes use. These
+// caps bound how much a single request can cost; rate-limiting the endpoint itself
+// is a separate, infrastructure-level follow-up.
+const MAX_MESSAGES = 20
+const MAX_INPUT_CHARS = 10_000
+
+// The marketing KB is bundled, static content — read it once per server instance
+// instead of on every request. Only memoize a successful read so a transient
+// failure can still recover on the next call.
+let cachedKb: string | null = null
+async function getKb(): Promise<string> {
+  if (cachedKb !== null) return cachedKb
+  try {
+    const kbPath = path.join(process.cwd(), 'docs/marketing-knowledge-base.md')
+    const content = await fs.readFile(kbPath, 'utf-8')
+    cachedKb = content
+    return content
+  } catch (e) {
+    console.warn('[marketing-chat] KB read failed, continuing without it:', e)
+    return ''
+  }
+}
+
 export async function POST(req: Request) {
   try {
     const { messages } = await req.json() as {
@@ -16,14 +40,24 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'InvalidRequest' }, { status: 400 })
     }
 
-    // Read the marketing knowledge base content dynamically
-    let kbContent = ''
-    try {
-      const kbPath = path.join(process.cwd(), 'docs/marketing-knowledge-base.md')
-      kbContent = await fs.readFile(kbPath, 'utf-8')
-    } catch (e) {
-      console.warn('Error reading marketing knowledge base file, fallback to empty:', e)
+    // Bound what a single request can cost on this open endpoint: the client holds
+    // the whole conversation and resends it each turn, so cap the message count and
+    // total characters, and reject anything malformed before it reaches the model.
+    if (messages.length > MAX_MESSAGES) {
+      return NextResponse.json({ error: 'TooManyMessages' }, { status: 400 })
     }
+    const wellFormed = messages.every(
+      (m) => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string',
+    )
+    if (!wellFormed) {
+      return NextResponse.json({ error: 'InvalidRequest' }, { status: 400 })
+    }
+    const totalChars = messages.reduce((n, m) => n + m.content.length, 0)
+    if (totalChars > MAX_INPUT_CHARS) {
+      return NextResponse.json({ error: 'MessageTooLong' }, { status: 400 })
+    }
+
+    const kbContent = await getKb()
 
     const systemPrompt = `You are the Sunday Tally assistant. You help lead pastors, executive pastors, board members, and church staff understand what Sunday Tally does, what it costs, and whether it's the right fit for their church.
 
@@ -175,7 +209,10 @@ ${kbContent}`
     const response = await client.messages.create({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 1024,
-      system: systemPrompt,
+      // Cache the static system block (instructions + KB) so repeat calls re-use it
+      // instead of re-billing the full prompt each time. The block is well over the
+      // Haiku 4.5 cache minimum (4096 tokens); below it, caching silently no-ops.
+      system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
       messages: clientMessages as any,
     })
 
@@ -188,10 +225,9 @@ ${kbContent}`
 
     return NextResponse.json({ text })
   } catch (err: any) {
+    // Log full detail server-side; return a generic message so internals aren't
+    // leaked to a public client.
     console.error('[marketing-chat]', err?.message, err?.stack)
-    return NextResponse.json(
-      { error: 'chat_failed', detail: err?.message || String(err) },
-      { status: 500 },
-    )
+    return NextResponse.json({ error: 'chat_failed' }, { status: 500 })
   }
 }

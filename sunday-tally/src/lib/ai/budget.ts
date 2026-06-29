@@ -11,7 +11,9 @@ export type AiRequestKind =
 export type AiBucket = 'setup' | 'analytics' | 'shared'
 
 const TRIAL_CAPS: Record<'setup' | 'analytics', number> = {
-  setup:     100, // $1.00
+  setup:     200, // $2.00 — covers a real multi-tab import (~25–40¢) with wide margin;
+                  //         the deterministic size pre-check (import/costEstimate.ts)
+                  //         blocks oversized imports up front so this is rarely approached.
   analytics:  50, // $0.50
 }
 

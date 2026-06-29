@@ -435,6 +435,54 @@ function ReviewOnboardingInner() {
       .finally(() => setLoading(false))
   }, [jobId])
 
+  // ── Re-roll the preview after answers ────────────────────────────────────
+  // The walkthrough applies answers to currentMapping.proposed_setup client-side,
+  // but preview_sample (the recent-week pivot the user verifies against) is built
+  // once during Stage A. When the user finishes answering, recompute it server-side
+  // from the answer-applied mapping so the numbers they confirm match what Stage B
+  // will write. Deterministic — no AI, no budget spend; best-effort (never blocks).
+  const previewSignature = useMemo(
+    () => (currentMapping
+      ? JSON.stringify({ s: currentMapping.sources, p: currentMapping.proposed_setup })
+      : ''),
+    [currentMapping],
+  )
+  useEffect(() => {
+    if (walkthroughMode !== 'done' || !jobId || !currentMapping?.sources) return
+    let cancelled = false
+    const qaAnswers = Object.values(answerRecords).map((r) => ({
+      id: r.id, question: r.question, answer: r.answer,
+      accepted: true, value: r.value, patch_op: r.patch_op,
+    }))
+    ;(async () => {
+      try {
+        const res = await fetch('/api/onboarding/import/preview', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({
+            job_id: jobId,
+            confirmed_mapping: {
+              sources:        currentMapping.sources,
+              proposed_setup: currentMapping.proposed_setup,
+              qa_answers:     qaAnswers,
+            },
+          }),
+        })
+        if (!res.ok || cancelled) return
+        const data = await res.json()
+        // Only overwrite when we got a real fresh sample — keep the existing one
+        // if the re-roll yields nothing, rather than blanking the grid.
+        if (!cancelled && data.preview_sample) {
+          setCurrentMapping((prev) => (prev ? { ...prev, preview_sample: data.preview_sample } : prev))
+        }
+      } catch { /* best-effort: a preview refresh never blocks the import */ }
+    })()
+    return () => { cancelled = true }
+    // previewSignature re-runs this when the answer-applied mapping changes; it
+    // excludes preview_sample, so our own setCurrentMapping above can't loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [walkthroughMode, previewSignature, jobId])
+
   if (!jobId) {
     return <div className="p-8 text-sm text-red-700 font-medium">Missing job_id.</div>
   }

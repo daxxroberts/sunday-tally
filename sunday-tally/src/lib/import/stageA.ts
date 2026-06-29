@@ -863,7 +863,7 @@ export interface StageAResult {
 //     Attendance fields (attendance.main/kids/youth) match PreviewGrid column IDs directly.
 //   giving: displayName → total
 //     Keyed by giving_sources[].name so PreviewGrid can produce "giving.${name}" keys.
-async function buildPreviewSample(
+export async function buildPreviewSample(
   allRowsBySource: Array<Record<string, string>[]>,
   mapping:         Record<string, unknown>,
 ): Promise<{
