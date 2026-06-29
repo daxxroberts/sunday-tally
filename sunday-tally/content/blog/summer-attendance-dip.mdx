@@ -7,18 +7,19 @@ ogImage: "/blog/summer-attendance-dip-cover.png"
 date: "2026-06-27"
 lastUpdated: "2026-06-27"
 author: "Daxx Roberts"
+category: "Analytics"
 tags: ["church attendance tracking", "summer church attendance", "church analytics", "measuring church growth"]
 status: "draft-pre-grove"
 featured: true
 ---
 
-<!-- DRAFT. Clears the bar: insight = the summer dip is mostly a measurement artifact; earned via founder experience + illustrative chart; Monday action = compare rolling averages + unique families, not raw Sundays. No borrowed stats. Needs GROVE stamp. -->
+{/* DRAFT. MDX: TrendChart (noisy weekly vs 4-wk average) + StatGroup. Illustrative numbers. Needs GROVE stamp. */}
 
 # The summer attendance dip is usually a lie
 
 Every June it happens. The Sunday count drops, the room looks thinner, and a quiet worry sets in. Is something wrong? Are people leaving? Most years, the honest answer is no. The summer dip you're staring at is usually not a drop in commitment. It's a drop in *how you're counting.*
 
-I spent 13 years in analytics before building software for churches, and seasonal numbers are where good leaders get spooked by bad math. The dip is real on the spreadsheet and mostly fiction in the pews.
+Seasonal numbers are where good leaders get spooked by bad math. The dip is real on the spreadsheet and mostly fiction in the pews.
 
 ## What's actually happening in the summer
 
@@ -34,20 +35,11 @@ Raw week-to-week attendance is the noisiest number in your church. A rainy Sunda
 
 Compare any single summer Sunday to a big spring Sunday and of course it looks like collapse. You're comparing your noisiest low to your cleanest high.
 
-<figure>
-  <svg viewBox="0 0 560 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A jagged weekly attendance line dropping sharply in summer, next to a smooth four-week-average line that only dips slightly">
-    <rect width="560" height="220" fill="transparent"/>
-    <g font-family="system-ui, sans-serif" font-size="13">
-      <line x1="55" y1="30" x2="55" y2="180" stroke="#cbd5e1" stroke-width="1"/>
-      <line x1="55" y1="180" x2="525" y2="180" stroke="#cbd5e1" stroke-width="1"/>
-      <path d="M60 70 L110 80 L160 60 L210 120 L260 95 L310 140 L360 100 L410 130 L460 85 L510 90" fill="none" stroke="#cbd5e1" stroke-width="2"/>
-      <text x="300" y="158" fill="#94a3b8" text-anchor="middle">Raw weekly count (noisy)</text>
-      <path d="M60 78 Q230 92 300 100 T510 92" fill="none" stroke="#4F6EF7" stroke-width="3"/>
-      <text x="300" y="50" fill="#4F6EF7" text-anchor="middle">4-week rolling average (barely moves)</text>
-    </g>
-  </svg>
-  <figcaption>Same church, same summer. The panic lives in the noisy line; the truth lives in the smooth one. (Illustrative.)</figcaption>
-</figure>
+<TrendChart id="summer-noisy-vs-average" />
+
+The gap between those two lines is the whole story. The same summer, counted two ways:
+
+<StatGroup id="summer-dip-truth" />
 
 ## Why the lie is expensive
 
@@ -75,7 +67,3 @@ Usually not. Compare a rolling four-week average instead of single Sundays, coun
 
 ### How should I measure summer attendance instead?
 Use a rolling four-week average to cut the week-to-week noise, track unique attending families over the season rather than per-Sunday headcount, and review giving and serving next to attendance so you can tell travel apart from genuine disengagement.
-
----
-
-*Daxx Roberts spent 13 years in data analytics before founding Sunday Tally, affordable church analytics software he built after watching his own church's board run on hand-built spreadsheets and no database.*

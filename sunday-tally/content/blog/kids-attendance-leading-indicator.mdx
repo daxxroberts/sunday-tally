@@ -7,17 +7,19 @@ ogImage: "/blog/kids-attendance-leading-indicator-cover.png"
 date: "2026-06-27"
 lastUpdated: "2026-06-27"
 author: "Daxx Roberts"
+category: "Analytics"
 tags: ["kids ministry attendance", "church attendance tracking", "church analytics", "young family retention"]
 status: "draft-pre-grove"
+featured: false
 ---
 
-<!-- DRAFT. Clears the bar: insight = kids' attendance LEADS adult attendance (early warning for young-family retention); earned via founder reasoning + illustrative chart; Monday action = chart kids vs adults, reach the drifting families. No borrowed stats. Needs GROVE stamp. -->
+{/* DRAFT. MDX: TrendChart kids-vs-adults (leading/lagging). Illustrative numbers. Needs GROVE stamp. */}
 
 # Your kids' room is quietly forecasting your church
 
 If you want to know where your church is headed in a year, don't look at the auditorium. Look at the nursery and the kids' wing. Children's attendance tends to move first. The grown-up numbers follow, often months behind.
 
-I spent 13 years in analytics before building software for churches, and leading indicators are the whole game in that world. A leading indicator changes *before* the thing you actually care about does. For a church, the kids' room is one of the clearest you have, and almost nobody watches it that way.
+In analytics, leading indicators are the whole game. A leading indicator changes *before* the thing you actually care about does. For a church, the kids' room is one of the clearest you have, and almost nobody watches it that way.
 
 ## Why the kids move first
 
@@ -25,20 +27,7 @@ Young families make the quietest exit decisions in your church, and they make th
 
 By the time the drop reaches the auditorium, those families have often been loosening their grip for months. The kids' room knew first.
 
-<figure>
-  <svg viewBox="0 0 560 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A children's attendance line dipping in the spring while the adult attendance line stays flat, then dips months later">
-    <rect width="560" height="220" fill="transparent"/>
-    <g font-family="system-ui, sans-serif" font-size="13">
-      <line x1="55" y1="30" x2="55" y2="180" stroke="#cbd5e1" stroke-width="1"/>
-      <line x1="55" y1="180" x2="510" y2="180" stroke="#cbd5e1" stroke-width="1"/>
-      <path d="M60 80 L160 84 L260 120 L360 140 L460 150" fill="none" stroke="#B8860B" stroke-width="3"/>
-      <text x="466" y="150" fill="#B8860B">Kids</text>
-      <path d="M60 70 L260 72 L360 74 L430 100 L460 120" fill="none" stroke="#4F6EF7" stroke-width="3"/>
-      <text x="466" y="120" fill="#4F6EF7">Adults</text>
-    </g>
-  </svg>
-  <figcaption>The kids' line bends down first. The adult line follows a season later. (Illustrative.)</figcaption>
-</figure>
+<TrendChart id="kids-vs-adults" />
 
 ## What the gap is telling you
 
@@ -70,7 +59,3 @@ Put children's attendance next to adult attendance over the same twelve months. 
 
 ### Does a strong kids' ministry really predict growth?
 It's one of the better early signals. Families with children make their staying-or-leaving decisions largely around their kids, so a healthy, growing children's ministry tends to lead overall church health rather than lag behind it.
-
----
-
-*Daxx Roberts spent 13 years in data analytics before founding Sunday Tally, affordable church analytics software he built after watching his own church's board run on hand-built spreadsheets and no database.*

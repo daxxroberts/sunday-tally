@@ -11,6 +11,7 @@
  * attrs are the only props MDX reliably passes to client components here.
  */
 import { AreaChart } from '@/components/charts/AreaChart'
+import { colorHex } from '@/components/charts/chartUtils'
 import { BLOG_STATS, BLOG_TRENDS, type StatCardData } from './chartData'
 
 const BRAND = '#4F6EF7'
@@ -82,34 +83,46 @@ export function TrendChart({ id }: { id: string }) {
     const s = abs >= 1000 ? `${(v / 1000).toFixed(v % 1000 === 0 ? 0 : 1)}k` : String(v)
     return `${prefix}${s}${suffix}`
   }
+  const colors = t.colors ?? ['blue']
   return (
-    <figure className="my-7 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="my-7 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
       {t.title && (
-        <div className="mb-3 flex items-center gap-1.5">
+        <div className="mb-2 flex items-center gap-1.5">
           <span className="h-4 w-1.5 rounded-full" style={{ backgroundColor: BRAND }} />
           <span className="text-sm font-bold text-slate-900">{t.title}</span>
         </div>
       )}
-      <div style={{ height: 260 }} className="w-full">
+      {/* Custom legend (the dashboard hides the built-in one to avoid overflow). */}
+      <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1">
+        {t.categories.map((c, i) => (
+          <span key={c} className="flex items-center gap-1.5 text-[13px] text-slate-500">
+            <span
+              className="h-[3px] w-3.5 shrink-0 rounded-full"
+              style={{ backgroundColor: colorHex(colors[i % colors.length]) }}
+            />
+            {c}
+          </span>
+        ))}
+      </div>
+      <div style={{ height: 280 }} className="w-full">
         <AreaChart
           data={t.data}
           index={t.index ?? 'month'}
           categories={t.categories}
-          colors={t.colors ?? ['blue']}
-          categoryLabels={t.categoryLabels}
+          colors={colors}
           valueFormatter={fmt}
           yAxisFormatter={tick}
           showYAxis
           yAxisWidth={46}
-          showLegend={t.categories.length > 1}
+          showLegend={false}
           fill={t.fill ?? 'gradient'}
           connectNulls
           className="h-full w-full"
         />
       </div>
       {t.caption && (
-        <figcaption className="mt-2 text-center text-xs text-slate-500">{t.caption}</figcaption>
+        <div className="mt-3 text-center text-xs text-slate-500">{t.caption}</div>
       )}
-    </figure>
+    </div>
   )
 }

@@ -7,17 +7,19 @@ ogImage: "/blog/volunteer-burnout-ratio-cover.png"
 date: "2026-06-27"
 lastUpdated: "2026-06-27"
 author: "Daxx Roberts"
+category: "Analytics"
 tags: ["volunteer burnout church", "church volunteer management", "church analytics", "serving teams"]
 status: "draft-pre-grove"
+featured: false
 ---
 
-<!-- DRAFT. Clears the bar: insight = the people-to-slots ratio predicts burnout before anyone quits; earned via founder reasoning + illustrative chart; Monday action = count unique volunteers vs slots filled. Care-not-surveillance. No borrowed stats. Needs GROVE stamp. -->
+{/* DRAFT. MDX: TrendChart volunteer-concentration (slots flat vs unique volunteers falling). Care-not-surveillance. Illustrative numbers. Needs GROVE stamp. */}
 
 # You can see volunteer burnout before it happens
 
 Volunteer burnout almost never arrives as a surprise. It feels like one, because the resignation lands out of nowhere. But the numbers were saying it for months. We just weren't reading them.
 
-I spent 13 years in analytics before building software for churches, and burnout is one of those things that's invisible in any single week and obvious across a few months, if you're looking at the right number.
+Burnout is one of those things that's invisible in any single week and obvious across a few months, if you're looking at the right number.
 
 ## The number that sees it coming
 
@@ -25,20 +27,7 @@ Don't watch total volunteers. Watch the ratio of *people* to *slots*. How many u
 
 That concentration *is* burnout forming. Not when they quit, months before, when the load starts piling onto the faithful few who never say no.
 
-<figure>
-  <svg viewBox="0 0 560 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A flat line of filled serving slots above a downward-sloping line of unique volunteers, the gap widening">
-    <rect width="560" height="220" fill="transparent"/>
-    <g font-family="system-ui, sans-serif" font-size="13">
-      <line x1="55" y1="30" x2="55" y2="180" stroke="#cbd5e1" stroke-width="1"/>
-      <line x1="55" y1="180" x2="510" y2="180" stroke="#cbd5e1" stroke-width="1"/>
-      <path d="M60 70 L260 72 L510 70" fill="none" stroke="#4F6EF7" stroke-width="3"/>
-      <text x="300" y="60" fill="#4F6EF7" text-anchor="middle">Serving slots filled (steady)</text>
-      <path d="M60 90 L260 120 L510 150" fill="none" stroke="#B8860B" stroke-width="3"/>
-      <text x="300" y="170" fill="#B8860B" text-anchor="middle">Unique volunteers (shrinking)</text>
-    </g>
-  </svg>
-  <figcaption>Same work, fewer hands. The widening gap is burnout forming in plain sight. (Illustrative.)</figcaption>
-</figure>
+<TrendChart id="volunteer-concentration" />
 
 ## Why the faithful are most at risk
 
@@ -70,7 +59,3 @@ A full schedule only means every slot has a name. It doesn't show how many peopl
 
 ### What do we do when we spot concentration?
 Go to the people carrying the most, name what you see, and lighten their load before they ask, by recruiting alongside them or redistributing roles. Caught early, it's a caring conversation. Caught late, it's a resignation you didn't see coming.
-
----
-
-*Daxx Roberts spent 13 years in data analytics before founding Sunday Tally, affordable church analytics software he built after watching his own church's board run on hand-built spreadsheets and no database.*

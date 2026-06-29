@@ -7,25 +7,29 @@ ogImage: "/blog/giving-per-person-discipleship-cover.png"
 date: "2026-06-27"
 lastUpdated: "2026-06-27"
 author: "Daxx Roberts"
+category: "Analytics"
 tags: ["church giving trends", "per capita giving", "church analytics", "church generosity"]
 status: "draft-pre-grove"
+featured: false
 ---
 
-<!-- DRAFT. Clears the bar: insight = giving-per-giver is a discipleship signal the total hides; earned via founder reasoning + worked example; Monday action = divide total by number of givers vs last year. No borrowed stats. Needs GROVE stamp. -->
+{/* DRAFT. MDX: StatGroup giving-divergence (total up, givers down, per-giver up). Illustrative numbers. Needs GROVE stamp. */}
 
 # Giving per person is a discipleship number, not a budget number
 
 Most churches watch one giving number: the total. It tells you whether the lights stay on. It tells you almost nothing about whether your people are growing. For that, you need a different number, and it's one most churches never calculate: giving per person.
 
-I spent 13 years in analytics before building software for churches, and this distinction changes how you read your whole congregation. The total is a budget number. Giving per giver is a discipleship number. They can point in opposite directions at the same time.
+This distinction changes how you read your whole congregation. The total is a budget number. Giving per giver is a discipleship number. They can point in opposite directions at the same time.
 
 ## How a healthy total can hide a problem
 
 Picture giving up five percent this year. Good news, right? Maybe. It depends entirely on a number you probably didn't check: how many people gave.
 
-If the total rose because more families started giving, that's generosity spreading, discipleship you can see in dollars. If the total rose because a handful of generous households gave more while the *number* of givers actually fell, that's a different church. Same total. One is broadening. The other is concentrating onto fewer shoulders, and growing more fragile every year.
+Here's the trap in three numbers from the same year:
 
-The total can't tell those two apart. Giving per person can.
+<StatGroup id="giving-divergence" />
+
+The total rose. But it rose because a shrinking group of households gave more, not because more people stepped into generosity. That's concentration wearing the disguise of growth, and the total alone would never have shown it to you.
 
 ## Why concentration matters pastorally
 
@@ -53,7 +57,3 @@ The total tells you whether the budget works; it doesn't tell you whether your p
 
 ### How often should we look at giving participation?
 Monthly or quarterly is plenty. The goal isn't to watch dollars constantly; it's to notice the direction of participation, whether more people are stepping into generosity over time, or fewer people are quietly carrying more of the load.
-
----
-
-*Daxx Roberts spent 13 years in data analytics before founding Sunday Tally, affordable church analytics software he built after watching his own church's board run on hand-built spreadsheets and no database.*
