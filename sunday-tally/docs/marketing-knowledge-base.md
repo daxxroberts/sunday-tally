@@ -175,7 +175,7 @@ This is one of the most common questions. Here is the honest answer.
 - Updated automatically every time data is entered
 - No AI required
 
-**Tally AI Widget Builder (Tally AI addon — $15/mo and up):**
+**Tally AI Widget Builder (Tally AI addon — $29/mo and up):**
 - You ask Tally AI a question in plain English — "show me our attendance trend over the last year" — and it generates a custom graph widget from your data
 - Widgets are visual: line charts, bar charts, trend comparisons, year-over-year overlays
 - Save any widget to the shared team library
@@ -237,7 +237,7 @@ Add a campus anytime for $22/mo per location.
 
 ### Tally AI Add-on (per church, not per location)
 
-**Starter — +$15/mo**
+**Starter — +$29/mo**
 Best for a single church getting started with AI.
 - 15 saved dashboard widgets
 - Tally AI Ask mode (plain-English data chat)
@@ -245,14 +245,14 @@ Best for a single church getting started with AI.
 - Auto-refreshing dashboards
 - Compare to last year & set goals
 
-**Plus — +$29/mo**
+**Plus — +$59/mo**
 Best for a growing, multi-ministry church.
 - 40 saved dashboard widgets — enough for every ministry to have their own view
 - Everything in Starter
 
-**Pro — +$49/mo**
+**Pro — +$99/mo**
 Best for multi-campus and data-driven teams.
-- Unlimited saved dashboard widgets
+- 120 saved dashboard widgets
 - Most capable AI models
 - Everything in Plus
 
@@ -263,9 +263,9 @@ Best for multi-campus and data-driven teams.
 | Setup | Monthly Cost |
 |---|---|
 | One church, base tracking only | $22/mo |
-| One church + Tally AI Starter | $37/mo |
-| One church + Tally AI Pro | $71/mo |
-| Three campuses + Tally AI Pro | $115/mo |
+| One church + Tally AI Starter | $51/mo |
+| One church + Tally AI Pro | $121/mo |
+| Three campuses + Tally AI Pro | $165/mo |
 
 ---
 
@@ -326,7 +326,7 @@ No. Sunday Tally automatically builds an intuitive data entry layout based on yo
 You choose a plan and continue. If you decide Sunday Tally isn't right for your church, you can export your data. No credit card is required to start the trial.
 
 **Is the AI available on the base $22/mo plan?**
-Tally AI requires the add-on ($15, $29, or $49/mo depending on tier). It is fully unlocked during your 45-day free trial so you can experience it before deciding on a tier.
+Tally AI requires the add-on ($29, $59, or $99/mo depending on tier). It is fully unlocked during your 45-day free trial so you can experience it before deciding on a tier.
 
 **Can I add campuses later?**
 Yes. Additional campuses are $22/mo each and can be added at any time.

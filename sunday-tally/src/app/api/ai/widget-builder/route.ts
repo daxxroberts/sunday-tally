@@ -267,7 +267,7 @@ export async function POST(req: Request) {
           // would route to Opus for hard builds; that's a future lever.
           fallbackModel: 'claude-haiku-4-5-20251001',
           onFallback: () => send('text', {
-            delta: "Heads up — you've used this month's advanced AI, so I've switched to the faster model to keep going. It resets next month, or you can upgrade your plan for more.\n\n",
+            delta: "Heads up — you've used this month's advanced AI, so I've switched to the faster model to keep building. Your saved dashboards keep loading for free, and your AI building allowance resets at the start of next month. Want more room now? You can upgrade your plan anytime.\n\n",
           }),
           system:  [{
             type: 'text',

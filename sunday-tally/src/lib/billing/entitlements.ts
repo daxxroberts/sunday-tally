@@ -6,13 +6,14 @@ import { getBillingStatus } from './status'
  *
  * Base ($22/mo per location) ships the app. The AI widget builder + analytics
  * chat are a paid ADD-ON gated here. One source of truth: a church's
- * `ai_addon_tier` (written by the Stripe webhook) plus its active-location
- * count resolve into the runtime limits every gate reads.
+ * `ai_addon_tier` (written by the Stripe webhook) resolves into the runtime
+ * limits every gate reads. The add-on is flat org-wide — nothing here scales
+ * with the number of campuses.
  *
  *   none     no AI features (base product only)
- *   starter  +$15/mo per location — 15 widgets, $5 pooled ceiling (+$5 / extra AI location)
- *   plus     +$29/mo org          — 40 widgets, $12 pooled ceiling
- *   pro      +$49/mo org          — unlimited widgets, $25 pooled, advanced routing
+ *   starter  +$29/mo flat — 15 widgets,  AI ceiling 15% of plan (~$4.35)
+ *   plus     +$59/mo flat — 40 widgets,  AI ceiling 15% of plan (~$8.85)
+ *   pro      +$99/mo flat — 120 widgets, AI ceiling 15% of plan (~$14.85), advanced routing
  *
  * Caps live in code (not the DB) so price/limit experiments don't need a
  * migration; migration 0044 only records WHICH tier a church is on.
@@ -29,7 +30,7 @@ export interface Entitlements {
   aiEnabled: boolean
   /** The church's add-on tier as recorded on `churches.ai_addon_tier`. */
   tier: AiAddonTier
-  /** Max non-starter church-library widgets. Infinity = unlimited (pro). */
+  /** Max non-starter church-library widgets allowed on the tier (pro = 120). */
   widgetCap: number
   /** Monthly pooled AI ceiling in cents for the PAID shared bucket. */
   aiCeilingCents: number
@@ -37,22 +38,34 @@ export interface Entitlements {
   isTrial: boolean
 }
 
-// ── Tier limits (single source of truth) ────────────────────────────────────
+// ── Tier pricing + limits (single source of truth) ──────────────────────────
 
-/** Base paid pool for churches WITHOUT the add-on — covers onboarding imports
- *  and other base-product AI. Mirrors the historical $3 shared cap (D-059). */
+/** Canonical monthly add-on price in US cents, flat org-wide. The one source
+ *  of truth for AI tier dollars: pricing.ts derives its USD display figures
+ *  from this, and the Stripe checkout/webhook mirror it via the
+ *  STRIPE_PRICE_AI_* price objects. (2026-06-28: starter $29 · plus $59 · pro $99) */
+export const AI_TIER_PRICE_CENTS: Record<AiAddonTier, number> = {
+  none:    0,
+  starter: 2900,
+  plus:    5900,
+  pro:     9900,
+}
+
+/** A paid church's monthly AI wholesale-spend ceiling is 15% of its plan price.
+ *  Past it we fall back to the cheaper model (never a hard cutoff until the
+ *  −$20 runaway backstop in anthropic.ts). Being a flat % of a flat price, the
+ *  ceiling no longer scales with locations — AI spend is decoupled from campuses. */
+export const AI_SPEND_CEILING_RATIO = 0.15
+
+/** Base onboarding/import pool for churches WITHOUT an add-on (tier 'none').
+ *  They have no AI plan to take 15% of, but still run setup imports ($3, D-059). */
 const BASE_PAID_CEILING_CENTS = 300
-
-/** Starter is per-location: $5 for the first AI location, +$5 each additional. */
-const STARTER_CEILING_PER_LOCATION_CENTS = 500
-const PLUS_CEILING_CENTS = 1200
-const PRO_CEILING_CENTS = 2500
 
 const WIDGET_CAP: Record<AiAddonTier, number> = {
   none:    0,
   starter: 15,
   plus:    40,
-  pro:     Number.POSITIVE_INFINITY,
+  pro:     120,
 }
 
 /** Widgets a tier may keep in the church library (excludes seeded starters). */
@@ -60,18 +73,13 @@ export function widgetCapForTier(tier: AiAddonTier): number {
   return WIDGET_CAP[tier] ?? 0
 }
 
-/** Monthly pooled AI ceiling (cents) for a paid church on `tier`. Starter
- *  scales with the number of active locations so "per location" buys real
- *  capacity; plus/pro are flat org-wide pools. */
-export function ceilingCentsForTier(tier: AiAddonTier, activeLocations: number): number {
-  const locations = Math.max(1, activeLocations)
-  switch (tier) {
-    case 'starter': return STARTER_CEILING_PER_LOCATION_CENTS * locations
-    case 'plus':    return PLUS_CEILING_CENTS
-    case 'pro':     return PRO_CEILING_CENTS
-    case 'none':
-    default:        return BASE_PAID_CEILING_CENTS
-  }
+/** Monthly pooled AI ceiling (cents) for a paid church on `tier` — a flat 15%
+ *  of the plan price, independent of location count (`none` keeps the base
+ *  onboarding pool). `activeLocations` is accepted for call-site compatibility
+ *  but no longer affects the ceiling; AI spend is decoupled from campuses. */
+export function ceilingCentsForTier(tier: AiAddonTier, _activeLocations?: number): number {
+  if (tier === 'none') return BASE_PAID_CEILING_CENTS
+  return Math.round(AI_TIER_PRICE_CENTS[tier] * AI_SPEND_CEILING_RATIO)
 }
 
 // ── Resolution from the database ─────────────────────────────────────────────
@@ -124,10 +132,10 @@ export async function getEntitlements(
   const { tier, activeLocations } = await readTierAndLocations(supabase, churchId)
 
   if (billing.phase === 'trial') {
-    // Trial unlocks AI regardless of add-on, with a PRO-equivalent library cap
-    // (unlimited) so churches can build past 40 widgets and the cost banner can
-    // genuinely recommend plus/pro from real usage (H1). Spend stays bounded by
-    // the separate trial buckets in budget.ts; only the library cap is lifted.
+    // Trial unlocks AI regardless of add-on, with the PRO library cap (120) so
+    // churches can build well past 40 widgets and the cost banner can genuinely
+    // recommend plus/pro from real usage (H1). Spend stays bounded by the
+    // separate trial buckets in budget.ts; only the library cap is lifted.
     return {
       aiEnabled: true,
       tier,

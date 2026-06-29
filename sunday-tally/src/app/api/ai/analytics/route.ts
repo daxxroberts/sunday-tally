@@ -192,6 +192,13 @@ export async function POST(req: Request) {
           churchId,
           kind:    'analytics_chat',
           model:   'claude-sonnet-4-6',
+          // Over the monthly ceiling, keep answering on the cheaper Haiku model
+          // instead of cutting the church off — a hard stop only fires at the
+          // −$20 runaway backstop. Mirrors the widget-builder route.
+          fallbackModel: 'claude-haiku-4-5-20251001',
+          onFallback: () => send('text', {
+            delta: "Heads up — you've used this month's advanced AI, so I've switched to the faster model to keep going. Your saved dashboards keep loading for free, and your allowance resets at the start of next month. Want more room now? You can upgrade your plan anytime.\n\n",
+          }),
           system:  [{ type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } }],
           tools:   [DIMENSIONS_TOOL, PROBE_DATA_TOOL, RUN_METRIC_TOOL, RENDER_CHART_TOOL, RENDER_DATA_REVIEW_TOOL, FINAL_ANSWER_TOOL],
           handlers: {

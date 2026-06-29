@@ -231,7 +231,7 @@ function BillingActions({ state, currentTier }: { state: RenderState, currentTie
                  <p className="text-sm font-bold text-slate-900">Starter AI</p>
                  <p className="text-xs text-slate-500">15 dashboard widgets</p>
                </div>
-               <span className="text-sm font-semibold text-slate-900">+$15<span className="text-slate-400 font-normal">/mo per location</span></span>
+               <span className="text-sm font-semibold text-slate-900">+$29<span className="text-slate-400 font-normal">/mo</span></span>
              </label>
              <label className={`flex items-center p-4 border rounded-xl cursor-pointer transition-all ${selectedTier === 'plus' ? 'border-[#4F6EF7] bg-blue-50/50 ring-1 ring-[#4F6EF7]' : 'border-slate-200 hover:border-slate-300'}`}>
                <input type="radio" name="ai_tier" value="plus" checked={selectedTier === 'plus'} onChange={() => setSelectedTier('plus')} className="sr-only" />
@@ -239,15 +239,15 @@ function BillingActions({ state, currentTier }: { state: RenderState, currentTie
                  <p className="text-sm font-bold text-slate-900">Plus AI</p>
                  <p className="text-xs text-slate-500">40 dashboard widgets</p>
                </div>
-               <span className="text-sm font-semibold text-slate-900">+$29<span className="text-slate-400 font-normal">/mo</span></span>
+               <span className="text-sm font-semibold text-slate-900">+$59<span className="text-slate-400 font-normal">/mo</span></span>
              </label>
              <label className={`flex items-center p-4 border rounded-xl cursor-pointer transition-all ${selectedTier === 'pro' ? 'border-[#4F6EF7] bg-blue-50/50 ring-1 ring-[#4F6EF7]' : 'border-slate-200 hover:border-slate-300'}`}>
                <input type="radio" name="ai_tier" value="pro" checked={selectedTier === 'pro'} onChange={() => setSelectedTier('pro')} className="sr-only" />
                <div className="flex-1">
                  <p className="text-sm font-bold text-slate-900">Pro AI</p>
-                 <p className="text-xs text-slate-500">Unlimited widgets & advanced models</p>
+                 <p className="text-xs text-slate-500">120 dashboard widgets & advanced models</p>
                </div>
-               <span className="text-sm font-semibold text-slate-900">+$49<span className="text-slate-400 font-normal">/mo</span></span>
+               <span className="text-sm font-semibold text-slate-900">+$99<span className="text-slate-400 font-normal">/mo</span></span>
              </label>
           </div>
         </div>

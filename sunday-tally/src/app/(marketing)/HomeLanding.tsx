@@ -543,7 +543,7 @@ export default function LandingPage() {
             <div className="bg-white border border-stone-200 rounded-3xl p-8 shadow-sm flex flex-col">
               <p className="text-[#4F6EF7] font-bold tracking-widest uppercase text-sm mb-2">Starter</p>
               <div className="flex items-baseline gap-1 mb-2">
-                <span className="text-4xl font-extrabold text-stone-900">+$15</span>
+                <span className="text-4xl font-extrabold text-stone-900">+$29</span>
                 <span className="text-stone-500 font-medium">/mo</span>
               </div>
               <p className="text-xs text-stone-400 font-bold mb-6 pb-6 border-b border-stone-100">per church</p>
@@ -564,7 +564,7 @@ export default function LandingPage() {
               </div>
               <p className="text-[#4F6EF7] font-bold tracking-widest uppercase text-sm mb-2">Plus</p>
               <div className="flex items-baseline gap-1 mb-2">
-                <span className="text-4xl font-extrabold text-stone-900">+$29</span>
+                <span className="text-4xl font-extrabold text-stone-900">+$59</span>
                 <span className="text-stone-500 font-medium">/mo</span>
               </div>
               <p className="text-xs text-stone-400 font-bold mb-6 pb-6 border-b border-stone-100">per church</p>
@@ -582,15 +582,15 @@ export default function LandingPage() {
             <div className="bg-stone-900 border border-stone-850 rounded-3xl p-8 shadow-sm flex flex-col text-white">
               <p className="text-blue-300 font-bold tracking-widest uppercase text-sm mb-2">Pro</p>
               <div className="flex items-baseline gap-1 mb-2">
-                <span className="text-4xl font-extrabold text-white">+$49</span>
+                <span className="text-4xl font-extrabold text-white">+$99</span>
                 <span className="text-stone-400 font-medium">/mo</span>
               </div>
               <p className="text-xs text-stone-550 font-bold mb-6 pb-6 border-b border-stone-800">per church</p>
               <p className="text-stone-300 mb-8 leading-relaxed font-medium">
-                <strong>Best for multi-campus churches and data-driven executive teams.</strong> Unlimited widgets and our most capable AI. Built for churches that live in their data.
+                <strong>Best for multi-campus churches and data-driven executive teams.</strong> Up to 120 saved widgets and our most capable AI. Built for churches that live in their data.
               </p>
               <ul className="flex flex-col gap-4 text-sm text-stone-300 mt-auto">
-                <li className="flex items-start gap-3"><CheckCircle2 className="text-emerald-400 shrink-0" size={18} /> <span><strong>Unlimited</strong> saved widgets</span></li>
+                <li className="flex items-start gap-3"><CheckCircle2 className="text-emerald-400 shrink-0" size={18} /> <span><strong>120</strong> saved widgets</span></li>
                 <li className="flex items-start gap-3"><CheckCircle2 className="text-emerald-400 shrink-0" size={18} /> <span>Tally AI Ask & Build modes</span></li>
                 <li className="flex items-start gap-3"><CheckCircle2 className="text-emerald-400 shrink-0" size={18} /> <span>Most capable AI models</span></li>
                 <li className="flex items-start gap-3"><CheckCircle2 className="text-emerald-400 shrink-0" size={18} /> <span>Multi-campus rollup support</span></li>
@@ -1357,7 +1357,7 @@ function DemoDashboard() {
             ✦ Get Tally AI Dashboard
           </span>
           <span className={`text-xs font-semibold mt-1 transition-colors ${activeTab === 'ai-dashboard' ? 'text-purple-300' : 'text-stone-400'}`}>
-            plus $15
+            plus $29
           </span>
         </button>
       </div>
@@ -1826,8 +1826,8 @@ function PricingCalculator() {
   const [campuses, setCampuses] = useState(1)
   const [aiTier, setAiTier] = useState<'none' | 'starter' | 'plus' | 'pro'>('plus')
 
-  // Mirror the Stripe checkout exactly: base + starter bill per location;
-  // plus/pro are flat org-wide. (Single source: @/lib/billing/pricing.)
+  // Mirror the Stripe checkout exactly: base bills per location; all AI tiers
+  // are flat org-wide. (Single source: @/lib/billing/pricing.)
   const baseCost = baseMonthly(campuses)
   const aiCost = aiMonthly(aiTier, campuses)
   const totalCost = baseCost + aiCost

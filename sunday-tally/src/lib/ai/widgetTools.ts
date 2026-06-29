@@ -462,7 +462,7 @@ export function makeWidgetHandlers(deps: WidgetToolDeps) {
             saved: false,
             error:
               `This church's widget library is full (${widgetCap} widgets on the current plan). ` +
-              `Tell the user they can delete a widget they no longer need, or upgrade their plan for a bigger library — then stop; do not save.`,
+              `Tell the user warmly: they've reached the saved-widget limit for their plan, so to save this new view they can remove a widget they no longer use, or upgrade their plan for a bigger library. Then stop; do not save.`,
             library_full: true,
             widget_cap: widgetCap,
           }

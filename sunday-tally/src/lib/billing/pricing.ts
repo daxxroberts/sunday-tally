@@ -3,23 +3,26 @@
 // These MUST mirror the Stripe checkout line items in
 // src/app/api/stripe/checkout/route.ts:
 //   base    $22 / month  × locations
-//   starter $15 / month  × 1           (flat, org-wide)
-//   plus    $29 / month  × 1           (flat, org-wide)
-//   pro     $49 / month  × 1           (flat, org-wide)
+//   starter $29 / month  × 1           (flat, org-wide)
+//   plus    $59 / month  × 1           (flat, org-wide)
+//   pro     $99 / month  × 1           (flat, org-wide)
 //
-// Widget-library caps live in entitlements.ts (widgetCapForTier) — the one
-// source the recommendation reads, so price/limit experiments stay in step.
+// The AI dollar figures are DERIVED from AI_TIER_PRICE_CENTS in entitlements.ts
+// (the canonical source, which also computes the 15%-of-plan AI ceiling), so the
+// displayed price and the enforced ceiling can never drift. Widget-library caps
+// also live in entitlements.ts (widgetCapForTier).
 
-import { widgetCapForTier, type AiAddonTier } from './entitlements'
+import { widgetCapForTier, AI_TIER_PRICE_CENTS, type AiAddonTier } from './entitlements'
 
 export const BASE_PER_LOCATION_USD = 22
 
-/** Monthly add-on price (USD). All AI tiers bill flat org-wide (quantity 1). */
+/** Monthly add-on price (USD), flat org-wide (Stripe quantity 1). Derived from
+ *  the canonical cents in entitlements.ts. */
 export const AI_TIER_PRICE_USD: Record<AiAddonTier, number> = {
-  none: 0,
-  starter: 15,
-  plus: 29,
-  pro: 49,
+  none:    AI_TIER_PRICE_CENTS.none    / 100,
+  starter: AI_TIER_PRICE_CENTS.starter / 100,
+  plus:    AI_TIER_PRICE_CENTS.plus    / 100,
+  pro:     AI_TIER_PRICE_CENTS.pro     / 100,
 }
 
 /** Tiers that bill per active location (quantity = locations) vs flat org-wide.

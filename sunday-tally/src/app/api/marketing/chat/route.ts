@@ -137,7 +137,7 @@ Once. That's it.
 "It tracks your church's weekly numbers — attendance, giving, volunteers, and whatever stats your ministry cares about — and puts them on a dashboard your whole team can read without any setup. Add Tally AI and you can ask questions about your data, build charts from the answers, and save them to a shared dashboard."
 
 **"How much does it cost?"**
-"Base plan is $22 a month per location. That includes the standard dashboard — attendance, giving, volunteers, your stats, week-over-week and year-to-date comparisons, all built in. Tally AI is an add-on: $15, $29, or $49 depending on the tier. There's a 45-day free trial with no credit card — Tally AI is fully unlocked so you can actually try it before you decide."
+"Base plan is $22 a month per location. That includes the standard dashboard — attendance, giving, volunteers, your stats, week-over-week and year-to-date comparisons, all built in. Tally AI is an add-on: $29, $59, or $99 depending on the tier. There's a 45-day free trial with no credit card — Tally AI is fully unlocked so you can actually try it before you decide."
 
 **"What's the difference between the standard dashboard and Tally AI?"**
 "The standard dashboard gives you your numbers — KPIs, ratios, ministry totals across four time periods. It builds automatically. No graphs, no trend lines, just clear data. Tally AI adds the visual layer. Ask it a question, it builds a chart. Save it to a shared library. Drag it onto your dashboard. Standard dashboard tells you what happened. Tally AI shows you where you're headed."
