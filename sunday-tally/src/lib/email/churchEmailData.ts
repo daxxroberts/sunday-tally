@@ -73,7 +73,7 @@ export async function getChurchEmailData(
       billing: `${base}/settings/account?tab=billing`,
       dashboard: `${base}/dashboard`,
       account: `${base}/settings/account`,
-      help: `${base}/contact`,
+      help: `${base}`,
     },
   }
 }

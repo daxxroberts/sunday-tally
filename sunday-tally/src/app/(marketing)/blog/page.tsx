@@ -33,7 +33,7 @@ export default function BlogIndexPage() {
     <div className="container mx-auto px-4 md:px-8 py-16 md:py-24 max-w-4xl">
       <header className="mb-12 md:mb-16">
         <p className="text-sm font-semibold uppercase tracking-wider text-[#4F6EF7] mb-3">
-          The Sunday Tally Blog
+          Field Notes
         </p>
         <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-stone-900 mb-4">
           Measuring what matters in ministry

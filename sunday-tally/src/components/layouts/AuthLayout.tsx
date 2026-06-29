@@ -34,7 +34,6 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           <nav className="flex items-center gap-4 text-xs font-semibold text-stone-500">
             <Link href="/#features" className="hover:text-stone-900 transition-colors">Features</Link>
             <Link href="/#pricing" className="hover:text-stone-900 transition-colors">Pricing</Link>
-            <Link href="/contact" className="hover:text-stone-900 transition-colors">Contact</Link>
           </nav>
         </div>
 

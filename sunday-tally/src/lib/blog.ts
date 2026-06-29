@@ -29,19 +29,32 @@ export type PostMeta = {
 export type Faq = { question: string; answer: string }
 
 export type Post = PostMeta & {
+  format: 'md' | 'mdx'
+  /** Raw post body (comments + leading H1 stripped) — used by the MDX renderer. */
+  body: string
+  /** Pre-rendered HTML — only for plain .md posts (empty for .mdx). */
   html: string
   faqs: Faq[]
 }
 
-/** Drop HTML comments (handoff notes, [MARKER] annotations) from rendered output. */
+// Drop HTML comments and MDX brace-slash-star comments (handoff notes, markers).
 function stripComments(markdown: string): string {
-  return markdown.replace(/<!--[\s\S]*?-->/g, '')
+  return markdown
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
 }
 
 /** The page template renders the title as the page's single H1, so remove the
  *  leading H1 from the body to avoid two H1s on one page. */
 function stripLeadingH1(markdown: string): string {
   return markdown.replace(/^\s*#\s+.*(?:\r?\n)+/, '')
+}
+
+// Remove the repeated trailing author-bio footer (the "Daxx Roberts spent 13
+// years..." italic paragraph) — attribution is rendered once by the template,
+// so it shouldn't be pasted into every post.
+function stripAuthorFooter(markdown: string): string {
+  return markdown.replace(/\n+(?:---\s*\n+)?\*\s*Daxx Roberts[\s\S]*?\*\s*$/, '\n')
 }
 
 /** Pull the FAQ Q/A pairs out of the body so we can emit FAQPage JSON-LD. */
@@ -146,8 +159,14 @@ export async function getPostBySlug(slug: string): Promise<Post | null> {
   // Guard: internal docs (no post frontmatter) must 404, even by direct URL.
   if (typeof parsed.data.title !== 'string' || !parsed.data.date) return null
   const meta = toMeta(slug, parsed.data)
-  const body = stripLeadingH1(stripComments(parsed.content))
-  const html = await renderMarkdown(body)
+  const cleaned = stripAuthorFooter(stripLeadingH1(stripComments(parsed.content)))
   const faqs = extractFaqs(parsed.content)
-  return { ...meta, html, faqs }
+  // .mdx posts render through MDX (real React components); .md posts keep the
+  // remark/rehype HTML pipeline. Both can coexist during the migration.
+  const isMdx = fs.existsSync(path.join(BLOG_DIR, `${slug}.mdx`))
+  if (isMdx) {
+    return { ...meta, format: 'mdx', body: cleaned, html: '', faqs }
+  }
+  const html = await renderMarkdown(cleaned)
+  return { ...meta, format: 'md', body: '', html, faqs }
 }

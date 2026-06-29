@@ -12,7 +12,7 @@ status: "draft-pre-grove"
 featured: true
 ---
 
-<!-- DRAFT. Clears the cluster bar: one insight (a composite total hides divergence), earned via founder experience + illustrative example, one Monday action. No borrowed stats. Needs GROVE stamp before publish. -->
+{/* DRAFT. MDX sample: real StatCard/TrendChart components (dashboard look). Numbers are a clearly-labeled hypothetical, not real church data. Needs GROVE stamp. */}
 
 # Your attendance went up. So why does the church feel smaller?
 
@@ -34,22 +34,15 @@ The Sunday total can't tell these two apart. Only the breakdown can. And they ca
 
 Here's the pattern I'd put in front of every pastor: **attendance flat or rising while giving and volunteering fall.** That is not growth. That is a warning, and it's the one a single attendance line will never show you.
 
-<figure>
-  <svg viewBox="0 0 560 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A flat attendance line over twelve months, with giving and volunteering lines sloping downward beneath it">
-    <rect width="560" height="220" fill="transparent"/>
-    <g font-family="system-ui, sans-serif" font-size="13">
-      <line x1="60" y1="30" x2="60" y2="180" stroke="#cbd5e1" stroke-width="1"/>
-      <line x1="60" y1="180" x2="530" y2="180" stroke="#cbd5e1" stroke-width="1"/>
-      <path d="M60 70 L530 66" fill="none" stroke="#4F6EF7" stroke-width="3"/>
-      <text x="536" y="66" fill="#4F6EF7">Attendance</text>
-      <path d="M60 95 L530 150" fill="none" stroke="#B8860B" stroke-width="3"/>
-      <text x="536" y="150" fill="#B8860B">Giving</text>
-      <path d="M60 110 L530 165" fill="none" stroke="#64748b" stroke-width="3" stroke-dasharray="5 4"/>
-      <text x="536" y="172" fill="#64748b">Volunteers</text>
-    </g>
-  </svg>
-  <figcaption>Same crowd, less commitment. The total holds while the things that actually carry a church slide. (Illustrative.)</figcaption>
-</figure>
+Picture that second church a year in. On the dashboard, three cards sit side by side:
+
+<StatGroup id="attendance-divergence" />
+
+The crowd held. The commitment didn't. And the only number anyone was watching was the green one.
+
+The attendance line itself looks perfectly calm, which is exactly the problem:
+
+<TrendChart id="attendance-reassuring-line" />
 
 Attendance measures who showed up. Giving and serving measure who's *committed*. When the crowd holds but commitment thins, you have more spectators and fewer disciples, and you'll feel it long before the Sunday count ever admits it. That gap, between showing up and being all in, is the real story of your church. It's also the one almost nobody puts on a single page.
 

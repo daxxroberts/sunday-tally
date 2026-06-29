@@ -2,7 +2,10 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
+import { compileMDX } from 'next-mdx-remote/rsc'
+import remarkGfm from 'remark-gfm'
 import { getAllPostSlugs, getPostBySlug } from '@/lib/blog'
+import { StatGroup, TrendChart } from '@/components/blog/ChartKit'
 
 const SITE = 'https://sundaytally.church'
 
@@ -106,6 +109,19 @@ export default async function BlogPostPage({
       }
     : null
 
+  // .mdx posts compile to real React (so they can use StatCard/TrendChart);
+  // .md posts render the pre-built HTML string.
+  const rendered =
+    post.format === 'mdx'
+      ? (
+          await compileMDX({
+            source: post.body,
+            components: { StatGroup, TrendChart },
+            options: { mdxOptions: { remarkPlugins: [remarkGfm] } },
+          })
+        ).content
+      : null
+
   return (
     <article className="container mx-auto px-4 md:px-8 py-12 md:py-20 max-w-3xl">
       <script
@@ -143,10 +159,11 @@ export default async function BlogPostPage({
         <p className="mt-6 text-sm font-semibold text-stone-600">By {post.author}</p>
       </header>
 
-      <div
-        className="blog-prose"
-        dangerouslySetInnerHTML={{ __html: post.html }}
-      />
+      {rendered ? (
+        <div className="blog-prose">{rendered}</div>
+      ) : (
+        <div className="blog-prose" dangerouslySetInnerHTML={{ __html: post.html }} />
+      )}
 
       <div className="mt-16 rounded-2xl bg-stone-900 text-white p-8 md:p-10 text-center">
         <h2 className="text-2xl font-bold tracking-tight mb-3">
