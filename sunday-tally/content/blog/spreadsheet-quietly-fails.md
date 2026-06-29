@@ -8,6 +8,7 @@ date: "2026-06-27"
 lastUpdated: "2026-06-27"
 author: "Daxx Roberts"
 tags: ["church attendance spreadsheet", "church data tracking", "church analytics", "church management"]
+category: "Getting Started"
 status: "draft-pre-grove"
 ---
 

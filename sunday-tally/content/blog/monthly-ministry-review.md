@@ -8,6 +8,7 @@ date: "2026-06-27"
 lastUpdated: "2026-06-27"
 author: "Daxx Roberts"
 tags: ["church board reporting", "ministry review", "church analytics", "church leadership meetings"]
+category: "How-To"
 status: "draft-pre-grove"
 ---
 

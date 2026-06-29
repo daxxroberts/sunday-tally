@@ -8,6 +8,7 @@ date: "2026-06-26"
 lastUpdated: "2026-06-26"
 author: "Daxx Roberts"
 tags: ["church analytics", "church data tracking", "measuring church growth", "church attendance tracking"]
+category: "Analytics"
 status: "draft-pre-grove"
 ---
 

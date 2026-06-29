@@ -7,18 +7,19 @@ ogImage: "/blog/first-time-guest-followup-cover.png"
 date: "2026-06-27"
 lastUpdated: "2026-06-27"
 author: "Daxx Roberts"
+category: "How-To"
 tags: ["first-time guest follow up", "church guest retention", "church analytics", "assimilation"]
 status: "draft-pre-grove"
 featured: true
 ---
 
-<!-- DRAFT. Clears the bar: insight = retention is the second step, not the welcome; measure guest→serve conversion + time-to-first-step; earned via founder experience + illustrative funnel; Monday action = track every guest's 30-day next step. No borrowed stats. Needs GROVE stamp. -->
+{/* DRAFT. MDX: StatGroup guest-second-step (served-in-30d vs not, retention contrast). Illustrative numbers. Needs GROVE stamp. */}
 
 # A first-time guest who serves in 30 days stays. One who doesn't, usually leaves.
 
 Most churches pour their guest energy into the front door. The parking team, the welcome center, the gift, the great first impression. All of it good. And almost none of it is what decides whether that guest is still with you in a year.
 
-I spent 13 years in analytics before building software for churches, and the pattern across engaged congregations is stubborn: the guests who stay are the ones who took a *second step* quickly. They joined something, served somewhere, got into a group. The ones who never did, no matter how warm the welcome, usually faded by month three.
+Across engaged congregations the pattern is stubborn: the guests who stay are the ones who took a *second step* quickly. They joined something, served somewhere, got into a group. The ones who never did, no matter how warm the welcome, usually faded by month three.
 
 ## The welcome gets them in the door. The second step keeps them.
 
@@ -28,24 +29,11 @@ Here's the uncomfortable part: the welcome is the thing churches obsess over, an
 
 ## Why the timing matters
 
-It isn't just *whether* they take a next step. It's *how fast.* The window is short, usually about a month, while they're still curious and a little brave. Wait too long and the warmth cools, the routine sets back in, and the door closes on its own.
+It isn't just *whether* they take a next step. It's *how fast.* The window is short, usually about a month, while they're still curious and a little brave. Wait too long and the warmth cools, the routine sets back in, and the door closes on its own. Two guests, same welcome, very different first month:
 
-<figure>
-  <svg viewBox="0 0 560 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A funnel narrowing from first-time guests to those who returned, to those who served or joined a group within 30 days, to those who stayed">
-    <rect width="560" height="220" fill="transparent"/>
-    <g font-family="system-ui, sans-serif" font-size="13" text-anchor="middle">
-      <rect x="80" y="30" width="400" height="34" rx="6" fill="#EEF2FF" stroke="#4F6EF7"/>
-      <text x="280" y="52" fill="#1f2937">First-time guests</text>
-      <rect x="130" y="74" width="300" height="34" rx="6" fill="#EEF2FF" stroke="#4F6EF7"/>
-      <text x="280" y="96" fill="#1f2937">Came back</text>
-      <rect x="180" y="118" width="200" height="34" rx="6" fill="#FBF6E9" stroke="#B8860B"/>
-      <text x="280" y="140" fill="#1f2937">Took a step in 30 days</text>
-      <rect x="215" y="162" width="130" height="34" rx="6" fill="#FBF6E9" stroke="#B8860B"/>
-      <text x="280" y="184" fill="#1f2937">Stayed</text>
-    </g>
-  </svg>
-  <figcaption>Most churches measure the top band. The one that predicts retention is the gold one. (Illustrative.)</figcaption>
-</figure>
+<StatGroup id="guest-second-step" />
+
+That gap is the whole ballgame, and almost nobody measures it.
 
 ## Why most churches can't see this
 
@@ -55,11 +43,12 @@ And remember what this is really about. Tracking a guest's next step isn't proce
 
 ## What to do Monday
 
-Start a simple list. For every first-time guest from the last 60 days, mark one thing: did they take any next step, serve, group, class, lunch with a leader, within about a month?
+1. **List every first-time guest from the last 60 days.**
+2. **Beside each name, mark one thing:** did they take a next step, serve, a group, a class, lunch with a leader, within about a month?
+3. **The "yes" names are becoming family** — celebrate and keep including them.
+4. **The "no" names are your follow-up list, today** — the people most likely to slip away while there's still time to reach for them.
 
-That list instantly splits in two. The ones who did are becoming family; celebrate and keep including them. **The ones who didn't are your follow-up list, today.** Those are the names to call, not because they're a metric, but because they're the people most likely to slip away while there's still time to reach for them.
-
-You don't need software to begin. You need to put two facts on one page and act on the gap. Do that for a season and you'll stop losing people you never realized you were losing.
+You don't need software to begin. You need two facts on one page and the will to act on the gap. Do that for a season and you'll stop losing people you never realized you were losing.
 
 ## Frequently asked questions
 
@@ -71,7 +60,3 @@ Track every first-time guest and whether they took any next step within roughly 
 
 ### Why isn't a great welcome enough to keep guests?
 A great first impression earns a second visit, but it doesn't create belonging. Guests stay when they're connected to people and given something to do. Without a quick second step, even a guest who loved their first Sunday tends to drift away within a couple of months.
-
----
-
-*Daxx Roberts spent 13 years in data analytics before founding Sunday Tally, affordable church analytics software he built after watching his own church's board run on hand-built spreadsheets and no database.*

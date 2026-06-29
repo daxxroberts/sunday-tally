@@ -45,6 +45,10 @@ export const BLOG_STATS: Record<string, StatCardData[]> = {
     { label: 'Number of givers', value: 96, delta: -11, sub: 'Quietly shrinking' },
     { label: 'Giving per giver', value: 143, prefix: '$', delta: 18, sub: 'Fewer people carrying more' },
   ],
+  'guest-second-step': [
+    { label: 'Served or joined within 30 days', value: 84, suffix: '%', sub: 'Still active a year later' },
+    { label: 'Took no step in 30 days', value: 19, suffix: '%', sub: 'Drifted away within months' },
+  ],
 }
 
 export const BLOG_TRENDS: Record<string, TrendData> = {

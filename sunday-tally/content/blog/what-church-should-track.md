@@ -8,6 +8,7 @@ date: "2026-06-27"
 lastUpdated: "2026-06-27"
 author: "Daxx Roberts"
 tags: ["what should a church track", "church KPIs", "church analytics", "church metrics"]
+category: "Getting Started"
 status: "draft-pre-grove"
 ---
 
@@ -17,7 +18,7 @@ status: "draft-pre-grove"
 
 Most churches don't track too little. They track too much of the wrong thing. The numbers pile up, the report gets longer, and somehow none of it makes anyone a better shepherd. The problem isn't effort. It's that almost no one applies the one test that tells a useful number from a useless one.
 
-I spent 13 years in analytics before building software for churches, and this single question would clean up most church reports overnight.
+One simple question would clean up most church reports overnight.
 
 ## The only test that matters
 
@@ -47,9 +48,12 @@ And remember the goal. You're not building a scoreboard. You're trying to see yo
 
 ## What to do Monday
 
-Write down everything your church currently counts. Then run each one through the test: would a change in this number change what we do? Cross off every number that fails. Keep the few that pass.
+1. **List everything your church currently counts.**
+2. **Run each one through the test:** would a change in this number change what we do?
+3. **Cross off every number that fails** — those are the vanity metrics.
+4. **Keep the few that pass.** That short list is your real report.
 
-Whatever survives is your real report. It'll be shorter than you expect, and far more useful than what you had.
+Whatever survives will be shorter than you expect, and far more useful than what you had.
 
 ## Frequently asked questions
 

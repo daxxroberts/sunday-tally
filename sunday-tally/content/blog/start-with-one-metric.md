@@ -8,6 +8,7 @@ date: "2026-06-27"
 lastUpdated: "2026-06-27"
 author: "Daxx Roberts"
 tags: ["how to start tracking church data", "church metrics", "church analytics", "church attendance tracking"]
+category: "Getting Started"
 status: "draft-pre-grove"
 ---
 
@@ -17,7 +18,7 @@ status: "draft-pre-grove"
 
 When a church finally decides to get serious about its numbers, it almost always makes the same mistake: it tries to track everything at once. A big spreadsheet, a dozen metrics, a grand plan. Three weeks later the spreadsheet is stale and the plan is quietly dead. I've watched it happen, and I've done it myself.
 
-I spent 13 years in analytics before building software for churches, and the lesson that surprised me most is this: the churches that succeed with data don't start with more. They start with *one.*
+The lesson that surprised me most, building software for churches, is this: the churches that succeed with data don't start with more. They start with *one.*
 
 ## Why the big start fails
 
@@ -39,9 +40,12 @@ There's a quiet grace in starting small. You don't need a data person, a budget,
 
 ## What to do Monday
 
-Choose one number. Just one. Weekly attendance by ministry is a safe first pick. Write it down this week, and put a note in next month's leadership meeting to look at it.
+1. **Pick one metric.** Weekly attendance by ministry is a safe first choice.
+2. **Record it this week** — one number, written somewhere you'll find it again.
+3. **Put it on next month's leadership agenda,** so it actually gets looked at, not just logged.
+4. **Don't add a second number** until the first is a habit you don't have to think about.
 
-Resist the urge to add a second number until the first one is a habit you don't have to think about. Start absurdly small. That's not settling, it's the most reliable way to actually arrive somewhere.
+Start absurdly small. That's not settling, it's the most reliable way to actually arrive somewhere.
 
 ## Frequently asked questions
 
