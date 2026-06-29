@@ -19,6 +19,7 @@ export type PostMeta = {
   lastUpdated: string
   author: string
   tags: string[]
+  category?: string
   coverImage?: string
   coverImageAlt?: string
   ogImage?: string
@@ -125,6 +126,7 @@ function toMeta(slug: string, data: Record<string, unknown>): PostMeta {
     lastUpdated: String(data.lastUpdated ?? data.date ?? ''),
     author: String(data.author ?? 'Sunday Tally'),
     tags: Array.isArray(data.tags) ? (data.tags as string[]) : [],
+    category: data.category ? String(data.category) : undefined,
     coverImage: data.coverImage ? String(data.coverImage) : undefined,
     coverImageAlt: data.coverImageAlt ? String(data.coverImageAlt) : undefined,
     ogImage: data.ogImage ? String(data.ogImage) : undefined,

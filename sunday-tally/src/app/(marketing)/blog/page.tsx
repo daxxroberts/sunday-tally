@@ -1,10 +1,9 @@
 import type { Metadata } from 'next'
-import Link from 'next/link'
-import { ArrowRight } from 'lucide-react'
 import { getAllPostsMeta } from '@/lib/blog'
+import { BlogIndex } from './BlogIndex'
 
 export const metadata: Metadata = {
-  title: 'Church Analytics Blog | Sunday Tally',
+  title: 'Church Analytics Field Notes | Sunday Tally',
   description:
     'Practical writing on church analytics, attendance tracking, giving trends, and measuring ministry health, from the team behind Sunday Tally.',
   alternates: { canonical: '/blog' },
@@ -12,18 +11,10 @@ export const metadata: Metadata = {
     type: 'website',
     url: 'https://sundaytally.church/blog',
     siteName: 'Sunday Tally',
-    title: 'Church Analytics Blog | Sunday Tally',
+    title: 'Church Analytics Field Notes | Sunday Tally',
     description:
       'Practical writing on church analytics, attendance tracking, and measuring ministry health.',
   },
-}
-
-function formatDate(date: string): string {
-  if (!date) return ''
-  // Parse YYYY-MM-DD as local time (not UTC) to avoid an off-by-one day.
-  const d = new Date(`${date}T00:00:00`)
-  if (Number.isNaN(d.getTime())) return date
-  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
 }
 
 export default function BlogIndexPage() {
@@ -47,32 +38,7 @@ export default function BlogIndexPage() {
       {posts.length === 0 ? (
         <p className="text-stone-500">No posts yet. Check back soon.</p>
       ) : (
-        <div className="flex flex-col divide-y divide-stone-200/80">
-          {posts.map((post) => (
-            <article key={post.slug} className="group py-8 first:pt-0">
-              <Link href={`/blog/${post.slug}`} className="block">
-                <div className="flex items-center gap-3 text-xs font-semibold uppercase tracking-wider text-stone-400 mb-3">
-                  <time dateTime={post.date}>{formatDate(post.date)}</time>
-                  {post.tags[0] && (
-                    <>
-                      <span aria-hidden>·</span>
-                      <span className="text-[#4F6EF7]">{post.tags[0]}</span>
-                    </>
-                  )}
-                </div>
-                <h2 className="text-2xl font-bold tracking-tight text-stone-900 group-hover:text-[#4F6EF7] transition-colors mb-2">
-                  {post.title}
-                </h2>
-                <p className="text-stone-500 font-medium mb-4 line-clamp-2">
-                  {post.description}
-                </p>
-                <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-stone-900 group-hover:gap-2.5 transition-all">
-                  Read article <ArrowRight size={16} />
-                </span>
-              </Link>
-            </article>
-          ))}
-        </div>
+        <BlogIndex posts={posts} />
       )}
     </div>
   )
