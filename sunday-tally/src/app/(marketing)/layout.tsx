@@ -64,6 +64,7 @@ export default function MarketingLayout({
             <Link href="/#features" className="hover:text-stone-900 transition-colors">Features</Link>
             <Link href="/#pricing" className="hover:text-[#4F6EF7] transition-colors">Pricing</Link>
             <Link href="/blog" className="hover:text-[#4F6EF7] transition-colors">Field Notes</Link>
+            <Link href="/about" className="hover:text-[#4F6EF7] transition-colors">About</Link>
           </div>
         </div>
       </footer>

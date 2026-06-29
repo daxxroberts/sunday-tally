@@ -42,6 +42,7 @@ export async function updateSession(request: NextRequest) {
     '/',
     '/pricing',
     '/features',
+    '/about',
     '/contact',
     '/terms',
     '/privacy',

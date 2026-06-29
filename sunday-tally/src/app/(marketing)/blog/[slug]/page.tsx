@@ -156,7 +156,12 @@ export default async function BlogPostPage({
           {post.title}
         </h1>
         <p className="text-lg text-stone-500 font-medium">{post.description}</p>
-        <p className="mt-6 text-sm font-semibold text-stone-600">By {post.author}</p>
+        <p className="mt-6 text-sm font-semibold text-stone-600">
+          By{' '}
+          <Link href="/about" className="text-[#4F6EF7] hover:underline">
+            {post.author}
+          </Link>
+        </p>
       </header>
 
       {rendered ? (
