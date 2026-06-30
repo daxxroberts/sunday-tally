@@ -70,7 +70,6 @@ export async function signupAction(data: SignupData): Promise<{ error: string } 
   }
 
   // Step 4 — Seed system reporting tags (ATTENDANCE, VOLUNTEERS, GIVING, RESPONSE_STAT)
-  // Ministry tags are created later during service setup / import — not seeded here.
   const { error: seedError } = await admin.rpc('seed_system_reporting_tags', { p_church_id: churchId })
 
   if (seedError) {
@@ -92,9 +91,15 @@ export async function signupAction(data: SignupData): Promise<{ error: string } 
     return { error: 'Something went wrong. Try again.' }
   }
 
-  // Step 6 — Seed starter dashboard widgets (NON-FATAL). A usable account does not
-  // depend on these; the church can build widgets later, or we backfill. Do NOT roll
-  // back the account over a cosmetic library seed.
+  // Step 6 — Seed starter church setup (NON-FATAL). Seeds 3 default ministry tags
+  // (Main Service, Kids Ministry, Youth Ministry) + a pre-filled Sunday Service template
+  // so onboarding step 3 has something to show. Church edits the defaults.
+  const { error: starterSetupError } = await admin.rpc('seed_starter_church_setup', { p_church_id: churchId })
+  if (starterSetupError) {
+    console.error('SIGNUP WARN (Starter setup):', starterSetupError)
+  }
+
+  // Step 7 — Seed starter dashboard widgets (NON-FATAL).
   const { error: widgetSeedError } = await admin.rpc('seed_starter_widgets', { p_church_id: churchId })
   if (widgetSeedError) {
     console.error('SIGNUP WARN (Starter widgets):', widgetSeedError)

@@ -76,9 +76,10 @@ export default function OnboardingServicesPage() {
   return (
     <OnboardingLayout step={3} onBack={() => router.push('/onboarding/locations')}>
       <h1 className="text-2xl font-semibold text-gray-900 mb-1">Your services</h1>
-      <p className="text-sm text-gray-500 mb-8">
-        Add each service you run each week — you can add more later in Settings.
+      <p className="text-sm text-gray-500 mb-1">
+        Name each service you run each week — you can add more later in Settings.
       </p>
+      <p className="text-xs text-gray-400 mb-8">Day and time are set in the next step.</p>
 
       <form onSubmit={handleContinue} className="space-y-6">
         {templates.map((tmpl, idx) => (
@@ -131,15 +132,23 @@ export default function OnboardingServicesPage() {
                 Which ministry is this service part of?{' '}
                 <span className="text-gray-400 font-normal">— services that share a ministry add up together on your dashboard.</span>
               </label>
-              <select
-                value={tmpl.primary_tag_id}
-                onChange={e => updateTemplate(idx, { primary_tag_id: e.target.value })}
-                disabled={isPending}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:opacity-50"
-              >
-                <option value="">Select a ministry</option>
-                {primaryTagOptions.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-              </select>
+              {primaryTagOptions.length === 0 ? (
+                <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5">
+                  No ministries found. Set up your church&apos;s ministries in{' '}
+                  <a href="/settings?tab=tags" className="font-semibold underline">Settings → What we track</a>{' '}
+                  first, then come back here.
+                </p>
+              ) : (
+                <select
+                  value={tmpl.primary_tag_id}
+                  onChange={e => updateTemplate(idx, { primary_tag_id: e.target.value })}
+                  disabled={isPending}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:opacity-50"
+                >
+                  <option value="">Select a ministry</option>
+                  {primaryTagOptions.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                </select>
+              )}
             </div>
 
             {/* E2f — Subtags (optional) */}
