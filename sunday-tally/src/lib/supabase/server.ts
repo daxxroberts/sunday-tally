@@ -32,9 +32,11 @@ export async function createClient() {
 // (e.g. SIGNUP provisioning). D-051 compensation pattern.
 export function createServiceRoleClient() {
   const { createClient } = require('@supabase/supabase-js')
+  // Strip BOM (U+FEFF) that Vercel sometimes prepends to copied env var values
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!.replace(/^﻿/, '').trim()
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    serviceRoleKey,
     { auth: { autoRefreshToken: false, persistSession: false } }
   )
 }
