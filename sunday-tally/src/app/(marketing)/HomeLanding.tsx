@@ -609,7 +609,7 @@ export default function LandingPage() {
               </div>
               <h4 className="text-lg font-bold text-stone-900 mb-1">Looking for custom scale?</h4>
               <p className="text-sm text-stone-600 font-medium leading-relaxed">
-                Dedicated support, custom integrations, and tailored limits for large multi-campus networks.
+                Custom integrations and tailored limits for large multi-campus networks.
               </p>
             </div>
             <Link 
