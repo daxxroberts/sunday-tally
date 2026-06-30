@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { ArrowRight, Search } from 'lucide-react'
 import type { PostMeta } from '@/lib/blog'
 
@@ -80,23 +81,39 @@ export function BlogIndex({ posts }: { posts: PostMeta[] }) {
         <div className="flex flex-col divide-y divide-stone-200/80">
           {filtered.map((post) => (
             <article key={post.slug} className="group py-8 first:pt-0">
-              <Link href={`/blog/${post.slug}`} className="block">
-                <div className="mb-3 flex items-center gap-3 text-xs font-semibold uppercase tracking-wider text-stone-400">
-                  <time dateTime={post.date}>{formatDate(post.date)}</time>
-                  {post.category && (
-                    <>
-                      <span aria-hidden>·</span>
-                      <span className="text-[#4F6EF7]">{post.category}</span>
-                    </>
-                  )}
+              <Link
+                href={`/blog/${post.slug}`}
+                className="flex flex-col gap-5 sm:flex-row sm:items-start"
+              >
+                {post.coverImage && (
+                  <div className="relative aspect-[16/9] w-full overflow-hidden rounded-xl border border-stone-200/80 bg-stone-50 sm:w-56 sm:shrink-0">
+                    <Image
+                      src={post.coverImage}
+                      alt={post.coverImageAlt || post.title}
+                      fill
+                      sizes="(max-width: 640px) 100vw, 224px"
+                      className="object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+                    />
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <div className="mb-3 flex items-center gap-3 text-xs font-semibold uppercase tracking-wider text-stone-400">
+                    <time dateTime={post.date}>{formatDate(post.date)}</time>
+                    {post.category && (
+                      <>
+                        <span aria-hidden>·</span>
+                        <span className="text-[#4F6EF7]">{post.category}</span>
+                      </>
+                    )}
+                  </div>
+                  <h2 className="mb-2 text-2xl font-bold tracking-tight text-stone-900 transition-colors group-hover:text-[#4F6EF7]">
+                    {post.title}
+                  </h2>
+                  <p className="mb-4 line-clamp-2 font-medium text-stone-500">{post.description}</p>
+                  <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-stone-900 transition-all group-hover:gap-2.5">
+                    Read article <ArrowRight size={16} />
+                  </span>
                 </div>
-                <h2 className="mb-2 text-2xl font-bold tracking-tight text-stone-900 transition-colors group-hover:text-[#4F6EF7]">
-                  {post.title}
-                </h2>
-                <p className="mb-4 line-clamp-2 font-medium text-stone-500">{post.description}</p>
-                <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-stone-900 transition-all group-hover:gap-2.5">
-                  Read article <ArrowRight size={16} />
-                </span>
               </Link>
             </article>
           ))}

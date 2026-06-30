@@ -6,7 +6,7 @@ const SITE = 'https://sundaytally.church'
 export const metadata: Metadata = {
   title: 'About Sunday Tally — Why We Built It | Daxx Roberts',
   description:
-    'Sunday Tally was built by a 13-year analytics professional who joined his own church board, saw the manual reporting and missing database, and made church analytics every church can afford.',
+    'Sunday Tally was built by a data and business analyst who spent 13 years consulting for S&P 500 and S&P 100 companies, then joined his own church board, saw the manual reporting and missing database, and made church analytics every church can afford.',
   alternates: { canonical: '/about' },
   openGraph: {
     type: 'profile',
@@ -14,7 +14,7 @@ export const metadata: Metadata = {
     siteName: 'Sunday Tally',
     title: 'About Sunday Tally — Why We Built It',
     description:
-      'Why a 13-year analytics professional built affordable church analytics for every church, no matter its size.',
+      'Why a data and business analyst who spent 13 years consulting for S&P 500 companies built affordable church analytics for every church, no matter its size.',
   },
 }
 
@@ -27,7 +27,7 @@ const aboutSchema = {
     name: 'Daxx Roberts',
     jobTitle: 'Founder',
     description:
-      'Founder of Sunday Tally. Spent 13 years working in data analytics before building affordable church analytics software.',
+      'Founder of Sunday Tally. Spent 13 years as a data and business analyst consulting for S&P 500 and S&P 100 companies before building affordable church analytics software.',
     worksFor: {
       '@type': 'Organization',
       name: 'Sunday Tally',
@@ -45,18 +45,20 @@ export default function AboutPage() {
       />
 
       <p className="mb-3 text-sm font-semibold uppercase tracking-wider text-[#4F6EF7]">
-        Why we built this
+        Why we built Sunday Tally
       </p>
       <h1 className="mb-6 text-4xl font-bold leading-[1.1] tracking-tight text-stone-900 md:text-5xl">
-        Every church deserves to see itself clearly
+        Bringing Real Analytics to Every Church
       </h1>
 
       <div className="blog-prose">
         <p>
-          I spent thirteen years working in data analytics. I know what it looks
-          like when an organization can finally see itself clearly, and what it
-          costs when it can&apos;t. For most of my career that work happened in
-          businesses. Then it followed me to church.
+          I spent thirteen years as a data and business analyst, most of it at a
+          consulting firm serving S&amp;P 500 and S&amp;P 100 companies &mdash; a
+          rare seat that put me inside hundreds of organizations, across every
+          department and level of leadership. I learned what it looks like when
+          an organization can finally see itself clearly, and what it costs when
+          it can&apos;t. Then it followed me to church.
         </p>
 
         <p>
@@ -76,6 +78,14 @@ export default function AboutPage() {
           them. And I realized the churches that most needed to see their
           ministries clearly were the ones least able to afford the tools that
           would let them.
+        </p>
+
+        <p>
+          When I started digging into the analytics of ministry, the gap was
+          obvious. The few tools churches actually had were either missing the
+          things that mattered most, or so complex you needed a specialist to
+          run them. The kind of clarity I&apos;d watched transform businesses
+          simply wasn&apos;t within reach for the churches that needed it most.
         </p>
 
         <h2>The principle behind it</h2>
@@ -103,9 +113,32 @@ export default function AboutPage() {
           churches who need it most are the ones who can finally have it.
         </p>
         <p>
+          And affordable was never meant to mean less. I wanted the opposite: to
+          wildly over-deliver &mdash; more clarity, more value, and more care
+          than the price would suggest &mdash; because this isn&apos;t really
+          about software. It&apos;s for churches, and for the kingdom of God.
+        </p>
+        <p>
           That conviction is why this exists. Everything else, the dashboards,
           the charts, the weekly entry that takes a few minutes, is just how we
           keep that promise.
+        </p>
+
+        <h2>An older idea than software</h2>
+        <p>
+          Long before anyone called it Pearson&apos;s Law, Jesus taught the
+          deeper version of it. In the parable of the talents, the servant who
+          tended what he was entrusted with saw it multiply; the one who buried
+          his out of fear lost even that. What we give honest attention to
+          &mdash; in a church, and in our own walk with God &mdash; is what
+          grows. I wrote more about that here:{' '}
+          <Link
+            href="/blog/what-a-church-tends-to-grow"
+            className="text-[#4F6EF7] hover:underline"
+          >
+            What a Church Tends to Grow
+          </Link>
+          .
         </p>
       </div>
 

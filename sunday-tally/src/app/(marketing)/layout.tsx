@@ -24,6 +24,7 @@ export default function MarketingLayout({
             <Link href="/#features" className="hover:text-stone-900 transition-colors">Features</Link>
             <Link href="/#pricing" className="hover:text-stone-900 transition-colors">Pricing</Link>
             <Link href="/blog" className="hover:text-stone-900 transition-colors">Field Notes</Link>
+            <Link href="/about" className="hover:text-stone-900 transition-colors">About</Link>
           </nav>
 
           <div className="flex items-center gap-4">

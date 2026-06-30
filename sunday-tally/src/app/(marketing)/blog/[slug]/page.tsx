@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import Image from 'next/image'
 import { notFound } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 import { compileMDX } from 'next-mdx-remote/rsc'
@@ -163,6 +164,19 @@ export default async function BlogPostPage({
           </Link>
         </p>
       </header>
+
+      {post.coverImage && (
+        <div className="relative mb-12 aspect-[16/9] w-full overflow-hidden rounded-2xl border border-stone-200/80 bg-stone-50">
+          <Image
+            src={post.coverImage}
+            alt={post.coverImageAlt || post.title}
+            fill
+            sizes="(max-width: 768px) 100vw, 768px"
+            className="object-cover"
+            priority
+          />
+        </div>
+      )}
 
       {rendered ? (
         <div className="blog-prose">{rendered}</div>
