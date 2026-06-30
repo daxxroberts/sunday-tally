@@ -1,7 +1,7 @@
 # Graph Report - sunday-tally\src  (2026-06-30)
 
 ## Corpus Check
-- 211 files · ~243,939 words
+- 211 files · ~243,940 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
