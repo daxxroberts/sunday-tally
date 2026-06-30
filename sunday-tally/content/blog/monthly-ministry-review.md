@@ -1,4 +1,4 @@
----
+﻿---
 title: "The 20-Minute Review That Changes Everything"
 description: "Measuring your church does nothing until you review it. Here's the simple monthly ritual, three numbers and one question, that turns data into decisions."
 coverImage: "/blog/monthly-ministry-review-cover.png"
@@ -9,7 +9,7 @@ lastUpdated: "2026-06-27"
 author: "Daxx Roberts"
 tags: ["church board reporting", "ministry review", "church analytics", "church leadership meetings"]
 category: "How-To"
-status: "draft-pre-grove"
+status: "published"
 ---
 
 <!-- DRAFT. Clears the bar: insight = the value isn't more data, it's the short regular review ritual almost nobody holds; earned via founder board experience; Monday action = add a 20-min numbers slot, 3 numbers + 1 question. No borrowed stats. Needs GROVE stamp. -->

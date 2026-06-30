@@ -54,74 +54,66 @@ export default function AboutPage() {
       <div className="blog-prose">
         <p>
           I spent thirteen years as a data and business analyst, most of it at a
-          consulting firm serving S&amp;P 500 and S&amp;P 100 companies &mdash; a
-          rare seat that put me inside hundreds of organizations, across every
-          department and level of leadership. I learned what it looks like when
-          an organization can finally see itself clearly, and what it costs when
-          it can&apos;t. Then it followed me to church.
+          consulting firm working inside S&amp;P 500 and S&amp;P 100 companies.
+          That put me inside hundreds of organizations &mdash; every department,
+          every level of leadership &mdash; and I watched, over and over, what
+          happened when a company could finally see itself clearly. It changes things. Then that lens followed me to church.
         </p>
 
         <p>
-          I joined my own church&apos;s board, expecting to help with decisions.
-          What I found instead was our staff rebuilding the same reports by hand
-          every single week, copying numbers between spreadsheets late into the
-          evening. And underneath it all, the thing that stopped me cold: there
-          was no database. No real place where the church&apos;s own history
-          lived. Every report started from scratch, and every question that
-          started with &ldquo;how are we doing on&hellip;&rdquo; took hours to
-          answer, if it could be answered at all.
+          I joined my own church&apos;s board expecting to help with decisions.
+          What I found instead was our staff rebuilding the same reports from
+          scratch every week &mdash; copying numbers between spreadsheets late
+          into the evening, losing hours to questions that should have taken
+          seconds. And the thing that stopped me cold: there was no database. No
+          place where the church&apos;s own history lived. Every
+          &ldquo;how are we doing on&hellip;&rdquo; conversation started
+          from nothing.
         </p>
 
         <p>
           These weren&apos;t disorganized people. They were faithful, capable,
-          and buried, doing by hand what software should have been doing for
-          them. And I realized the churches that most needed to see their
-          ministries clearly were the ones least able to afford the tools that
-          would let them.
-        </p>
-
-        <p>
-          When I started digging into the analytics of ministry, the gap was
-          obvious. The few tools churches actually had were either missing the
-          things that mattered most, or so complex you needed a specialist to
-          run them. The kind of clarity I&apos;d watched transform businesses
-          simply wasn&apos;t within reach for the churches that needed it most.
+          and buried &mdash; doing by hand what software should have been doing
+          for them. And when I looked at what was actually available for
+          churches, the gap was plain: the few tools that existed were either
+          missing the metrics that actually matter to a pastor, or so complicated
+          you needed a specialist to run them. The kind of clarity I&apos;d
+          watched transform businesses simply wasn&apos;t within reach for the
+          churches that needed it most.
         </p>
 
         <h2>The principle behind it</h2>
         <p>
-          There&apos;s a principle called Pearson&apos;s Law: when performance is
-          measured, it improves; and when it&apos;s measured and reported back,
-          the rate of improvement accelerates. I&apos;ve watched it hold true in
-          every organization I&apos;ve ever worked with. I&apos;ve come to
-          believe it&apos;s just as true in ministry, and in our own walk with
-          Christ. What we pay honest attention to tends to grow.
+          There&apos;s a principle called Pearson&apos;s Law: when performance
+          is measured, it improves; and when it&apos;s measured and reported
+          back, the rate of improvement accelerates. I&apos;ve watched it hold
+          true in every organization I&apos;ve ever worked with, and I&apos;ve
+          come to believe it&apos;s just as true in ministry, and in our own
+          walk with Christ. What we pay honest, regular attention to tends
+          to grow.
         </p>
         <p>
-          That&apos;s the whole idea behind Sunday Tally. Not numbers for the
-          sake of numbers, but attention for the sake of the people those numbers
+          That&apos;s the whole idea behind Sunday Tally. Not numbers for their
+          own sake, but attention for the sake of the people those numbers
           represent: the family quietly drifting, the volunteer carrying too
-          much, the ministry flourishing where no one was looking.
+          much, the ministry flourishing in a corner where no one was looking.
         </p>
 
         <h2>Built to be affordable, on purpose</h2>
         <p>
           So I built Sunday Tally to do the hard part for any church, regardless
           of size or budget. The affordability isn&apos;t a discount or a
-          promotion. It&apos;s the point. A church of sixty should be able to see
-          itself as clearly as a church of six thousand. I priced it so that the
-          churches who need it most are the ones who can finally have it.
+          promotion. It&apos;s the point. A church of sixty should be able to
+          see itself as clearly as a church of six thousand.
         </p>
         <p>
-          And affordable was never meant to mean less. I wanted the opposite: to
-          wildly over-deliver &mdash; more clarity, more value, and more care
-          than the price would suggest &mdash; because this isn&apos;t really
-          about software. It&apos;s for churches, and for the kingdom of God.
-        </p>
-        <p>
-          That conviction is why this exists. Everything else, the dashboards,
-          the charts, the weekly entry that takes a few minutes, is just how we
-          keep that promise.
+          And affordable was never meant to mean less. I wanted the opposite:
+          to wildly over-deliver &mdash; more clarity and care than the price
+          would suggest &mdash; because this isn&apos;t
+          really about software. It&apos;s for churches, and for the kingdom
+          of God. That conviction is why this exists. The dashboards, the
+          charts, the weekly entry that takes a few minutes &mdash; those are
+          just how we keep that promise.
         </p>
 
         <h2>An older idea than software</h2>

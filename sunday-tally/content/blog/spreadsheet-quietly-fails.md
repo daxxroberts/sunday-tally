@@ -1,4 +1,4 @@
----
+﻿---
 title: "Why Your Church Spreadsheet Quietly Fails You"
 description: "A spreadsheet doesn't fail loudly. It fails by living on one laptop, siloed and decaying, until the numbers no one can see stop helping anyone. It's an architecture problem, not a discipline problem."
 coverImage: "/blog/spreadsheet-quietly-fails-cover.png"
@@ -9,7 +9,7 @@ lastUpdated: "2026-06-27"
 author: "Daxx Roberts"
 tags: ["church attendance spreadsheet", "church data tracking", "church analytics", "church management"]
 category: "Getting Started"
-status: "draft-pre-grove"
+status: "published"
 ---
 
 <!-- DRAFT. Clears the bar: insight = the spreadsheet fails by being invisible/siloed/single-point-of-failure, not by lack of discipline; earned via founder board experience; Monday action = the "if our numbers person left tomorrow" test. No borrowed stats. Needs GROVE stamp. Resolves hub's "spreadsheet" theme. -->

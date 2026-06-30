@@ -9,7 +9,7 @@ lastUpdated: "2026-06-27"
 author: "Daxx Roberts"
 tags: ["how to start tracking church data", "church metrics", "church analytics", "church attendance tracking"]
 category: "Getting Started"
-status: "draft-pre-grove"
+status: "published"
 ---
 
 <!-- DRAFT. Clears the bar: insight = the failure mode is starting too big (an abandoned dashboard); consistency beats comprehensiveness; earned via founder experience; Monday action = pick ONE number, commit to monthly. No borrowed stats. Needs GROVE stamp. -->

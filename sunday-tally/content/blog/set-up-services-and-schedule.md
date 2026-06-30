@@ -9,7 +9,7 @@ lastUpdated: "2026-06-29"
 author: "Daxx Roberts"
 category: "Sunday Tally Setup"
 tags: ["sunday tally setup", "church service schedule", "church analytics", "what we track"]
-status: "draft-pre-grove"
+status: "published"
 featured: false
 ---
 

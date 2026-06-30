@@ -1,4 +1,4 @@
----
+﻿---
 title: "Church Analytics and the One Principle That Makes Ministries Grow"
 description: "Church analytics applies Pearson's Law to ministry: what gets measured improves, and what gets reported improves faster. Here's how to start without a data team."
 coverImage: "/blog/church-analytics-pearsons-law-cover.png"
@@ -9,7 +9,7 @@ lastUpdated: "2026-06-26"
 author: "Daxx Roberts"
 tags: ["church analytics", "church data tracking", "measuring church growth", "church attendance tracking"]
 category: "Analytics"
-status: "draft-pre-grove"
+status: "published"
 ---
 
 <!-- DRAFT. GROVE Humanizer pass applied 2026-06-26 (em dashes removed, external citations surfaced, author bio added). Still requires final GROVE validation stamp before publish. -->

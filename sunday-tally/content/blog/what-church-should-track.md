@@ -9,7 +9,7 @@ lastUpdated: "2026-06-27"
 author: "Daxx Roberts"
 tags: ["what should a church track", "church KPIs", "church analytics", "church metrics"]
 category: "Getting Started"
-status: "draft-pre-grove"
+status: "published"
 ---
 
 <!-- DRAFT. Clears the bar: insight = the test for a metric is "would a change in it change what we DO?"; vanity totals vs decision metrics; earned via founder reasoning; Monday action = cross off anything that wouldn't change a decision. No borrowed stats. Needs GROVE stamp. Resolves hub's "core ministry metrics" stub. -->
