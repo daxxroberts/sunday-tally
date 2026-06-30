@@ -538,7 +538,7 @@ export default function LandingPage() {
           </div>
 
           {/* AI Add-ons Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
             {/* Starter */}
             <div className="bg-white border border-stone-200 rounded-3xl p-8 shadow-sm flex flex-col">
               <p className="text-[#4F6EF7] font-bold tracking-widest uppercase text-sm mb-2">Starter</p>
@@ -597,29 +597,27 @@ export default function LandingPage() {
                 <li className="flex items-start gap-3"><CheckCircle2 className="text-emerald-400 shrink-0" size={18} /> <span><strong>3x</strong> Tally AI asks</span></li>
               </ul>
             </div>
+          </div>
 
-            {/* Enterprise */}
-            <div className="bg-white border border-stone-200 rounded-3xl p-8 shadow-sm flex flex-col text-stone-800">
-              <p className="text-stone-500 font-bold tracking-widest uppercase text-sm mb-2">Enterprise</p>
-              <div className="flex items-baseline gap-1 mb-2">
-                <span className="text-4xl font-extrabold text-stone-900">Custom</span>
+          {/* Enterprise Custom Plan Banner */}
+          <div className="bg-stone-50 border border-stone-200 rounded-3xl p-6 md:p-8 max-w-4xl mx-auto shadow-sm flex flex-col md:flex-row items-center justify-between gap-6 text-stone-800 mb-10">
+            <div className="text-center md:text-left">
+              <div className="flex flex-wrap items-center justify-center md:justify-start gap-2.5 mb-1.5">
+                <span className="text-xs font-bold tracking-widest uppercase text-[#4F6EF7] bg-blue-50 px-2.5 py-0.5 rounded-full">Enterprise</span>
+                <span className="text-xs font-bold text-stone-300">•</span>
+                <span className="text-xs font-bold text-stone-500">6+ campuses</span>
               </div>
-              <p className="text-xs text-stone-400 font-bold mb-6 pb-6 border-b border-stone-100">6+ campuses</p>
-              <p className="text-stone-600 mb-8 leading-relaxed font-medium">
-                <strong>Tailored plan for larger networks.</strong> Get custom widget limits, custom integrations, and dedicated support for your whole organization.
+              <h4 className="text-lg font-bold text-stone-900 mb-1">Looking for custom scale?</h4>
+              <p className="text-sm text-stone-600 font-medium leading-relaxed">
+                Dedicated support, custom integrations, and tailored limits for large multi-campus networks.
               </p>
-              <ul className="flex flex-col gap-4 text-sm text-stone-600 mt-auto">
-                <li className="flex items-start gap-3"><CheckCircle2 className="text-emerald-500 shrink-0" size={18} /> <span>Custom saved widgets</span></li>
-                <li className="flex items-start gap-3"><CheckCircle2 className="text-emerald-500 shrink-0" size={18} /> <span>Tally AI Ask & Build modes</span></li>
-                <li className="flex items-start gap-3"><CheckCircle2 className="text-emerald-500 shrink-0" size={18} /> <span>Dedicated support & onboarding</span></li>
-              </ul>
-              <Link 
-                href="/contact" 
-                className="w-full text-center bg-stone-900 hover:bg-[#4F6EF7] text-white font-bold py-3.5 rounded-xl transition-all shadow-sm hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98] mt-6"
-              >
-                Contact SundayTally
-              </Link>
             </div>
+            <Link 
+              href="/contact" 
+              className="w-full md:w-auto bg-stone-900 hover:bg-[#4F6EF7] text-white text-sm font-bold px-8 py-3.5 rounded-xl transition-all shadow-sm hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98] shrink-0 text-center"
+            >
+              Contact SundayTally
+            </Link>
           </div>
 
           {/* Compact Pricing Calculator */}
