@@ -663,9 +663,9 @@ export default function LandingPage() {
           <p className="text-base md:text-lg text-stone-500 font-medium mb-8 max-w-xl mx-auto">Our dashboard and AI layers are built to evolve with the needs of modern, data-driven ministries.</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto text-left">
             <div className="flex items-center gap-3 px-5 py-4 bg-stone-50 border border-stone-200 rounded-2xl">
-              <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full shrink-0"></span>
+              <span className="w-2.5 h-2.5 bg-[#4F6EF7] rounded-full shrink-0 animate-pulse"></span>
               <div>
-                <span className="text-xs font-bold text-emerald-600 uppercase tracking-wider block">Next Release</span>
+                <span className="text-xs font-bold text-[#4F6EF7] uppercase tracking-wider block">Coming Soon</span>
                 <span className="text-sm font-semibold text-stone-800">Dynamic dashboard export and printable Sunday summaries</span>
               </div>
             </div>
