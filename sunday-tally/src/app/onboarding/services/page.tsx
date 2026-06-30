@@ -8,6 +8,7 @@ import { useState, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import OnboardingLayout from '@/components/layouts/OnboardingLayout'
 import { saveTemplatesAction, getChurchData, type TemplateInput } from './actions'
+import { createMinistry } from '@/app/(app)/settings/track/actions'
 
 interface ServiceTag { id: string; name: string; code: string; tag_role: string | null }
 interface Location { id: string; name: string }
@@ -24,6 +25,12 @@ export default function OnboardingServicesPage() {
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
   const router = useRouter()
+
+  // Inline ministry creation
+  const [newMinName, setNewMinName] = useState('')
+  const [creatingMin, setCreatingMin] = useState(false)
+  const [createMinError, setCreateMinError] = useState<string | null>(null)
+  const [showCreateFor, setShowCreateFor] = useState<number | null>(null)
 
   useEffect(() => {
     getChurchData().then(data => {
@@ -57,6 +64,32 @@ export default function OnboardingServicesPage() {
 
   function removeTemplate(idx: number) {
     setTemplates(prev => prev.filter((_, i) => i !== idx))
+  }
+
+  async function handleCreateMinistry(forTemplateIdx: number) {
+    const name = newMinName.trim()
+    if (!name) return
+    setCreatingMin(true)
+    setCreateMinError(null)
+    const result = await createMinistry({ name, tag_role: 'OTHER' })
+    if (result.ok && result.data) {
+      const newTag: ServiceTag = {
+        id: result.data.id,
+        name: result.data.name,
+        code: result.data.code,
+        tag_role: result.data.tag_role,
+      }
+      setAllTags(prev => [...prev, newTag])
+      // Auto-select for whichever service triggered the create if it has none yet
+      if (!templates[forTemplateIdx]?.primary_tag_id) {
+        updateTemplate(forTemplateIdx, { primary_tag_id: result.data.id })
+      }
+      setNewMinName('')
+      setShowCreateFor(null)
+    } else {
+      setCreateMinError(result.error ?? 'Could not create ministry.')
+    }
+    setCreatingMin(false)
   }
 
   function handleContinue(e: React.FormEvent) {
@@ -133,21 +166,84 @@ export default function OnboardingServicesPage() {
                 <span className="text-gray-400 font-normal">— services that share a ministry add up together on your dashboard.</span>
               </label>
               {primaryTagOptions.length === 0 ? (
-                <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5">
-                  No ministries found. Set up your church&apos;s ministries in{' '}
-                  <a href="/settings?tab=tags" className="font-semibold underline">Settings → What we track</a>{' '}
-                  first, then come back here.
-                </p>
+                /* No ministries yet — create one inline, right here */
+                <div className="space-y-2">
+                  <p className="text-xs text-gray-500">No ministries yet — add one to continue.</p>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={newMinName}
+                      onChange={e => { setNewMinName(e.target.value); setCreateMinError(null) }}
+                      onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleCreateMinistry(idx))}
+                      placeholder="e.g. Main Service, Kids, Youth"
+                      disabled={creatingMin}
+                      className="flex-1 border border-gray-300 rounded-lg px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#4F6EF7] focus:border-transparent disabled:opacity-50"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleCreateMinistry(idx)}
+                      disabled={!newMinName.trim() || creatingMin}
+                      className="px-4 py-2.5 bg-[#4F6EF7] text-white text-sm font-medium rounded-lg hover:bg-[#3D5BD4] transition-colors disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+                    >
+                      {creatingMin ? 'Adding…' : 'Add'}
+                    </button>
+                  </div>
+                  {createMinError && <p className="text-xs text-red-600">{createMinError}</p>}
+                </div>
               ) : (
-                <select
-                  value={tmpl.primary_tag_id}
-                  onChange={e => updateTemplate(idx, { primary_tag_id: e.target.value })}
-                  disabled={isPending}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:opacity-50"
-                >
-                  <option value="">Select a ministry</option>
-                  {primaryTagOptions.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                </select>
+                /* Has ministries — dropdown + inline create option */
+                <div className="space-y-2">
+                  <select
+                    value={tmpl.primary_tag_id}
+                    onChange={e => updateTemplate(idx, { primary_tag_id: e.target.value })}
+                    disabled={isPending}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:opacity-50"
+                  >
+                    <option value="">Select a ministry</option>
+                    {primaryTagOptions.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                  </select>
+
+                  {showCreateFor === idx ? (
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={newMinName}
+                        onChange={e => { setNewMinName(e.target.value); setCreateMinError(null) }}
+                        onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleCreateMinistry(idx))}
+                        placeholder="New ministry name"
+                        disabled={creatingMin}
+                        autoFocus
+                        className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#4F6EF7] focus:border-transparent disabled:opacity-50"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleCreateMinistry(idx)}
+                        disabled={!newMinName.trim() || creatingMin}
+                        className="px-3 py-2 bg-[#4F6EF7] text-white text-sm font-medium rounded-lg hover:bg-[#3D5BD4] transition-colors disabled:opacity-40 whitespace-nowrap"
+                      >
+                        {creatingMin ? '…' : 'Add'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setShowCreateFor(null); setNewMinName(''); setCreateMinError(null) }}
+                        className="text-xs text-gray-400 hover:text-gray-600 px-2"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => { setShowCreateFor(idx); setNewMinName(''); setCreateMinError(null) }}
+                      className="text-xs text-[#4F6EF7] hover:text-[#3D5BD4] transition-colors"
+                    >
+                      + New ministry
+                    </button>
+                  )}
+                  {createMinError && showCreateFor === idx && (
+                    <p className="text-xs text-red-600">{createMinError}</p>
+                  )}
+                </div>
               )}
             </div>
 
