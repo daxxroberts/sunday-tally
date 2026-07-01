@@ -95,10 +95,12 @@ BEGIN
     (p_church_id, v_tmpl_ss_id,  v_adult_tag_id, 0),
     (p_church_id, v_tmpl_ss_id,  v_kids_tag_id,  1),
     (p_church_id, v_tmpl_ss_id,  v_youth_tag_id, 2),
-    -- Sunday Morning: Adult only
+    -- Sunday Morning: Adult + Youth (youth attends main service, rolls up with adults)
     (p_church_id, v_tmpl_am_id,  v_adult_tag_id, 0),
-    -- Sunday Evening: Adult only
+    (p_church_id, v_tmpl_am_id,  v_youth_tag_id, 1),
+    -- Sunday Evening: Adult + Youth
     (p_church_id, v_tmpl_pm_id,  v_adult_tag_id, 0),
+    (p_church_id, v_tmpl_pm_id,  v_youth_tag_id, 1),
     -- Wednesday Night: Adult + Youth
     (p_church_id, v_tmpl_wed_id, v_adult_tag_id, 0),
     (p_church_id, v_tmpl_wed_id, v_youth_tag_id, 1)
@@ -158,8 +160,8 @@ GRANT EXECUTE ON FUNCTION seed_starter_church_setup(UUID) TO authenticated;
 --                   Kids Ministry  (KIDS/KIDS_MINISTRY)
 --                   Youth Ministry (YOUTH/YOUTH_MINISTRY)
 --   Services:       Sunday School (Sun 9:30 AM) — 3 ministry tracks
---                   Sunday Morning (Sun 10:30 AM) — Adult
---                   Sunday Evening (Sun 5:00 PM) — Adult
+--                   Sunday Morning (Sun 10:30 AM) — Adult + Youth
+--                   Sunday Evening (Sun 5:00 PM) — Adult + Youth
 --                   Wednesday Night (Wed 5:00 PM) — Adult + Youth
 --   Metrics:
 --     Adult: attendance · volunteers · hands raised (instance)
