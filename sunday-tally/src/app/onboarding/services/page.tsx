@@ -8,7 +8,14 @@ import { useState, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import OnboardingLayout from '@/components/layouts/OnboardingLayout'
 import { saveTemplatesAction, getChurchData, type TemplateInput } from './actions'
-import { createMinistry } from '@/app/(app)/settings/track/actions'
+import { createMinistry, type TagRole } from '@/app/(app)/settings/track/actions'
+
+const ROLE_OPTIONS: { value: TagRole; label: string }[] = [
+  { value: 'ADULT_SERVICE', label: 'Adult' },
+  { value: 'KIDS_MINISTRY',  label: 'Kids' },
+  { value: 'YOUTH_MINISTRY', label: 'Students' },
+  { value: 'OTHER',          label: 'Other' },
+]
 
 interface ServiceTag { id: string; name: string; code: string; tag_role: string | null }
 interface Location { id: string; name: string }
@@ -28,6 +35,7 @@ export default function OnboardingServicesPage() {
 
   // Inline ministry creation
   const [newMinName, setNewMinName] = useState('')
+  const [newMinRole, setNewMinRole] = useState<TagRole>('ADULT_SERVICE')
   const [creatingMin, setCreatingMin] = useState(false)
   const [createMinError, setCreateMinError] = useState<string | null>(null)
   const [showCreateFor, setShowCreateFor] = useState<number | null>(null)
@@ -71,7 +79,7 @@ export default function OnboardingServicesPage() {
     if (!name) return
     setCreatingMin(true)
     setCreateMinError(null)
-    const result = await createMinistry({ name, tag_role: 'OTHER' })
+    const result = await createMinistry({ name, tag_role: newMinRole })
     if (result.ok && result.data) {
       const newTag: ServiceTag = {
         id: result.data.id,
@@ -85,6 +93,7 @@ export default function OnboardingServicesPage() {
         updateTemplate(forTemplateIdx, { primary_tag_id: result.data.id })
       }
       setNewMinName('')
+      setNewMinRole('ADULT_SERVICE')
       setShowCreateFor(null)
     } else {
       setCreateMinError(result.error ?? 'Could not create ministry.')
@@ -109,10 +118,9 @@ export default function OnboardingServicesPage() {
   return (
     <OnboardingLayout step={3} onBack={() => router.push('/onboarding/locations')}>
       <h1 className="text-2xl font-semibold text-gray-900 mb-1">Your services</h1>
-      <p className="text-sm text-gray-500 mb-1">
-        Name each service you run each week — you can add more later in Settings.
+      <p className="text-sm text-gray-500 mb-8">
+        Add one entry per service time. If the same ministry meets at 9am and 11am, add both and pick the same ministry for each — their numbers will total together on your dashboard.
       </p>
-      <p className="text-xs text-gray-400 mb-8">Day and time are set in the next step.</p>
 
       <form onSubmit={handleContinue} className="space-y-6">
         {templates.map((tmpl, idx) => (
@@ -162,8 +170,7 @@ export default function OnboardingServicesPage() {
                 on the dashboard — the "Experience 1 / Experience 2" trap. */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Which ministry is this service part of?{' '}
-                <span className="text-gray-400 font-normal">— services that share a ministry add up together on your dashboard.</span>
+                Ministry
               </label>
               {primaryTagOptions.length === 0 ? (
                 /* No ministries yet — create one inline, right here */
@@ -188,6 +195,22 @@ export default function OnboardingServicesPage() {
                       {creatingMin ? 'Adding…' : 'Add'}
                     </button>
                   </div>
+                  <div className="flex gap-1.5">
+                    {ROLE_OPTIONS.map(opt => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setNewMinRole(opt.value)}
+                        className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                          newMinRole === opt.value
+                            ? 'bg-stone-900 text-white border-stone-900'
+                            : 'bg-white text-gray-500 border-gray-300 hover:border-gray-500'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
                   {createMinError && <p className="text-xs text-red-600">{createMinError}</p>}
                 </div>
               ) : (
@@ -204,32 +227,50 @@ export default function OnboardingServicesPage() {
                   </select>
 
                   {showCreateFor === idx ? (
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={newMinName}
-                        onChange={e => { setNewMinName(e.target.value); setCreateMinError(null) }}
-                        onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleCreateMinistry(idx))}
-                        placeholder="New ministry name"
-                        disabled={creatingMin}
-                        autoFocus
-                        className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#4F6EF7] focus:border-transparent disabled:opacity-50"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => handleCreateMinistry(idx)}
-                        disabled={!newMinName.trim() || creatingMin}
-                        className="px-3 py-2 bg-[#4F6EF7] text-white text-sm font-medium rounded-lg hover:bg-[#3D5BD4] transition-colors disabled:opacity-40 whitespace-nowrap"
-                      >
-                        {creatingMin ? '…' : 'Add'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => { setShowCreateFor(null); setNewMinName(''); setCreateMinError(null) }}
-                        className="text-xs text-gray-400 hover:text-gray-600 px-2"
-                      >
-                        Cancel
-                      </button>
+                    <div className="space-y-2">
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={newMinName}
+                          onChange={e => { setNewMinName(e.target.value); setCreateMinError(null) }}
+                          onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleCreateMinistry(idx))}
+                          placeholder="New ministry name"
+                          disabled={creatingMin}
+                          autoFocus
+                          className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#4F6EF7] focus:border-transparent disabled:opacity-50"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleCreateMinistry(idx)}
+                          disabled={!newMinName.trim() || creatingMin}
+                          className="px-3 py-2 bg-[#4F6EF7] text-white text-sm font-medium rounded-lg hover:bg-[#3D5BD4] transition-colors disabled:opacity-40 whitespace-nowrap"
+                        >
+                          {creatingMin ? '…' : 'Add'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setShowCreateFor(null); setNewMinName(''); setNewMinRole('ADULT_SERVICE'); setCreateMinError(null) }}
+                          className="text-xs text-gray-400 hover:text-gray-600 px-2"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                      <div className="flex gap-1.5">
+                        {ROLE_OPTIONS.map(opt => (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() => setNewMinRole(opt.value)}
+                            className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                              newMinRole === opt.value
+                                ? 'bg-stone-900 text-white border-stone-900'
+                                : 'bg-white text-gray-500 border-gray-300 hover:border-gray-500'
+                            }`}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   ) : (
                     <button
@@ -284,7 +325,7 @@ export default function OnboardingServicesPage() {
         {/* E4 — Add another service */}
         <button type="button" onClick={addTemplate}
           className="text-sm text-gray-500 hover:text-gray-900 transition-colors">
-          + Add another service — one per service time (reuse a ministry to combine them).
+          + Add another service time
         </button>
 
         {error && (
