@@ -491,21 +491,21 @@ export default function LandingPage() {
 
           {/* Base Tier Card */}
           <div className="bg-stone-50 border border-stone-200 rounded-[2rem] p-8 md:p-12 mb-20 shadow-sm flex flex-col lg:flex-row gap-12 items-center">
-            <div className="flex-1 text-center md:text-left">
+            <div className="flex-1 text-left">
               <h3 className="text-2xl md:text-3xl font-extrabold text-stone-900 mb-2">Base Platform</h3>
               <p className="text-base md:text-lg text-stone-500 mb-6 leading-relaxed">
-                Everything you need to log counts, track your core metrics, and see standard reports week over week.
+                Everything you need to log your weekly numbers and see how your church is doing — week over week.
               </p>
               <ul className="text-stone-600 font-medium flex flex-col gap-3">
-                <li className="flex items-center gap-2 justify-center md:justify-start"><CheckCircle2 className="text-[#4F6EF7]" size={20} /> Tally AI gets you up and running in 10 minutes</li>
-                <li className="flex items-center gap-2 justify-center md:justify-start"><CheckCircle2 className="text-[#4F6EF7]" size={20} /> Unlimited manual metric tracking</li>
-                <li className="flex items-center gap-2 justify-center md:justify-start">
-                  <CheckCircle2 className="text-[#4F6EF7]" size={20} /> 
+                <li className="flex items-center gap-2 justify-start"><CheckCircle2 className="text-[#4F6EF7] shrink-0" size={20} /> Tally AI gets you up and running in 10 minutes</li>
+                <li className="flex items-start gap-2 justify-start"><CheckCircle2 className="text-[#4F6EF7] shrink-0 mt-0.5" size={20} /> <span>Track anything — attendance, giving, volunteers, decisions, and whatever else your ministry cares about</span></li>
+                <li className="flex items-center gap-2 justify-start">
+                  <CheckCircle2 className="text-[#4F6EF7] shrink-0" size={20} />
                   <span>
                     <a href="#demo-standard" className="underline font-semibold hover:text-[#4F6EF7] transition-colors">Standard dashboard is included</a>
                   </span>
                 </li>
-                <li className="flex items-center gap-2 justify-center md:justify-start"><CheckCircle2 className="text-[#4F6EF7]" size={20} /> Tally AI Import Mode for historical data</li>
+                <li className="flex items-center gap-2 justify-start"><CheckCircle2 className="text-[#4F6EF7] shrink-0" size={20} /> Tally AI Import Mode for historical data</li>
               </ul>
             </div>
             

@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
+import { MobileMenu } from './MobileMenu'
 
 export default function MarketingLayout({
   children,
@@ -9,7 +10,7 @@ export default function MarketingLayout({
   return (
     <div className="min-h-screen bg-[#FAFAFA] text-stone-900 selection:bg-stone-200 flex flex-col font-sans">
       {/* Navigation */}
-      <header className="sticky top-0 z-50 w-full border-b border-stone-200/80 bg-white/80 backdrop-blur-xl">
+      <header className="sticky top-0 z-50 w-full border-b border-stone-200/80 bg-white/80 backdrop-blur-xl relative">
         <div className="container mx-auto flex h-16 items-center justify-between px-4 md:px-8">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-lg bg-stone-900 text-white flex items-center justify-center font-extrabold text-lg shadow-sm">
@@ -28,8 +29,9 @@ export default function MarketingLayout({
           </nav>
 
           <div className="flex items-center gap-4">
-            <Link 
-              href="/auth/login" 
+            <MobileMenu />
+            <Link
+              href="/auth/login"
               className="hidden md:block text-sm font-semibold text-stone-600 hover:text-stone-900 transition-colors"
             >
               Log in
