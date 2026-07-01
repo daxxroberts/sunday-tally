@@ -91,15 +91,8 @@ export async function signupAction(data: SignupData): Promise<{ error: string } 
     return { error: 'Something went wrong. Try again.' }
   }
 
-  // Step 6 — Seed starter church setup (NON-FATAL). Seeds 3 default ministry tags
-  // (Main Service, Kids Ministry, Youth Ministry) + a pre-filled Sunday Service template
-  // so onboarding step 3 has something to show. Church edits the defaults.
-  const { error: starterSetupError } = await admin.rpc('seed_starter_church_setup', { p_church_id: churchId })
-  if (starterSetupError) {
-    console.error('SIGNUP WARN (Starter setup):', starterSetupError)
-  }
-
-  // Step 7 — Seed starter dashboard widgets (NON-FATAL).
+  // Step 6 — Seed starter dashboard widgets (NON-FATAL).
+  // Template seeding happens in /onboarding/start when user picks their path.
   const { error: widgetSeedError } = await admin.rpc('seed_starter_widgets', { p_church_id: churchId })
   if (widgetSeedError) {
     console.error('SIGNUP WARN (Starter widgets):', widgetSeedError)
@@ -116,5 +109,5 @@ export async function signupAction(data: SignupData): Promise<{ error: string } 
     return { error: 'Account created but sign-in failed. Please sign in manually.' }
   }
 
-  redirect('/onboarding/church')
+  redirect('/onboarding/start')
 }
