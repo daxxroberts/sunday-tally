@@ -159,8 +159,8 @@ export default function LandingPage() {
           </div>
         </div>
 
-        {/* 3D Dashboard Mockup / Parallax Element */}
-        <div ref={containerRef} className="mt-20 relative max-w-5xl mx-auto px-4 [perspective:2000px] z-10">
+        {/* 3D Dashboard Mockup / Parallax Element — desktop only */}
+        <div ref={containerRef} className="hidden md:block mt-20 relative max-w-5xl mx-auto px-4 [perspective:2000px] z-10">
           <motion.div 
             style={{ rotateX, scale, opacity }}
             initial={{ rotateX: 25, scale: 0.8, opacity: 0 }}
