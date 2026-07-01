@@ -439,7 +439,8 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {/* Standard Metrics */}
             <div className="bg-white p-8 rounded-3xl border border-stone-200 shadow-sm flex flex-col">
-              <h3 className="text-lg md:text-xl font-bold text-stone-900 mb-6 pb-2 border-b border-stone-100">Standard Metrics</h3>
+              <h3 className="text-lg md:text-xl font-bold text-stone-900 mb-2 pb-2 border-b border-stone-100">Standard Metrics</h3>
+              <p className="text-xs text-stone-400 font-bold uppercase tracking-wider mt-4 mb-4">Common examples — not a limit:</p>
               <ul className="space-y-3.5 text-sm text-stone-600 font-medium">
                 <li className="flex items-center gap-2.5"><CheckCircle2 className="text-[#4F6EF7] shrink-0" size={18} /> <span>Attendance & online viewers</span></li>
                 <li className="flex items-center gap-2.5"><CheckCircle2 className="text-[#4F6EF7] shrink-0" size={18} /> <span>Weekly giving</span></li>
@@ -450,12 +451,13 @@ export default function LandingPage() {
                 <li className="flex items-center gap-2.5"><CheckCircle2 className="text-[#4F6EF7] shrink-0" size={18} /> <span>Demographic ratios</span></li>
                 <li className="flex items-center gap-2.5"><CheckCircle2 className="text-[#4F6EF7] shrink-0" size={18} /> <span>Service ratios</span></li>
               </ul>
+              <p className="text-xs text-stone-400 italic mt-5 pt-4 border-t border-stone-100">...and any number your church already counts</p>
             </div>
 
             {/* Spiritual Milestones */}
             <div className="bg-white p-8 rounded-3xl border border-stone-200 shadow-sm flex flex-col">
-              <h3 className="text-lg md:text-xl font-bold text-stone-900 mb-6 pb-2 border-b border-stone-100">Spiritual Milestones</h3>
-              <p className="text-xs text-stone-400 font-bold uppercase tracking-wider mb-4">Tracked as distinct categories:</p>
+              <h3 className="text-lg md:text-xl font-bold text-stone-900 mb-2 pb-2 border-b border-stone-100">Spiritual Milestones</h3>
+              <p className="text-xs text-stone-400 font-bold uppercase tracking-wider mt-4 mb-4">Common examples — not a limit:</p>
               <ul className="space-y-3.5 text-sm text-stone-600 font-medium">
                 <li className="flex items-center gap-2.5"><CheckCircle2 className="text-emerald-500 shrink-0" size={18} /> <span>Salvations</span></li>
                 <li className="flex items-center gap-2.5"><CheckCircle2 className="text-emerald-500 shrink-0" size={18} /> <span>Baptisms</span></li>
@@ -463,19 +465,21 @@ export default function LandingPage() {
                 <li className="flex items-center gap-2.5"><CheckCircle2 className="text-emerald-500 shrink-0" size={18} /> <span>Next Steps</span></li>
                 <li className="flex items-center gap-2.5"><CheckCircle2 className="text-emerald-500 shrink-0" size={18} /> <span>Prayer Request Counts</span></li>
               </ul>
+              <p className="text-xs text-stone-400 italic mt-5 pt-4 border-t border-stone-100">...and any life moment your church celebrates</p>
             </div>
 
             {/* Custom Inspiration */}
             <div className="bg-white p-8 rounded-3xl border border-stone-200 shadow-sm flex flex-col">
-              <h3 className="text-lg md:text-xl font-bold text-stone-900 mb-6 pb-2 border-b border-stone-100">Custom Inspiration</h3>
-              <p className="text-xs text-stone-400 font-bold uppercase tracking-wider mb-4">Less obvious metrics tracked by teams:</p>
+              <h3 className="text-lg md:text-xl font-bold text-stone-900 mb-2 pb-2 border-b border-stone-100">Beyond the Obvious</h3>
+              <p className="text-xs text-stone-400 font-bold uppercase tracking-wider mt-4 mb-4">Things other churches track — yours can too:</p>
               <ul className="space-y-3.5 text-sm text-stone-600 font-medium">
-                <li className="flex items-center gap-2.5"><span className="w-1.5 h-1.5 rounded-full bg-stone-450 shrink-0" /> <span>Food pantry visitors served</span></li>
-                <li className="flex items-center gap-2.5"><span className="w-1.5 h-1.5 rounded-full bg-stone-450 shrink-0" /> <span>Benevolence funding requests</span></li>
-                <li className="flex items-center gap-2.5"><span className="w-1.5 h-1.5 rounded-full bg-stone-450 shrink-0" /> <span>Parking lot vehicle counts</span></li>
-                <li className="flex items-center gap-2.5"><span className="w-1.5 h-1.5 rounded-full bg-stone-450 shrink-0" /> <span>Counseling appointment hours</span></li>
-                <li className="flex items-center gap-2.5"><span className="w-1.5 h-1.5 rounded-full bg-stone-450 shrink-0" /> <span>Mission trip applications</span></li>
+                <li className="flex items-center gap-2.5"><span className="w-1.5 h-1.5 rounded-full bg-stone-300 shrink-0" /> <span>Food pantry visitors served</span></li>
+                <li className="flex items-center gap-2.5"><span className="w-1.5 h-1.5 rounded-full bg-stone-300 shrink-0" /> <span>Benevolence funding requests</span></li>
+                <li className="flex items-center gap-2.5"><span className="w-1.5 h-1.5 rounded-full bg-stone-300 shrink-0" /> <span>Parking lot vehicle counts</span></li>
+                <li className="flex items-center gap-2.5"><span className="w-1.5 h-1.5 rounded-full bg-stone-300 shrink-0" /> <span>Counseling appointment hours</span></li>
+                <li className="flex items-center gap-2.5"><span className="w-1.5 h-1.5 rounded-full bg-stone-300 shrink-0" /> <span>Mission trip applications</span></li>
               </ul>
+              <p className="text-xs text-stone-400 italic mt-5 pt-4 border-t border-stone-100">If your ministry tracks it, Sunday Tally can hold it</p>
             </div>
           </div>
         </div>
