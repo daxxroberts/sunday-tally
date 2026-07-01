@@ -2039,7 +2039,8 @@ function TallyChatbot() {
             initial={{ opacity: 0, y: 10, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 5, scale: 0.95 }}
-            className="fixed bottom-24 right-6 z-50 bg-stone-900 text-white border border-stone-800 rounded-2xl px-4 py-3 shadow-2xl flex items-center gap-3 max-w-[280px]"
+            className="fixed right-6 z-50 bg-stone-900 text-white border border-stone-800 rounded-2xl px-4 py-3 shadow-2xl flex items-center gap-3 max-w-[280px]"
+            style={{ bottom: 'calc(6rem + env(safe-area-inset-bottom, 0px))' }}
           >
             <span className="text-xs font-semibold leading-snug">
               The fastest way to learn about Sunday Tally
@@ -2064,7 +2065,8 @@ function TallyChatbot() {
       <button
         type="button"
         onClick={handleToggleChat}
-        className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-tr from-[#4F6EF7] to-[#06B6D4] text-white shadow-2xl hover:scale-105 active:scale-95 transition-transform duration-200 cursor-pointer border-0 outline-none"
+        className="fixed right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-tr from-[#4F6EF7] to-[#06B6D4] text-white shadow-2xl hover:scale-105 active:scale-95 transition-transform duration-200 cursor-pointer border-0 outline-none"
+        style={{ bottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))' }}
         title="Ask Tally AI"
       >
         {isOpen ? (
@@ -2084,7 +2086,8 @@ function TallyChatbot() {
           initial={{ opacity: 0, y: 50, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ duration: 0.25, type: 'spring', stiffness: 300, damping: 25 }}
-          className="fixed bottom-24 right-6 z-50 w-96 h-[500px] max-h-[calc(100vh-120px)] bg-white/95 border border-stone-200 rounded-[2rem] shadow-2xl backdrop-blur-xl flex flex-col overflow-hidden"
+          className="fixed right-6 z-50 w-96 h-[500px] max-h-[calc(100vh-120px)] bg-white/95 border border-stone-200 rounded-[2rem] shadow-2xl backdrop-blur-xl flex flex-col overflow-hidden"
+          style={{ bottom: 'calc(6rem + env(safe-area-inset-bottom, 0px))' }}
         >
           {/* Header */}
           <div className="bg-gradient-to-r from-stone-900 to-stone-950 px-6 py-4 text-white flex justify-between items-center border-b border-stone-800">
