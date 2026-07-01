@@ -6,7 +6,7 @@
 -- /onboarding/start when user picks Template 2 — non-fatal.
 -- ============================================================
 -- Template structure:
---   Ministries:  Main Service · Kids Ministry · Youth Ministry · Church-Wide
+--   Ministries:  Adult Ministry · Kids Ministry · Youth Ministry · Church-Wide
 --   Services:    First Service  (9:00 AM, Sun)  — Main + Kids
 --                Second Service (10:30 AM, Sun)  — Main + Kids
 --                Youth Night    (6:30 PM, Wed)   — Youth only
@@ -47,13 +47,13 @@ BEGIN
   -- ── 1. Ministry tags ────────────────────────────────────────
   INSERT INTO service_tags (church_id, name, code, tag_role, is_custom, display_order, is_active)
   VALUES
-    (p_church_id, 'Main Service',   'MAIN_SERVICE', 'ADULT_SERVICE',  false, 1, true),
+    (p_church_id, 'Adult Ministry', 'ADULT_MINISTRY', 'ADULT_SERVICE',  false, 1, true),
     (p_church_id, 'Kids Ministry',  'KIDS',         'KIDS_MINISTRY',  false, 2, true),
     (p_church_id, 'Youth Ministry', 'YOUTH',        'YOUTH_MINISTRY', false, 3, true),
     (p_church_id, 'Church-Wide',    'CHURCH_WIDE',  'OTHER',          false, 4, true)
   ON CONFLICT (church_id, code) DO NOTHING;
 
-  SELECT id INTO v_main_tag_id  FROM service_tags WHERE church_id = p_church_id AND code = 'MAIN_SERVICE';
+  SELECT id INTO v_main_tag_id  FROM service_tags WHERE church_id = p_church_id AND code = 'ADULT_MINISTRY';
   SELECT id INTO v_kids_tag_id  FROM service_tags WHERE church_id = p_church_id AND code = 'KIDS';
   SELECT id INTO v_youth_tag_id FROM service_tags WHERE church_id = p_church_id AND code = 'YOUTH';
   SELECT id INTO v_cwide_tag_id FROM service_tags WHERE church_id = p_church_id AND code = 'CHURCH_WIDE';
@@ -121,7 +121,7 @@ BEGIN
   VALUES
     -- Main Service — instance
     (p_church_id, 'Adult Attendance', v_main_tag_id,  v_rt_attendance, 'instance', NULL,   true, true, NULL),
-    (p_church_id, 'Volunteers',       v_main_tag_id,  v_rt_volunteers, 'instance', NULL,   true, true, NULL),
+    (p_church_id, 'Adult Volunteers',  v_main_tag_id,  v_rt_volunteers, 'instance', NULL,   true, true, NULL),
     (p_church_id, 'Salvations',       v_main_tag_id,  v_rt_response,   'instance', NULL,   true, true, NULL),
     -- Kids Ministry (volunteers are adults/teachers serving kids)
     (p_church_id, 'Kids Attendance',  v_kids_tag_id,  v_rt_attendance, 'instance', NULL,   true, true, NULL),
@@ -142,10 +142,10 @@ GRANT EXECUTE ON FUNCTION seed_template2_church_setup(UUID) TO authenticated;
 -- ============================================================
 -- MIGRATION COMPLETE
 -- New function: seed_template2_church_setup(UUID)
---   Ministry tags: Main Service  (MAIN_SERVICE/ADULT_SERVICE)
---                  Kids Ministry (KIDS/KIDS_MINISTRY)
---                  Youth Ministry(YOUTH/YOUTH_MINISTRY)
---                  Church-Wide   (CHURCH_WIDE/OTHER — giving only)
+--   Ministry tags: Adult Ministry (ADULT_MINISTRY/ADULT_SERVICE)
+--                  Kids Ministry  (KIDS/KIDS_MINISTRY)
+--                  Youth Ministry (YOUTH/YOUTH_MINISTRY)
+--                  Church-Wide    (CHURCH_WIDE/OTHER — giving only)
 --   Services:   First Service  (Sun 9:00 AM) — Main + Kids
 --               Second Service (Sun 10:30 AM) — Main + Kids
 --               Youth Night    (Wed 6:30 PM) — Youth only

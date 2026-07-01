@@ -16,8 +16,8 @@ const T1_SERVICES = [
 ]
 
 const T2_SERVICES = [
-  { day: 'Sun', time: '9:00 AM',  name: 'First Service',  note: 'Main · Kids' },
-  { day: 'Sun', time: '10:30 AM', name: 'Second Service', note: 'Main · Kids' },
+  { day: 'Sun', time: '9:00 AM',  name: 'First Service',  note: 'Adult · Kids' },
+  { day: 'Sun', time: '10:30 AM', name: 'Second Service', note: 'Adult · Kids' },
   { day: 'Wed', time: '6:30 PM',  name: 'Youth Night',    note: 'Youth only' },
 ]
 
