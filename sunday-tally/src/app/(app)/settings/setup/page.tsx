@@ -18,16 +18,14 @@ import { ServicesPanel } from '@/app/(app)/settings/services/page'
 import { TrackPanel } from '@/app/(app)/settings/track/page'
 import { LocationsPanel } from '@/app/(app)/settings/locations/page'
 import { TotalsRulesPanel } from '@/app/(app)/settings/setup/TotalsRulesPanel'
-import { OccurrencesPanel } from '@/app/(app)/settings/setup/OccurrencesPanel'
 
-type TabKey = 'track' | 'services' | 'occurrences' | 'locations' | 'totals'
+type TabKey = 'track' | 'services' | 'locations' | 'totals'
 
 const TABS: { key: TabKey; label: string; href?: string }[] = [
-  { key: 'track',       label: 'What we track' },
-  { key: 'services',    label: 'Services' },
-  { key: 'occurrences', label: 'Occurrences' },
-  { key: 'locations',   label: 'Locations and Teams' },
-  { key: 'totals',      label: 'Totals' },
+  { key: 'track',     label: 'What we track' },
+  { key: 'services',  label: 'Services and Occurrences' },
+  { key: 'locations', label: 'Locations and Teams' },
+  { key: 'totals',    label: 'Totals' },
 ]
 
 export default function SetupWorkspacePage() {
@@ -126,11 +124,10 @@ export default function SetupWorkspacePage() {
 
         {/* ── Scrollable panel region — lazy-mounted, kept alive, toggled ──── */}
         <div className="min-h-0 flex-1 overflow-y-auto pb-6">
-          {mounted.has('track')       && <div className={active === 'track'       ? '' : 'hidden'}><TrackPanel       embedded /></div>}
-          {mounted.has('services')   && <div className={active === 'services'   ? '' : 'hidden'}><ServicesPanel    embedded /></div>}
-          {mounted.has('occurrences')&& <div className={active === 'occurrences'? '' : 'hidden'}><OccurrencesPanel embedded /></div>}
-          {mounted.has('locations')  && <div className={active === 'locations'  ? '' : 'hidden'}><LocationsPanel   embedded /></div>}
-          {mounted.has('totals')     && <div className={active === 'totals'     ? '' : 'hidden'}><TotalsRulesPanel embedded /></div>}
+          {mounted.has('track')     && <div className={active === 'track'     ? '' : 'hidden'}><TrackPanel     embedded /></div>}
+          {mounted.has('services')  && <div className={active === 'services'  ? '' : 'hidden'}><ServicesPanel  embedded /></div>}
+          {mounted.has('locations') && <div className={active === 'locations' ? '' : 'hidden'}><LocationsPanel embedded /></div>}
+          {mounted.has('totals')    && <div className={active === 'totals'    ? '' : 'hidden'}><TotalsRulesPanel embedded /></div>}
         </div>
       </div>
     </AppLayout>
