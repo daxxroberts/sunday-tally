@@ -20,6 +20,8 @@ export interface ChurchEmailData {
   planMonthly: number
   locations: number
   urls: { billing: string; dashboard: string; account: string; help: string }
+  hasCompletedSetup: boolean
+  hasLoggedEntry: boolean
 }
 
 const TIER_LABEL: Record<string, string> = {
@@ -45,12 +47,29 @@ export async function getChurchEmailData(
 ): Promise<ChurchEmailData> {
   const base = appBase()
 
-  const [estimate, statsRes, profileRes] = await Promise.all([
+  const [estimate, statsRes, profileRes, scheduleRes, entryRes] = await Promise.all([
     getSetupEstimate(supabase, churchId),
     supabase.rpc('church_email_stats', { p_church_id: churchId }),
     ownerUserId
       ? supabase.from('user_profiles').select('full_name').eq('id', ownerUserId).maybeSingle()
       : Promise.resolve({ data: null } as { data: { full_name?: string | null } | null }),
+    // has_completed_setup: at least one active schedule exists for this church
+    // (service_schedule_versions has no direct church_id — joined via
+    // service_templates, the FK PostgREST can embed-filter on).
+    supabase
+      .from('service_schedule_versions')
+      .select('id, service_templates!inner(church_id)')
+      .eq('service_templates.church_id', churchId)
+      .eq('is_active', true)
+      .limit(1),
+    // has_logged_entry: at least one metric_entries row with a real value
+    // (NULL value = a blank slot that was never filled in).
+    supabase
+      .from('metric_entries')
+      .select('id')
+      .eq('church_id', churchId)
+      .not('value', 'is', null)
+      .limit(1),
   ])
 
   const raw = (statsRes.data ?? {}) as Record<string, unknown>
@@ -73,7 +92,9 @@ export async function getChurchEmailData(
       billing: `${base}/settings/account?tab=billing`,
       dashboard: `${base}/dashboard`,
       account: `${base}/settings/account`,
-      help: `${base}`,
+      help: `${base}/contact`,
     },
+    hasCompletedSetup: (scheduleRes.data?.length ?? 0) > 0,
+    hasLoggedEntry: (entryRes.data?.length ?? 0) > 0,
   }
 }

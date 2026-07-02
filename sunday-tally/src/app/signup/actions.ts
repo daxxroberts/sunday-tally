@@ -7,6 +7,12 @@
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { sendEmail } from '@/lib/email/resend'
+import { getChurchEmailData } from '@/lib/email/churchEmailData'
+
+function appUrl(): string {
+  return process.env.NEXT_PUBLIC_APP_URL ?? 'https://sundaytally.church'
+}
 
 interface SignupData {
   churchName: string
@@ -96,6 +102,30 @@ export async function signupAction(data: SignupData): Promise<{ error: string } 
   const { error: widgetSeedError } = await admin.rpc('seed_starter_widgets', { p_church_id: churchId })
   if (widgetSeedError) {
     console.error('SIGNUP WARN (Starter widgets):', widgetSeedError)
+  }
+
+  // Step 7 — Send the welcome email (NON-FATAL). Deduped via notifications_sent
+  // the same way the crons dedupe, so a retried signup never double-sends.
+  const { data: priorWelcome } = await admin
+    .from('notifications_sent')
+    .select('id')
+    .eq('church_id', churchId)
+    .eq('kind', 'welcome')
+    .maybeSingle()
+  if (!priorWelcome) {
+    const ed = await getChurchEmailData(admin, churchId!, userId)
+    const welcomeResult = await sendEmail(data.email, 'welcome', {
+      churchName: data.churchName,
+      firstName: ed.firstName,
+      onboardingUrl: `${appUrl()}/onboarding/start`,
+      dashboardUrl: ed.urls.dashboard,
+      helpUrl: ed.urls.help,
+    })
+    if (welcomeResult.error) {
+      console.error('SIGNUP WARN (Welcome email):', welcomeResult.error)
+    } else {
+      await admin.from('notifications_sent').insert({ church_id: churchId, kind: 'welcome' })
+    }
   }
 
   const supabase = await createClient()

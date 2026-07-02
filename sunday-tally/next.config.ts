@@ -18,12 +18,6 @@ const nextConfig: NextConfig = {
         destination: '/#features',
         permanent: true,
       },
-      {
-        // Contact page retired — send any stale links to the homepage.
-        source: '/contact',
-        destination: '/',
-        permanent: true,
-      },
     ];
   },
 };
