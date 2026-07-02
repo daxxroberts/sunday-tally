@@ -13,7 +13,17 @@
 import { createClient } from '@/lib/supabase/server'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { createAndSendInvite, type InviteRole } from '@/lib/invites'
+import { resolveMember, isOwnerAdmin, type MemberRole } from '@/lib/supabase/auth-helpers'
 import { revalidatePath } from 'next/cache'
+
+// Roles a caller may grant (mirrors /settings/team allowedInviteRoles). An owner
+// can invite admin/editor/viewer; an admin can invite editor/viewer; nobody mints
+// another owner through the invite path.
+function allowedInviteRoles(callerRole: MemberRole): InviteRole[] {
+  if (callerRole === 'owner') return ['admin', 'editor', 'viewer']
+  if (callerRole === 'admin') return ['editor', 'viewer']
+  return []
+}
 
 export async function getTeamData() {
   const supabase = await createClient()
@@ -52,10 +62,27 @@ export async function getTeamData() {
 export async function sendInviteAction(
   email: string,
   role: string,
-  churchId: string
+  _churchId: string  // advisory/UI only — the church is taken from the caller's own membership
 ): Promise<{ error?: string; sent?: boolean }> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  // S2 AUTHZ: createAndSendInvite() is a service-role (RLS-bypassing) insert and
+  // enforces nothing — the caller owns authz. Resolve the caller's own active
+  // membership; only owner/admin may invite, only into THEIR church, and only
+  // the roles they're allowed to grant. The client-passed churchId/role are
+  // never trusted (they could target another church or escalate to owner).
+  const auth = await resolveMember()
+  if (!auth.ok) return { error: 'Please sign in again to send invites.' }
+  const caller = auth.member
+  if (!isOwnerAdmin(caller.role)) return { error: 'Not allowed.' }
+
+  const grantRole = role as InviteRole
+  if (!allowedInviteRoles(caller.role).includes(grantRole)) {
+    return { error: 'You can’t assign that role.' }
+  }
+
+  const cleanEmail = email.trim().toLowerCase()
+  if (!cleanEmail || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(cleanEmail)) {
+    return { error: 'Enter a valid email.' }
+  }
 
   // CANONICAL invite (D-009): 32-byte token → church_invites row (status
   // 'pending' + expires_at) → branded Resend invite carrying the
@@ -64,10 +91,10 @@ export async function sendInviteAction(
   // identical in shape to the Members screen's, so /settings/team lists
   // onboarding-created invites correctly.
   const result = await createAndSendInvite({
-    churchId,
-    email,
-    role: role as InviteRole,
-    invitedBy: user?.id ?? null,
+    churchId: caller.churchId,
+    email: cleanEmail,
+    role: grantRole,
+    invitedBy: caller.userId,
   })
   if (result.error) return { error: result.error }
 
@@ -79,6 +106,12 @@ export async function removeMemberAction(membershipId: string): Promise<{ error?
   const supabase = await createClient()
   const admin = createServiceRoleClient()
 
+  // S2 AUTHZ: the deactivate+signOut below run on the service role (RLS bypassed),
+  // so gate it here — only an owner/admin, and only within their own church.
+  const auth = await resolveMember(supabase)
+  if (!auth.ok) return { error: 'Please sign in again.' }
+  if (!isOwnerAdmin(auth.member.role)) return { error: 'Not allowed.' }
+
   // N65: last owner protection
   const { data: membership } = await supabase
     .from('church_memberships')
@@ -87,6 +120,7 @@ export async function removeMemberAction(membershipId: string): Promise<{ error?
     .single()
 
   if (!membership) return { error: 'Member not found.' }
+  if (membership.church_id !== auth.member.churchId) return { error: 'Member not found.' }
 
   if (membership.role === 'owner') {
     const { data: owners } = await supabase
@@ -108,6 +142,11 @@ export async function removeMemberAction(membershipId: string): Promise<{ error?
 
 export async function cancelInviteAction(inviteId: string): Promise<{ error?: string }> {
   const supabase = await createClient()
+  // S2 AUTHZ: only owner/admin may cancel; RLS additionally scopes the row to
+  // the caller's church, so an inviteId from another church cannot be cancelled.
+  const auth = await resolveMember(supabase)
+  if (!auth.ok) return { error: 'Please sign in again.' }
+  if (!isOwnerAdmin(auth.member.role)) return { error: 'Not allowed.' }
   // Soft-cancel via status (keeps an audit row) instead of a hard DELETE so the
   // canonical Members screen's status-based list (status IN pending/expired)
   // correctly hides cancelled invites.

@@ -14,7 +14,15 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { resolveWindow, validateSpec, describeSpec, weeklyAvgByBucket } from './compile'
+import {
+  resolveWindow,
+  validateSpec,
+  describeSpec,
+  weeklyAvgByBucket,
+  planMinistryFilter,
+  compileAndRun,
+  type MinistryTagRow,
+} from './compile'
 import type { WidgetSpec } from './spec'
 
 const NOW = new Date('2026-06-08T12:00:00Z')
@@ -365,5 +373,116 @@ describe('weeklyAvgByBucket — multi-service Sunday roll-up', () => {
       { d: '2026-05-10', v: 200 },
     ]
     expect(weeklyAvgByBucket(raw, plan, 'month')).toEqual([['2026-05', (243 + 200) / 2]])
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// planMinistryFilter — container ministry (mirrored metrics, 0051)
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('planMinistryFilter', () => {
+  // Kids is a container: its data lives in Crawlers + Walkers (children). Experience
+  // is a plain ministry with no children.
+  const tags: MinistryTagRow[] = [
+    { id: 'k0', code: 'KIDS',       parent_tag_id: null, archived_at: null },
+    { id: 'k1', code: 'CRAWLERS',   parent_tag_id: 'k0', archived_at: null },
+    { id: 'k2', code: 'WALKERS',    parent_tag_id: 'k0', archived_at: null },
+    { id: 'k3', code: 'OLD_GROUP',  parent_tag_id: 'k0', archived_at: '2026-01-01T00:00:00Z' },
+    { id: 'e0', code: 'EXPERIENCE', parent_tag_id: null, archived_at: null },
+  ]
+
+  it('expands a container ministry to include its live child groups', () => {
+    const r = planMinistryFilter(['KIDS'], tags)
+    expect(r.codes.sort()).toEqual(['CRAWLERS', 'KIDS', 'WALKERS'])
+    expect(r.containerCodes).toEqual(['KIDS'])
+    expect(r.unknown).toBe(false)
+  })
+
+  it('does not include an archived child group in the expansion', () => {
+    const r = planMinistryFilter(['KIDS'], tags)
+    expect(r.codes).not.toContain('OLD_GROUP')
+  })
+
+  it('leaves a plain (childless) ministry untouched and unflagged', () => {
+    const r = planMinistryFilter(['EXPERIENCE'], tags)
+    expect(r.codes).toEqual(['EXPERIENCE'])
+    expect(r.containerCodes).toEqual([])
+  })
+
+  it('does not flag a child group itself as a container', () => {
+    const r = planMinistryFilter(['CRAWLERS'], tags)
+    expect(r.codes).toEqual(['CRAWLERS'])
+    expect(r.containerCodes).toEqual([])
+  })
+
+  it('reports unknown when no requested code matches a live tag', () => {
+    const r = planMinistryFilter(['NOPE'], tags)
+    expect(r.unknown).toBe(true)
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// compileAndRun — container-ministry empty-result hint (0051)
+//
+// compileAndRun needs a Supabase client; the pure functions above are the primary
+// coverage. Here we use a minimal chainable stub to prove the ONE new integration
+// behavior: a ministry filter that resolves to a container and comes back empty
+// returns an explanatory `error`, not silent "No data" rows.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** A thenable PostgREST-style query stub: every builder method returns `this`;
+ *  awaiting it (or .range()) yields { data, error }. The service_tags read is
+ *  awaited directly; the view read ends in .range(). */
+function makeSupabaseStub(tagRows: unknown[], viewRows: unknown[]) {
+  const make = (rows: unknown[]) => {
+    const q: Record<string, unknown> = {}
+    const passthrough = () => q
+    for (const m of ['select', 'eq', 'gte', 'lte', 'in', 'order', 'not', 'is']) q[m] = passthrough
+    // range() resolves the view fetch.
+    q.range = () => Promise.resolve({ data: rows, error: null })
+    // Make the builder itself awaitable (service_tags read awaits without .range()).
+    q.then = (resolve: (v: unknown) => unknown) => resolve({ data: rows, error: null })
+    return q
+  }
+  return {
+    from: (table: string) => make(table === 'service_tags' ? tagRows : viewRows),
+  } as unknown as Parameters<typeof compileAndRun>[0]['supabase']
+}
+
+describe('compileAndRun — container-ministry hint', () => {
+  const KIDS_TAGS = [
+    { id: 'k0', code: 'KIDS',     parent_tag_id: null, archived_at: null },
+    { id: 'k1', code: 'CRAWLERS', parent_tag_id: 'k0', archived_at: null },
+    { id: 'k2', code: 'WALKERS',  parent_tag_id: 'k0', archived_at: null },
+  ]
+  const spec: WidgetSpec = {
+    version: 1,
+    source: 'metric_entries_readable',
+    measure: { reporting_tag_code: 'ATTENDANCE', agg: 'sum' },
+    dimensions: [],
+    filters: {
+      date: { window: 'trailing', count: 12, unit: 'month' },
+      ministry_tag_codes: ['KIDS'],
+    },
+    viz: { kind: 'metric_card', title: 'Kids attendance' },
+  }
+
+  it('returns an explanatory error (not empty rows) for an empty container filter', async () => {
+    const supabase = makeSupabaseStub(KIDS_TAGS, []) // container matched, but no entries in-window
+    const res = await compileAndRun({ supabase, churchId: 'c1', spec, now: NOW })
+    expect(res.rows).toEqual([])
+    expect(res.error).toBeDefined()
+    expect(res.error).toMatch(/KIDS/)
+    expect(res.error).toMatch(/parent ministry|subgroups|roll-up/i)
+  })
+
+  it('does NOT emit the hint when the container filter returns data', async () => {
+    const viewRows = [
+      { effective_date: '2026-05-03', value: 40, is_not_applicable: false, reporting_tag_code: 'ATTENDANCE', ministry_tag_code: 'CRAWLERS', service_instance_id: null },
+    ]
+    const supabase = makeSupabaseStub(KIDS_TAGS, viewRows)
+    const res = await compileAndRun({ supabase, churchId: 'c1', spec, now: NOW })
+    expect(res.error).toBeUndefined()
+    expect(res.rows).toEqual([{ value: 40 }])
   })
 })

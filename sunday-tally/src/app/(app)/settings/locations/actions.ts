@@ -148,6 +148,17 @@ export async function checkLocationDataAction(locationId: string) {
   const caller = await resolveMember(sb)
   if (!caller.ok || !isOwnerAdmin(caller.member.role)) return { error: 'Unauthorized' }
 
+  // Scope the target to the caller's church via an RLS-checked read BEFORE probing
+  // on the service role — the counts below filter by location_id only, so without
+  // this a locationId from another church would leak its has-data status.
+  const { data: loc } = await sb
+    .from('church_locations')
+    .select('id')
+    .eq('id', locationId)
+    .eq('church_id', caller.member.churchId)
+    .maybeSingle()
+  if (!loc) return { error: 'Location not found.' }
+
   const adminSb = await createServiceRoleClient()
   const [tmplCheck, entryCheck, instCheck] = await Promise.all([
     adminSb.from('service_templates').select('id', { count: 'exact', head: true }).eq('location_id', locationId),

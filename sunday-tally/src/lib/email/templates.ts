@@ -349,16 +349,23 @@ export function renderEmail(template: EmailTemplate, d: TemplateData): { subject
         }),
       }
     case 'trialLapsedWinback':
+      // #58 — this win-back also fires for formerly-PAYING churches whose
+      // subscription lapsed (see nurture-sequence cron: candidates are any
+      // church with expired_at set and no live subscription, which includes
+      // both an app-managed trial running out AND a paid subscription's
+      // current_period_end passing — lib/billing/lifecycle.ts computeCalendarExpiry).
+      // "Your trial ended" is simply false for that second group, so the copy
+      // stays neutral about WHY access paused instead of asserting "trial ended."
       return {
         subject: `Your numbers are still here when you're ready`,
         html: shell({
           d: dd,
-          preheader: `${church}'s trial ended, but nothing is gone.`,
+          preheader: `${church}'s access paused, but nothing is gone.`,
           chip: chip('We saved your spot', GOLD_TINT, '#8A6608'),
           headline: `Your numbers are still here.`,
-          intro: `<strong style="color:${INK};">${church}</strong>'s trial ended, but nothing is gone. Pick a plan and pick up right where you left off.`,
+          intro: `<strong style="color:${INK};">${church}</strong>'s access paused, but nothing is gone. Pick a plan and pick up right where you left off.`,
           body: `${statStrip(dd)}${planCard(dd)}<div style="padding-top:14px;">${button(billing, 'Come back and pick up where you left off')}${backLink(dd.dashboardUrl, 'Open your dashboard →')}</div>`,
-          footerNote: `You're getting this about your Sunday Tally trial.`,
+          footerNote: `You're getting this about your Sunday Tally account.`,
         }),
       }
   }

@@ -1,95 +1,160 @@
 'use client'
 
 // ─────────────────────────────────────────────────────────────────────────
-// MetricRowItem — name + mode toggle + (entry: rolls-up-into) / (rollup: op)
+// MetricRowItem — one count in a section (mirrored-metrics editor).
+//
+// Each row leads with a color-coded KIND pill (abbreviated; hover for the full
+// word), then the name, an optional demographic (Attendance / Volunteers), and
+// — for the owning ministry — Remove + (on a ministry count) a quiet "move
+// between sections" link. Rows are indented under their section header. There
+// is NO entry/roll-up toggle: the section a count lives in IS its kind.
+//
+//   • template      — a count every subgroup mirrors; the ministry shows the total.
+//   • ministry_only — counted at the ministry as a whole; offers "move to every
+//                      subgroup" (free move — its existing entries stay put and
+//                      still count even after the move; server-side only blocks
+//                      when the ministry already counts that kind the other way).
+//   • group_only    — counted just for this subgroup.
+//   • mirror        — the template as seen in a subgroup: GHOSTED + LOCKED.
 // ─────────────────────────────────────────────────────────────────────────
 
 import { useState } from 'react'
 import InlineEditField from '@/components/shared/InlineEditField'
+import { Tooltip } from '@/components/shared/Tooltip'
 import { Ico, roleLabel } from '@/app/(app)/entries/ui'
-import type { MetricMode, RollupOp, TagRole } from '../actions'
-import { OP_LABEL, ROLE_OPTIONS, type Metric } from '../types'
+import type { TagRole } from '../actions'
+import { ROLE_OPTIONS, type Metric } from '../types'
+
+// Small lock glyph (no `lock` in Ico) — matches the shared stroke style.
+function LockIco(p: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <rect width="18" height="11" x="3" y="11" rx="2" />
+      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+    </svg>
+  )
+}
+
+// Abbreviated + color-coded kind pill. Full word on hover.
+const KIND_STYLE: Record<string, { abbr: string; cls: string }> = {
+  ATTENDANCE:    { abbr: 'ATT',  cls: 'bg-indigo-50 text-indigo-700' },
+  VOLUNTEERS:    { abbr: 'VOL',  cls: 'bg-amber-50 text-amber-700' },
+  RESPONSE_STAT: { abbr: 'STAT', cls: 'bg-violet-50 text-violet-700' },
+  GIVING:        { abbr: 'GIV',  cls: 'bg-emerald-50 text-emerald-700' },
+}
+function KindChip({ code, label }: { code?: string; label?: string }) {
+  if (!code && !label) return null
+  const s = (code && KIND_STYLE[code]) || { abbr: (label ?? '').slice(0, 4).toUpperCase(), cls: 'bg-slate-100 text-slate-600' }
+  const full = label || code
+  // tabIndex + aria-label make the full word reachable by keyboard/screen
+  // reader, not just mouse hover — the Tooltip only opens on focus if its
+  // child can actually receive focus (review finding #62).
+  const chip = (
+    <span
+      tabIndex={full ? 0 : undefined}
+      aria-label={full}
+      className={`inline-flex h-5 shrink-0 items-center rounded px-1.5 text-[10px] font-semibold uppercase leading-none tracking-wide outline-none focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/40 ${s.cls}`}
+    >
+      {s.abbr}
+    </span>
+  )
+  return full ? <Tooltip className="inline-flex shrink-0 items-center" text={full}>{chip}</Tooltip> : chip
+}
 
 export function MetricRowItem({
-  metric, write, eligibleParents, parentLabel, unreferenced, childCount,
-  showDemographic, inheritedRole,
-  onRename, onRemove, onSetMode, onSetParent, onSetOp, onSetDemographic,
+  metric, write, kindCode, kindLabel, showDemographic, inheritedRole, ministryName,
+  onRename, onRemove, onSetDemographic, onMoveSection,
 }: {
   metric: Metric
   write: boolean
-  eligibleParents: Metric[]
-  parentLabel: (m: Metric) => string
-  unreferenced: boolean
-  childCount: number
+  /** Reporting kind code (ATTENDANCE / VOLUNTEERS / …) — drives the pill. */
+  kindCode?: string
+  /** Full kind word, shown on hover of the pill. */
+  kindLabel?: string
   /** Attendance / Volunteers counts can carry a per-count demographic. */
   showDemographic: boolean
   /** The ministry's role — the default this count inherits when not overridden. */
   inheritedRole: TagRole
+  /** Owning ministry name — used in the locked mirror's "from {ministry}" note. */
+  ministryName?: string
   onRename: (name: string) => Promise<void>
   onRemove: () => void
-  onSetMode: (mode: MetricMode, op?: RollupOp) => void
-  onSetParent: (parentId: string | null) => void
-  onSetOp: (op: RollupOp) => void
   onSetDemographic: (demographic: TagRole | null) => void
+  /** ministry-level counts only: move between "at the ministry" and "every
+   *  subgroup". Omit to hide the link. Free move — existing entries stay and
+   *  keep counting; the server only blocks when this ministry already counts
+   *  that kind the other way (decision 8). */
+  onMoveSection?: () => void
 }) {
   const [confirmRemove, setConfirmRemove] = useState(false)
-  const isRollup = metric.mode === 'rollup'
-  // Period = weekly/monthly church-wide (Stat Entries; e.g. Giving). Shown with
-  // a cadence badge; service-bound controls (mode/rolls-up-into) don't apply.
+  const isMirror = metric.metric_role === 'mirror'
+  // Period = weekly/monthly church-wide (e.g. Giving). Shown with a cadence badge.
   const isPeriod = metric.scope === 'period'
 
+  // ── Locked mirror row: ghosted, no controls, a lock + "from {ministry}". ──
+  if (isMirror) {
+    return (
+      <li className="flex items-center gap-2 py-3 pl-8 pr-5 opacity-60">
+        <LockIco className="h-3.5 w-3.5 shrink-0 text-slate-400" aria-hidden />
+        <KindChip code={kindCode} label={kindLabel} />
+        <span className="text-[14px] font-medium text-slate-600">{metric.name}</span>
+        {showDemographic && metric.counted_demographic && (
+          <span className="shrink-0 rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+            Counts {roleLabel(metric.counted_demographic)}
+          </span>
+        )}
+        <Tooltip className="ml-auto shrink-0" text="This count comes from the ministry. Edit it on the ministry and every subgroup updates together.">
+          <span className="text-[11px] text-slate-400">from {ministryName ?? 'the ministry'}</span>
+        </Tooltip>
+      </li>
+    )
+  }
+
   return (
-    <li className="group px-5 py-3 transition-colors duration-200 hover:bg-slate-50">
+    <li className="group py-3 pl-8 pr-5 transition-colors duration-200 hover:bg-slate-50">
       <div className="flex items-center gap-3">
         <div className="flex-1 min-w-0 flex items-center gap-2">
+          <KindChip code={kindCode} label={kindLabel} />
           {write ? (
             <InlineEditField value={metric.name} onSave={onRename} aria-label={metric.name} className="text-[14px] font-medium text-slate-800" />
           ) : (
             <span className="text-[14px] font-medium text-slate-800">{metric.name}</span>
           )}
           {isPeriod && (
-            <span className="shrink-0 rounded-md bg-[#4F6EF7]/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#3D5BD4]" title="One number for the whole church, once a week. You set the schedule in Services and Occurrences.">
-              {metric.cadence === 'month' ? 'Monthly' : 'Weekly'} · church-wide
-            </span>
+            <Tooltip className="shrink-0" text="One number for the whole church, once a week. You set the schedule in Services and Occurrences.">
+              <span className="rounded-md bg-[#4F6EF7]/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#3D5BD4]">
+                {metric.cadence === 'month' ? 'Monthly' : 'Weekly'} · church-wide
+              </span>
+            </Tooltip>
           )}
           {/* View-only: show an explicit demographic when it differs from the ministry default. */}
           {!write && showDemographic && metric.counted_demographic && (
-            <span className="shrink-0 rounded-md bg-[#4F6EF7]/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#3D5BD4]" title="Who this count counts.">
-              Counts {roleLabel(metric.counted_demographic)}
-            </span>
+            <Tooltip className="shrink-0" text="Who this count counts.">
+              <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                Counts {roleLabel(metric.counted_demographic)}
+              </span>
+            </Tooltip>
           )}
         </div>
 
         {write && (
-          <div className="flex shrink-0 items-center gap-1">
-            {/* who-are-you-counting (Attendance / Volunteers only). Blank = inherit
-                the ministry; a pick is an explicit demographic for this count. */}
+          <div className="flex shrink-0 items-center justify-end gap-1.5">
+            {/* who-are-you-counting (Attendance / Volunteers only). Uniform neutral
+                styling; the "· default" label carries whether it's inherited. A
+                template's pick propagates to its mirrors (server-side). Sits right
+                next to the trash can — both pinned to the row's right edge. */}
             {showDemographic && (
-              <select
-                value={metric.counted_demographic ?? ''}
-                onChange={e => onSetDemographic(e.target.value ? (e.target.value as TagRole) : null)}
-                aria-label="Who are you counting?"
-                title="Who you're actually counting here. Defaults to this ministry — change it to count a different group (e.g. students serving in the adult ministry)."
-                className={`mr-1 rounded-lg border px-2 py-1 text-[12px] outline-none focus:border-[#4F6EF7] ${metric.counted_demographic ? 'border-[#4F6EF7]/50 bg-[#4F6EF7]/5 font-semibold text-[#3D5BD4]' : 'border-slate-200 bg-white text-slate-500'}`}
-              >
-                <option value="">{roleLabel(inheritedRole)} · default</option>
-                {ROLE_OPTIONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
-              </select>
-            )}
-            {/* mode toggle (service-bound metrics only) */}
-            {!isPeriod && (
-            <div className="flex overflow-hidden rounded-lg border border-slate-200 text-[11px] font-semibold">
-              <button
-                onClick={() => onSetMode('entry')}
-                title="You count this and type it in every week."
-                className={`px-2 py-1 transition-colors ${!isRollup ? 'bg-[#4F6EF7] text-white' : 'bg-white text-slate-500 hover:bg-slate-50'}`}
-              >Entry</button>
-              <button
-                onClick={() => onSetMode('rollup', metric.rollup_op ?? 'sum')}
-                title="The math is done for you. This one adds up other counts automatically — you never type it."
-                className={`whitespace-nowrap px-2 py-1 transition-colors ${isRollup ? 'bg-[#4F6EF7] text-white' : 'bg-white text-slate-500 hover:bg-slate-50'}`}
-              >Roll up sub-entries</button>
-            </div>
+              <Tooltip className="inline-flex items-center" text="Who you're actually counting here. Defaults to this ministry — change it to count a different group (e.g. students serving in the adult ministry).">
+                <select
+                  value={metric.counted_demographic ?? ''}
+                  onChange={e => onSetDemographic(e.target.value ? (e.target.value as TagRole) : null)}
+                  aria-label="Who are you counting?"
+                  className="h-7 rounded-lg border border-slate-200 bg-white px-2 text-[12px] text-slate-600 outline-none focus:border-[#4F6EF7]"
+                >
+                  <option value="">{roleLabel(inheritedRole)} · default</option>
+                  {ROLE_OPTIONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+                </select>
+              </Tooltip>
             )}
             {confirmRemove ? (
               <span className="flex items-center gap-1">
@@ -97,58 +162,44 @@ export function MetricRowItem({
                 <button onClick={() => setConfirmRemove(false)} className="rounded-lg px-2 py-1 text-[12px] font-medium text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600">Cancel</button>
               </span>
             ) : (
-              <button onClick={() => setConfirmRemove(true)} aria-label={`Remove ${metric.name}`} className="ml-1 flex h-7 items-center gap-1 rounded-lg px-2 text-[12px] font-medium text-slate-400 opacity-0 transition-all hover:bg-slate-100 hover:text-slate-700 group-hover:opacity-100 focus-visible:opacity-100">
-                <Ico.trash className="h-3.5 w-3.5" />Remove
-              </button>
+              <Tooltip text={`Remove ${metric.name}`}>
+                <button onClick={() => setConfirmRemove(true)} aria-label={`Remove ${metric.name}`} className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800">
+                  <Ico.trash className="h-3.5 w-3.5" />
+                </button>
+              </Tooltip>
             )}
           </div>
         )}
       </div>
 
-      {/* second line — only shown when there's something meaningful to display:
-          period → schedule note; rollup → op + child count; entry + parent set → rolls up into.
-          Plain entry with no parent chosen: row stays collapsed (no second line). */}
-      {(isPeriod || isRollup || metric.parent_metric_id || (write && !isRollup && eligibleParents.length > 0 && metric.parent_metric_id)) && (
-        <div className="mt-1.5 flex flex-wrap items-center gap-2 pl-0 text-[12px] text-slate-500">
+      {/* second line — left-justified, quiet: ministry_only w/ move → the move
+          link (light gray); period → schedule note. Templates have no second line. */}
+      {(isPeriod || (write && onMoveSection)) && (
+        <div className="mt-1 flex flex-wrap items-center gap-2 text-[12px]">
           {isPeriod ? (
             <span className="text-slate-400">
               How often this is counted is set on its schedule in Services and Occurrences.
             </span>
-          ) : isRollup ? (
-            <>
-              <span className="text-slate-400">Combines its children:</span>
-              {write ? (
-                <select value={metric.rollup_op ?? 'sum'} onChange={e => onSetOp(e.target.value as RollupOp)} aria-label="Roll-up operation" className="rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[12px] text-slate-700 outline-none focus:border-[#4F6EF7]">
-                  {(['sum', 'avg', 'max'] as RollupOp[]).map(op => <option key={op} value={op}>{OP_LABEL[op]}</option>)}
-                </select>
-              ) : (
-                <span className="font-medium text-slate-600">{OP_LABEL[metric.rollup_op ?? 'sum']}</span>
-              )}
-              {unreferenced ? (
-                <span className="rounded-md bg-[#F59E0B]/10 px-1.5 py-0.5 text-[11px] font-semibold text-[#B45309]">⚠ Nothing points up to this yet</span>
-              ) : (
-                <span className="font-num text-[11px] text-slate-400">{childCount} pointing up</span>
-              )}
-            </>
-          ) : metric.parent_metric_id ? (
-            <>
-              <span className="text-slate-400">Rolls up into:</span>
-              {write ? (
-                <select
-                  value={metric.parent_metric_id}
-                  onChange={e => onSetParent(e.target.value || null)}
-                  aria-label="Rolls up into"
-                  className="rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[12px] text-slate-700 outline-none focus:border-[#4F6EF7]"
+          ) : (write && onMoveSection) ? (
+            metric.metric_role === 'template' ? (
+              <Tooltip text="Count this once for the ministry as a whole instead. Numbers you've already recorded for the ministry stay put; each subgroup's mirrored copy of this count is removed.">
+                <button
+                  onClick={onMoveSection}
+                  className="font-medium text-slate-400 transition-colors hover:text-slate-600 hover:underline"
                 >
-                  <option value="">— stays local —</option>
-                  {eligibleParents.map(p => <option key={p.id} value={p.id}>{parentLabel(p)}</option>)}
-                </select>
-              ) : (
-                <span className="font-medium text-slate-600">
-                  {(() => { const p = eligibleParents.find(x => x.id === metric.parent_metric_id); return p ? parentLabel(p) : 'a parent roll-up' })()}
-                </span>
-              )}
-            </>
+                  Move to Ministry Counts
+                </button>
+              </Tooltip>
+            ) : (
+              <Tooltip text="Count this in every subgroup instead. Numbers you've already recorded stay with the ministry total; from here you enter it per subgroup.">
+                <button
+                  onClick={onMoveSection}
+                  className="font-medium text-slate-400 transition-colors hover:text-slate-600 hover:underline"
+                >
+                  Move to every subgroup
+                </button>
+              </Tooltip>
+            )
           ) : null}
         </div>
       )}

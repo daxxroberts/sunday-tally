@@ -79,14 +79,14 @@ export default function InlineEditField({
 
   return (
     <div className={`flex items-center gap-2 group ${className}`}>
-      <span className={`text-gray-900 ${!value ? 'text-gray-400' : ''}`}>
+      <span className={!value ? 'text-gray-400' : 'text-inherit'}>
         {value || placeholder}
       </span>
       {!disabled && (
         <button
           onClick={startEdit}
           aria-label={`Edit ${ariaLabel || 'field'}`}
-          className="opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity text-gray-400 hover:text-gray-700 p-0.5"
+          className="opacity-40 group-hover:opacity-100 focus:opacity-100 transition-opacity text-inherit p-0.5"
         >
           {/* Pencil icon */}
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

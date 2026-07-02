@@ -49,6 +49,25 @@ export const BLOG_STATS: Record<string, StatCardData[]> = {
     { label: 'Served or joined within 30 days', value: 84, suffix: '%', sub: 'Still active a year later' },
     { label: 'Took no step in 30 days', value: 19, suffix: '%', sub: 'Drifted away within months' },
   ],
+  'attendance-composition': [
+    { label: 'Total attendance (4-wk avg)', value: 340, delta: 1, sub: 'Basically unchanged all year' },
+    { label: 'Adults under 35', value: 61, delta: -19, sub: 'Quietly thinning' },
+    { label: 'Adults 35 and older', value: 214, delta: 14, sub: 'Filling the gap without anyone noticing' },
+  ],
+  'giving-concentration': [
+    { label: 'Total monthly giving', value: 14200, prefix: '$', delta: 3, sub: 'Looks steady on paper' },
+    { label: 'Givers who make up half the total', value: 9, delta: -6, sub: 'Down from 15 three years ago' },
+    { label: 'Total number of givers', value: 118, delta: -2, sub: 'Barely changed' },
+  ],
+  'guest-48-hour-window': [
+    { label: 'Contacted within 48 hours', value: 71, suffix: '%', sub: 'Returned for a second visit' },
+    { label: 'Contacted after a week or more', value: 22, suffix: '%', sub: 'Returned for a second visit' },
+    { label: 'Never contacted', value: 9, suffix: '%', sub: 'Returned for a second visit' },
+  ],
+  'small-church-commitment': [
+    { label: 'Church of 65 — actively serving', value: 61, suffix: '%', sub: 'Most of the room carries something' },
+    { label: 'Church of 640 — actively serving', value: 24, suffix: '%', sub: 'A smaller share, spread thinner' },
+  ],
 }
 
 export const BLOG_TRENDS: Record<string, TrendData> = {

@@ -69,7 +69,20 @@ export const LIST_DIMENSIONS_TOOL: Anthropic.Messages.Tool = {
     `response/stat metric definitions, and ministry/service tags — with their STABLE codes. Use ` +
     `these codes (never display names) when you fill ministry_tag_codes / service_template_codes ` +
     `or a "by":"code" dimension in a widget spec. Note: per-source giving breakdown is not ` +
-    `available; giving is church-wide weekly totals.`,
+    `available; giving is church-wide weekly totals. ` +
+    `Each volunteer/response category is listed ONCE per logical count. A count with ` +
+    `"metric_role":"template" and "rolls_up":true is entered per group and TOTALLED on its ministry ` +
+    `("groups":N tells you how many groups feed it) — treat it as the ministry-level total and ` +
+    `filter it by its NAME (its per-group copies share that name and are summed for you); do NOT ` +
+    `expect separate per-group rows here. A count with "local":true ("metric_role":"group_only") ` +
+    `belongs to a single group and does NOT roll up — never total it church-wide. ` +
+    `⚠ METRIC NAMES ARE NOT UNIQUE CHURCH-WIDE — two different ministries can each have a metric ` +
+    `named e.g. "Attendance". filters.metric_names matches by name ONLY, so a bare name filter can ` +
+    `silently combine two unrelated ministries' counts. Each row here carries "ministry_tag_id" — ` +
+    `match it to the matching id in service_tags to get that ministry's stable code, and WHENEVER ` +
+    `you filter by metric_names for a metric that belongs to a ministry, ALSO set ` +
+    `filters.ministry_tag_codes to that one ministry's code so the two filters AND together and ` +
+    `resolve the name to the single intended metric.`,
   input_schema: { type: 'object', properties: {} },
 }
 
@@ -96,8 +109,11 @@ export const BUILD_WIDGET_TOOL: Anthropic.Messages.Tool = {
           'ministry_tag_codes (scope to ministries — source must be metric_entries_readable), ' +
           'metric_names (isolate ONE metric like ["Hands Raised"] from its reporting family — ' +
           'source must be metric_entries_readable). Without metric_names, a RESPONSE_STAT or ' +
-          'VOLUNTEERS measure sums EVERY metric in that family. church_id is injected server-side ' +
-          '— never include it.',
+          'VOLUNTEERS measure sums EVERY metric in that family. Metric names are NOT unique ' +
+          'church-wide (two ministries can share a metric name) — when the metric you are isolating ' +
+          'belongs to one ministry, ALSO set ministry_tag_codes to that ministry so the filters ' +
+          'combine and you never accidentally pull in another ministry\'s same-named metric. ' +
+          'church_id is injected server-side — never include it.',
       },
       viz: {
         type: 'object',
@@ -152,29 +168,92 @@ export const WIDGET_BUILDER_TOOLS: Anthropic.Messages.Tool[] = [
 
 // ─── list_dimensions (read-only; replicates the analytics handler) ────────────
 
+/** A metric row as list_dimensions reads it, including the 0051 role columns.
+ *  Exported so other AI surfaces (e.g. the analytics route's own list_dimensions
+ *  handler) can share the same 0051 dedup instead of re-deriving it. */
+export type DimMetricRow = {
+  id: string
+  code: string
+  name: string
+  ministry_tag_id: string | null
+  metric_role?: string | null
+  parent_metric_id?: string | null
+  archived_at?: string | null
+}
+
+/**
+ * Collapse a volunteer/response family to ONE row per logical count (0051).
+ *
+ * With the mirrored-metrics model, a `template` on a ministry has N per-group
+ * `mirror` copies that all share its name (and roll up into it). Listing every
+ * mirror would show the AI the same count many times and tempt it to sum them.
+ * So we:
+ *   - drop archived rows (they accept no new data);
+ *   - drop `mirror` rows and record how many groups each template spans, adding
+ *     a `groups: N` hint to the template row;
+ *   - keep template / ministry_only / group_only rows as-is.
+ * Name-based filtering (filters.metric_names) still works: the compiler matches
+ * by name across the template + its mirrors, which already aggregates the whole
+ * count correctly (the mirrors share the name).
+ */
+export function dedupeByLogicalCount(rows: DimMetricRow[]) {
+  const live = rows.filter(m => !m.archived_at)
+  // Count mirrors per template id so we can annotate the template with "groups: N".
+  const mirrorCountByTemplate = new Map<string, number>()
+  for (const m of live) {
+    if ((m.metric_role ?? '') === 'mirror' && m.parent_metric_id) {
+      mirrorCountByTemplate.set(m.parent_metric_id, (mirrorCountByTemplate.get(m.parent_metric_id) ?? 0) + 1)
+    }
+  }
+  return live
+    .filter(m => (m.metric_role ?? '') !== 'mirror') // one row per logical count
+    .map(m => {
+      const role = m.metric_role ?? 'ministry_only'
+      const groups = mirrorCountByTemplate.get(m.id) ?? 0
+      return {
+        id:   m.id,
+        code: m.code,
+        name: m.name,
+        ministry_tag_id: m.ministry_tag_id,
+        metric_role: role,
+        // Only a template spans groups; surface the fan-out so the model knows
+        // "one count, entered per group, totalled on the ministry".
+        ...(role === 'template' ? { groups, rolls_up: true } : {}),
+        ...(role === 'group_only' ? { local: true } : {}),
+      }
+    })
+}
+
 /**
  * Read-only dimension listing — a faithful copy of the analytics route's
  * list_dimensions handler (NOT imported, to avoid editing that file). Unified
  * schema (0022+): volunteer/response categories live in `metrics` keyed by
  * reporting_tags.code; giving has no per-source breakdown.
+ *
+ * Role-aware (0051): volunteer/response categories are de-duplicated by logical
+ * count — a template is listed once (with a `groups: N` roll-up hint) and its
+ * per-group mirror copies are collapsed away; archived counts are omitted.
  */
 async function listDimensions(supabase: SupabaseClient, churchId: string) {
+  const metricCols = 'id, code, name, ministry_tag_id, metric_role, parent_metric_id, archived_at, reporting_tags!inner(code)'
   const [templates, locations, volMetrics, respMetrics, tags, groups] = await Promise.all([
     supabase.from('service_templates').select('id, display_name, service_code').eq('church_id', churchId).eq('is_active', true),
     supabase.from('church_locations').select('id, name, code').eq('church_id', churchId).eq('is_active', true),
-    supabase.from('metrics').select('id, code, name, ministry_tag_id, reporting_tags!inner(code)').eq('church_id', churchId).eq('is_active', true).eq('reporting_tags.code', 'VOLUNTEERS'),
-    supabase.from('metrics').select('id, code, name, ministry_tag_id, reporting_tags!inner(code)').eq('church_id', churchId).eq('is_active', true).eq('reporting_tags.code', 'RESPONSE_STAT'),
-    supabase.from('service_tags').select('id, code, name, tag_role').eq('church_id', churchId).eq('is_active', true).order('display_order', { ascending: true }),
+    supabase.from('metrics').select(metricCols).eq('church_id', churchId).eq('is_active', true).eq('reporting_tags.code', 'VOLUNTEERS'),
+    supabase.from('metrics').select(metricCols).eq('church_id', churchId).eq('is_active', true).eq('reporting_tags.code', 'RESPONSE_STAT'),
+    // Archived tags accept no new data and are hidden from setup/entry — omit them.
+    supabase.from('service_tags').select('id, code, name, tag_role, archived_at').eq('church_id', churchId).eq('is_active', true).order('display_order', { ascending: true }),
     // Reporting groups (0037) — pre-apply the table doesn't exist; error → [].
     supabase.from('service_groups').select('id, code, name').eq('church_id', churchId).eq('is_active', true).order('sort_order', { ascending: true }),
   ])
+  const liveTags = ((tags.data ?? []) as { archived_at?: string | null }[]).filter(t => !t.archived_at)
   return {
     service_templates:    templates.data   ?? [],
     locations:            locations.data   ?? [],
-    volunteer_categories: volMetrics.data  ?? [],
-    response_categories:  respMetrics.data ?? [],
+    volunteer_categories: dedupeByLogicalCount((volMetrics.data  ?? []) as unknown as DimMetricRow[]),
+    response_categories:  dedupeByLogicalCount((respMetrics.data ?? []) as unknown as DimMetricRow[]),
     giving_sources:       [],
-    service_tags:         tags.data        ?? [],
+    service_tags:         liveTags,
     service_groups:       groups.error ? [] : (groups.data ?? []),
   }
 }
@@ -256,8 +335,11 @@ export interface WidgetToolDeps {
   /**
    * Max non-starter widgets the church library may hold under its plan
    * (src/lib/billing/entitlements.ts). A NEW church-scope save is refused once
-   * the library is full; edits and user-scope saves are exempt. Infinity = pro
-   * (unlimited). Defaults to Infinity if the route doesn't pass it.
+   * the library is full; edits and user-scope saves are exempt. Tiers are all
+   * FINITE caps — starter 15 / plus 40 / pro 120 (pro is a HARD cap, not
+   * unlimited); Number.POSITIVE_INFINITY below is only a defensive fallback for
+   * the (should-never-happen) case where the route doesn't pass a cap at all,
+   * so a wiring bug fails open instead of blocking every save.
    */
   widgetCap?: number
 }
@@ -448,8 +530,10 @@ export function makeWidgetHandlers(deps: WidgetToolDeps) {
 
       // Plan widget-library cap: a NEW church-scope widget is refused once the
       // library is full (edits return above; user-scope private widgets are
-      // exempt; pro = Infinity skips this). Counts non-starter church widgets —
-      // seeded starters don't eat the allowance.
+      // exempt). Every tier is a finite cap (starter 15 / plus 40 / pro 120 —
+      // pro is a HARD cap, not unlimited); Number.isFinite only guards the
+      // defensive Infinity fallback above for a missing widgetCap. Counts
+      // non-starter church widgets — seeded starters don't eat the allowance.
       if (Number.isFinite(widgetCap) && defaultScope === 'church') {
         const { count } = await ctx.supabase
           .from('widgets')

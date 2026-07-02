@@ -8,7 +8,7 @@
 
 import { createClient } from '@/lib/supabase/client'
 import { computeRollups } from '@/lib/rollups'
-import { weekStartOf, shiftDays, weekOf } from '@/lib/date-window'
+import { weekStartOf, shiftDays, weekOf, isoDay } from '@/lib/date-window'
 import { fetchActiveServiceTags } from '@/lib/service-tags'
 
 // Re-export so existing consumers (dashboardDrilldown, rollups) keep importing
@@ -32,6 +32,13 @@ export interface OtherStatRow {
   category_name: string      // metric name
   tag_code: string | null    // ministry tag code (e.g. EXPERIENCE / LIFEKIDS)
   values: FourWin
+  // Mirrored-metrics (blast-radius item 3): a container ministry's TEMPLATE stat
+  // shows the ROLL-UP of its groups' mirror entries (the template itself has no
+  // entries). rolledUp=true flags that row so the card can add a "rolled up ·
+  // N groups" cue and never reads as a plain local number. groupCount = distinct
+  // contributing child nodes. A child's OWN stat rows leave rolledUp undefined.
+  rolledUp?: boolean
+  groupCount?: number
 }
 
 export interface TagSection {
@@ -44,6 +51,17 @@ export interface TagSection {
   volunteers: FourWin
   stats: OtherStatRow[]
   groupCount: number             // Phase B — distinct contributing child nodes ("N groups"); 0 when no roll-up
+  // #47 — true when `attendance` above is sourced from this ministry's ATTENDANCE
+  // roll-up (a container with subgroups), not the church-wide role-column pivot.
+  // The page's drill-down only knows how to open the role-wide attendance series
+  // (kind:'attendance'), which would show the WRONG (church-wide) numbers for a
+  // roll-up-driven card, so the page must not offer that drill when this is true.
+  attendanceIsRollup?: boolean
+  // #8 — true when `volunteers` above is this ministry's VOLUNTEERS roll-up (sum
+  // of its children's mirror entries), so the value ALREADY includes descendants.
+  // The Grand Total exclusion math uses this to avoid subtracting a parent's
+  // roll-up and its children's values twice.
+  volunteersIsRollup?: boolean
 }
 
 export interface VolunteerBreakoutRow {
@@ -188,7 +206,15 @@ export interface Boundaries {
 }
 
 export function buildBoundaries(now: Date): Boundaries {
-  const today = now.toISOString().split('T')[0]
+  // #52 — `today` and `thisWeekStart` must share the SAME time basis. thisWeekStart
+  // (via weekStartOf) derives the Sunday from `now`'s LOCAL calendar fields, then
+  // serializes through .toISOString(). Using now.toISOString() directly for `today`
+  // instead reads the UTC calendar date — for a UTC-positive-offset church, the
+  // two disagree for hours after local midnight but before UTC midnight, so
+  // `weekly.has(b.thisWeekStart)` and today-anchored range checks can bucket a
+  // Sunday-morning entry into the wrong week. isoDay() uses the same local-midnight
+  // → toISOString() path as weekStartOf, so both boundaries agree.
+  const today = isoDay(now)
   const thisWeekStart = weekStartOf(now)
   const lastWeekEnd = shiftDays(thisWeekStart, -1)
   const fourWksAgoStart = shiftDays(thisWeekStart, -28)
@@ -318,7 +344,26 @@ export async function fetchDashboardData(
   //    audience pivot. Canonical palette order lives in fetchActiveServiceTags.
   const { rows: tagsData, error: tagsErr } = await fetchActiveServiceTags(supabase, churchId)
   if (tagsErr) console.error('[dashboard] service_tags fetch failed:', tagsErr)
-  const tags: TagRow[] = tagsData as unknown as TagRow[]
+  const allTags: TagRow[] = tagsData as unknown as TagRow[]
+
+  // Archived ministry/group tags (mirrored-metrics decision 9): archived tags keep
+  // is_active=true so their HISTORICAL entries still roll up through the views +
+  // computeRollups (untouched) — but they are hidden from the setup editor, so they
+  // must NOT render as a live per-ministry card here either. We filter the card
+  // list only; the roll-up/view math still sums their history. fetchActiveServiceTags
+  // is the shared palette-order helper and does not select archived_at, so we fetch
+  // the archived ids separately (church-scoped, tiny) rather than fork that helper.
+  const { data: archivedTagRows, error: archivedTagErr } = await supabase
+    .from('service_tags')
+    .select('id')
+    .eq('church_id', churchId)
+    .not('archived_at', 'is', null)
+  if (archivedTagErr) console.error('[dashboard] archived service_tags fetch failed:', archivedTagErr)
+  const archivedTagIds = new Set<string>((archivedTagRows ?? []).map(r => (r as { id: string }).id))
+  const tags: TagRow[] = archivedTagIds.size === 0
+    ? allTags
+    : allTags.filter(t => !archivedTagIds.has(t.id))
+
   const tagByIdCode = new Map<string, string>()
   for (const t of tags) tagByIdCode.set(t.id, t.code)
 
@@ -609,8 +654,19 @@ export async function fetchDashboardData(
   //    on the summary audience rows + grand total (which must not be re-summed).
   function buildTagSection(tag: TagRow): TagSection {
     const tagId = tag.id
-    const stats: OtherStatRow[] = Array.from(statByMetric.entries())
-      .filter(([, s]) => s.tagId === tagId)
+    const kindMap = rollupByTagKind.get(tagId)
+    // #27 — after a FREE MOVE of a RESPONSE_STAT metric with data, the template
+    // metric keeps its pre-move legacy entries under its OWN metric_id (see
+    // rollups.ts sumById comment), so statByMetric still carries a row for it
+    // keyed to this same container tag. Exclude that metric id from localStats:
+    // the roll-up row below already supersedes it (rollups.ts sums own legacy +
+    // subgroup entries into ONE value), so the card must render it once, not twice.
+    const statRollupId = kindMap?.get('RESPONSE_STAT')
+
+    // A child's OWN stat entries (mirror + group-only), grouped in statByMetric by
+    // this tag. These are real, locally-entered numbers → not flagged rolledUp.
+    const localStats: OtherStatRow[] = Array.from(statByMetric.entries())
+      .filter(([metricId, s]) => s.tagId === tagId && metricId !== statRollupId)
       .map(([metricId, s]) => ({
         key: metricId + '|' + (s.tagCode ?? ''),
         category_id: metricId,
@@ -618,6 +674,36 @@ export async function fetchDashboardData(
         tag_code: s.tagCode,
         values: fourWinFromWeekly(s.weekly, b),
       }))
+
+    // ── Mirrored-metrics (blast-radius item 3) — RESPONSE_STAT roll-up rows.
+    //    A TEMPLATE stat lives on a container ministry as mode='rollup'; it may
+    //    have no entries of its own (fresh template) or legacy own-entries from
+    //    before a free move (superseded above). Its groups carry the mirror
+    //    entries under CHILD tags. Source its summed value from computeRollups
+    //    (same engine that already feeds the Attendance/Volunteers overrides) and
+    //    flag it rolledUp so the card shows a "rolled up · N groups" cue instead of
+    //    reading as a local number. No double-count: the children still render
+    //    their own local rows under their own child cards. ────────────────
+    const rolledUpStats: OtherStatRow[] = []
+    if (statRollupId) {
+      const rv = rollups.byRollupId.get(statRollupId)
+      const meta = metricById.get(statRollupId)
+      // Skip first-time-decision templates — those already aggregate into the
+      // summary's First-Time Decisions row, matching the entry-side behavior.
+      if (rv && meta && !isFirstTimeDecision(meta)) {
+        rolledUpStats.push({
+          key: statRollupId + '|' + tag.code + '|rollup',
+          category_id: statRollupId,
+          category_name: meta.name,
+          tag_code: tag.code,
+          values: fourWinFromWeekly(rv.weekly, b),
+          rolledUp: true,
+          groupCount: rv.groupCount,
+        })
+      }
+    }
+
+    const stats: OtherStatRow[] = [...rolledUpStats, ...localStats]
       .sort((a, c) => a.category_name.localeCompare(c.category_name))
 
     // ── Phase B roll-up override. A container ministry (parent) carries a
@@ -626,7 +712,6 @@ export async function fetchDashboardData(
     //    (attendanceForRole) is the church-wide-per-role aggregate — wrong for a
     //    container that nests several child ministries. groupCount = distinct
     //    contributing child nodes ("N groups"). No roll-up → values stay as today.
-    const kindMap = rollupByTagKind.get(tagId)
     const attRollupId = kindMap?.get('ATTENDANCE')
     const volRollupId = kindMap?.get('VOLUNTEERS')
     const attRollup = attRollupId ? rollups.byRollupId.get(attRollupId) : undefined
@@ -642,11 +727,13 @@ export async function fetchDashboardData(
         ? fourWinFromWeekly(volRollup.weekly, b)
         : fourWinFromWeekly(volWeeklyByTag.get(tagId) ?? new Map(), b)
 
-    // groupCount: prefer the attendance roll-up's count, else the max across the
-    // node's roll-ups. 0 when this node has no roll-up.
+    // groupCount: prefer the attendance roll-up's count, else the volunteers
+    // roll-up, else the stat roll-up (a stats-only container still nests groups).
+    // 0 when this node has no roll-up. Drives the header "N groups" pill.
+    const statRollup = statRollupId ? rollups.byRollupId.get(statRollupId) : undefined
     const groupCount = attRollup
       ? attRollup.groupCount
-      : (volRollup?.groupCount ?? 0)
+      : (volRollup?.groupCount ?? statRollup?.groupCount ?? 0)
 
     return {
       tag_id: tagId,
@@ -658,6 +745,8 @@ export async function fetchDashboardData(
       volunteers,
       stats,
       groupCount,
+      attendanceIsRollup: !!attRollup,
+      volunteersIsRollup: !!volRollup,
     }
   }
 

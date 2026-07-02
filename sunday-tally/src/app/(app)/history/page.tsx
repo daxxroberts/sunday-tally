@@ -80,6 +80,11 @@ export default function HistoryPage() {
   const [loading, setLoading]           = useState(true)
   const [emptyReason, setEmptyReason]   = useState<string | null>(null)
   const [showDeactivated, setShowDeactivated] = useState(false)
+  // Mirrored-metrics "Show subgroups" toggle (default OFF). OFF → a templated
+  // ministry shows only its read-only roll-up total column; ON → expands into
+  // the per-subgroup (mirror) columns. Distinct from the group-filter pills
+  // below (which hide whole ministry sections). Feeds derive_grid_config.
+  const [showSubgroups, setShowSubgroups] = useState(false)
 
   // Top-level group filter state — same pattern as the import review preview.
   // Hides/shows full ministry sections (Giving, Experience, LifeKids, Switch, …)
@@ -205,7 +210,7 @@ export default function HistoryPage() {
     if (!church) return
     const loadConfig = async () => {
       const supabase = createClient()
-      const derived = await deriveGridConfigFromSchema(supabase, church.id, showDeactivated)
+      const derived = await deriveGridConfigFromSchema(supabase, church.id, showDeactivated, showSubgroups)
       if (!derived) {
         setEmptyReason('No active services with a primary tag yet. Set up your services first.')
       } else {
@@ -214,7 +219,7 @@ export default function HistoryPage() {
       setConfig(derived ? dedupeConfig(derived) : null)
     }
     loadConfig()
-  }, [church, showDeactivated])
+  }, [church, showDeactivated, showSubgroups])
 
   // ── Load occurrences + per-cell data for the date range ──────────────────
   const loadData = useCallback(async (
@@ -259,14 +264,20 @@ export default function HistoryPage() {
     })
 
     // Occurrences in range (Rule 1: status=active)
+    // Secondary/tertiary sort: same-date occurrences (e.g. a 9 AM + 11 AM
+    // service) otherwise come back in nondeterministic order across loads.
+    // start_datetime orders same-day services by actual time; service_template_id
+    // is a final deterministic tiebreaker when start_datetime is null/equal.
     const { data: occRows } = await supabase
       .from('service_instances')
-      .select('id, service_date, service_template_id')
+      .select('id, service_date, service_template_id, start_datetime')
       .eq('church_id', ch.id)
       .eq('status', 'active')
       .gte('service_date', from)
       .lte('service_date', to)
       .order('service_date', { ascending: true })
+      .order('start_datetime', { ascending: true })
+      .order('service_template_id', { ascending: true })
 
     const occList: OccurrenceForGrid[] = []
     for (const o of occRows ?? []) {
@@ -470,6 +481,15 @@ export default function HistoryPage() {
           </div>
           
           <div className="flex items-center gap-4 text-xs shrink-0">
+            <label className="flex items-center gap-2 text-[13px] font-medium text-slate-500 hover:text-slate-800 cursor-pointer transition-colors">
+              <input
+                type="checkbox"
+                className="h-4 w-4 rounded border-slate-300 text-[#4F6EF7] focus:ring-[#4F6EF7]"
+                checked={showSubgroups}
+                onChange={(e) => setShowSubgroups(e.target.checked)}
+              />
+              Show subgroups
+            </label>
             <label className="flex items-center gap-2 text-[13px] font-medium text-slate-500 hover:text-slate-800 cursor-pointer transition-colors">
               <input
                 type="checkbox"

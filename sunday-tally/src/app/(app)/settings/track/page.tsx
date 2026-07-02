@@ -35,12 +35,10 @@ import {
   addCount,
   renameCount,
   deactivateCount,
-  setMetricMode,
-  setMetricParent,
-  setRollupOp,
+  setCountSection,
   setCountDemographic,
 } from './actions'
-import type { TagRole, MetricMode, RollupOp } from './actions'
+import type { TagRole, MetricRole } from './actions'
 import {
   KIND_LABEL, canWrite,
   type KindCode, type Metric, type Ministry, type ReportingTag,
@@ -86,6 +84,11 @@ export function TrackPanel({ embedded = false }: { embedded?: boolean }) {
   const load = useCallback(async (cid: string) => {
     // Canonical palette order (incl. the 0040 color fallback) lives in
     // fetchActiveServiceTags — keeps track / dashboard / History identical.
+    // Keep the FULL active set here (incl. archived) so the positional color
+    // palette (colorMap below) stays identical to the dashboard/History. Archived
+    // ministries are hidden from the rendered tree in childrenOf() instead — that
+    // way an archived ministry takes no new setup here (review finding #41) without
+    // shifting every other ministry's color.
     const { rows } = await fetchActiveServiceTags(supabase, cid)
     const mins = rows as unknown as Ministry[]
     setMinistries(mins)
@@ -99,21 +102,32 @@ export function TrackPanel({ embedded = false }: { embedded?: boolean }) {
     const minIds = mins.map(m => m.id)
     if (minIds.length === 0) { setMetrics([]); return }
 
-    // ALL active metrics — instance AND period. Period metrics (weekly/monthly
-    // church-wide, e.g. Giving) are shown with a cadence badge so they're
-    // findable/editable here ("where do I edit Giving" — Builder 2026-06-10).
-    // Defensive: select the roll-up columns; if they don't exist yet (migration
-    // 0034 not applied), fall back to the base columns and treat all as 'entry'.
+    // ALL active, non-archived metrics — instance AND period. Period metrics
+    // (weekly/monthly church-wide, e.g. Giving) are shown with a cadence badge so
+    // they're findable/editable here ("where do I edit Giving" — Builder 2026-06-10).
+    // The editor never shows archived counts (archived_at IS NULL); their history
+    // still rolls up on the dashboard/History, but they take no new setup here.
+    // Defensive: select the mirrored-metrics columns; if they don't exist yet
+    // (migration not applied), fall back to the base columns and treat every count
+    // as a plain ministry_only entry.
     const full = await supabase
       .from('metrics')
-      .select('id, code, name, reporting_tag_id, is_canonical, is_active, ministry_tag_id, mode, rollup_op, parent_metric_id, counted_demographic, scope, cadence')
+      .select('id, code, name, reporting_tag_id, is_canonical, is_active, ministry_tag_id, mode, rollup_op, parent_metric_id, metric_role, archived_at, counted_demographic, scope, cadence')
       .eq('church_id', cid)
       .eq('is_active', true)
+      .is('archived_at', null)
       .in('ministry_tag_id', minIds)
       .order('is_canonical', { ascending: false })
 
     if (!full.error && full.data) {
-      setMetrics((full.data as Metric[]).map(m => ({ ...m, mode: m.mode ?? 'entry', rollup_op: m.rollup_op ?? null, parent_metric_id: m.parent_metric_id ?? null })))
+      setMetrics((full.data as Metric[]).map(m => ({
+        ...m,
+        mode: m.mode ?? 'entry',
+        rollup_op: m.rollup_op ?? null,
+        parent_metric_id: m.parent_metric_id ?? null,
+        metric_role: m.metric_role ?? 'ministry_only',
+        archived_at: m.archived_at ?? null,
+      })))
       return
     }
 
@@ -124,8 +138,8 @@ export function TrackPanel({ embedded = false }: { embedded?: boolean }) {
       .eq('is_active', true)
       .in('ministry_tag_id', minIds)
       .order('is_canonical', { ascending: false })
-    setMetrics(((basic.data ?? []) as Array<Omit<Metric, 'mode' | 'rollup_op' | 'parent_metric_id'>>)
-      .map(m => ({ ...m, mode: 'entry' as MetricMode, rollup_op: null, parent_metric_id: null })))
+    setMetrics(((basic.data ?? []) as Array<Omit<Metric, 'mode' | 'rollup_op' | 'parent_metric_id' | 'metric_role' | 'archived_at'>>)
+      .map(m => ({ ...m, mode: 'entry' as const, rollup_op: null, parent_metric_id: null, metric_role: 'ministry_only' as MetricRole, archived_at: null })))
   }, [supabase])
 
   // TK2/TK4 — recompute orphans whenever the tree reloads (cheap, 3 reads).
@@ -167,16 +181,10 @@ export function TrackPanel({ embedded = false }: { embedded?: boolean }) {
 
   // ── Tree helpers ─────────────────────────────────────────────────────────
 
+  // Rendered tree excludes archived nodes (kept in `ministries` only for the
+  // color palette + ancestor walk). Archived history lives on the dashboard/History.
   const childrenOf = useCallback((parentId: string | null) =>
-    ministries.filter(m => m.parent_tag_id === parentId), [ministries])
-
-  const ancestorIds = useCallback((id: string): Set<string> => {
-    const out = new Set<string>()
-    const byId = new Map(ministries.map(m => [m.id, m] as const))
-    let cur = byId.get(id)?.parent_tag_id ?? null
-    while (cur && !out.has(cur)) { out.add(cur); cur = byId.get(cur)?.parent_tag_id ?? null }
-    return out
-  }, [ministries])
+    ministries.filter(m => m.parent_tag_id === parentId && !m.archived_at), [ministries])
 
   // Root-ancestor color, reusing the History palette so the two views match.
   const rootAncestorId = useCallback((id: string): string => {
@@ -208,37 +216,12 @@ export function TrackPanel({ embedded = false }: { embedded?: boolean }) {
     return map
   }, [metrics])
 
-  const unreferencedRollupIds = useMemo(() => {
-    const referenced = new Set<string>()
-    for (const m of metrics) if (m.parent_metric_id) referenced.add(m.parent_metric_id)
-    const out = new Set<string>()
-    for (const m of metrics) if (m.mode === 'rollup' && !referenced.has(m.id)) out.add(m.id)
-    return out
-  }, [metrics])
-
   const rtById = useMemo(() => new Map(reportingTags.map(r => [r.id, r] as const)), [reportingTags])
 
   const orphanIds = useMemo(() => new Set(orphans.map(o => o.tag_id)), [orphans])
 
-  // Eligible roll-ups an entry metric may point at: same Kind, on an ancestor node.
-  const eligibleParentsFor = useCallback((metric: Metric): Metric[] => {
-    const anc = ancestorIds(metric.ministry_tag_id)
-    return metrics.filter(m =>
-      m.mode === 'rollup' && m.is_active &&
-      m.reporting_tag_id === metric.reporting_tag_id &&
-      anc.has(m.ministry_tag_id))
-  }, [metrics, ancestorIds])
-
-  // Fully-qualified label for a roll-up target: "Ministry › Kind › Metric name".
-  // Includes the metric's own name so two same-kind roll-ups on one node (e.g.
-  // two Volunteers roll-ups) are distinguishable — the name is the disambiguator.
+  // id → name, for a group's "from {ministry}" note in the detail panel.
   const ministryNameById = useMemo(() => new Map(ministries.map(m => [m.id, m.name] as const)), [ministries])
-  const parentLabel = useCallback((m: Metric): string => {
-    const minName = ministryNameById.get(m.ministry_tag_id) ?? 'Group'
-    const rt = rtById.get(m.reporting_tag_id)
-    const kind = rt ? (KIND_LABEL[rt.code as KindCode] ?? rt.name) : ''
-    return kind ? `${minName} › ${kind} › ${m.name}` : `${minName} › ${m.name}`
-  }, [ministryNameById, rtById])
 
   function countSummary(minId: string): string {
     const list = metricsByMinistry.get(minId) ?? []
@@ -285,12 +268,22 @@ export function TrackPanel({ embedded = false }: { embedded?: boolean }) {
   }
 
   async function handleRenameMinistry(id: string, name: string) {
-    await updateMinistry(id, { name })
+    const previous = ministries.find(m => m.id === id)?.name
     setMinistries(prev => prev.map(m => m.id === id ? { ...m, name } : m))
+    const res = await updateMinistry(id, { name })
+    if (!res.ok) {
+      setMinistries(prev => prev.map(m => m.id === id ? { ...m, name: previous ?? m.name } : m))
+      alert(res.error ?? 'Could not rename this ministry.')
+    }
   }
   async function handleRoleChange(id: string, tag_role: TagRole) {
-    await updateMinistry(id, { tag_role })
+    const previous = ministries.find(m => m.id === id)?.tag_role
     setMinistries(prev => prev.map(m => m.id === id ? { ...m, tag_role } : m))
+    const res = await updateMinistry(id, { tag_role })
+    if (!res.ok) {
+      setMinistries(prev => prev.map(m => m.id === id ? { ...m, tag_role: previous ?? m.tag_role } : m))
+      alert(res.error ?? 'Could not change who this ministry is for.')
+    }
   }
   async function handleColorChange(id: string, colorHex: string | null) {
     const res = await updateMinistry(id, { color: colorHex })
@@ -298,7 +291,13 @@ export function TrackPanel({ embedded = false }: { embedded?: boolean }) {
     setMinistries(prev => prev.map(m => m.id === id ? { ...m, color: colorHex } : m))
   }
   async function handleDeactivateMinistry(id: string) {
-    if (!confirm('Remove this ministry? This cannot be undone.')) return
+    // The server decides archive-vs-delete (decision 9): a ministry with recorded
+    // history is archived (its numbers keep rolling up in History/dashboard, but
+    // there's no restore path in this UI yet — see BUILD_FLAGS.md), one with no
+    // history yet is deleted outright. The client can't know which ahead of the
+    // server's probe, so the confirm copy names both outcomes instead of
+    // promising a plain, always-permanent delete (review finding #44).
+    if (!confirm('Remove this ministry? If it has recorded history, its past numbers are kept (they’ll still show in History), but it disappears from this list here. If it has no history yet, it’s deleted for good. Either way, this can’t be undone from here.')) return
     const result = await deactivateMinistry(id)
     if (result.ok) {
       setMinistries(prev => prev.filter(m => m.id !== id))
@@ -309,53 +308,60 @@ export function TrackPanel({ embedded = false }: { embedded?: boolean }) {
     }
   }
 
-  async function handleAddMetric(ministryId: string, kindCode: KindCode, name: string) {
-    const result = await addCount({ ministryId, reportingTagCode: kindCode, name })
+  // Section-scoped add — the DetailPanel section sets `role` (which kind of
+  // count). A template mirrors to every group server-side, so reload to pick up
+  // the freshly-created mirrors; otherwise just append the new row. Throws on
+  // failure (instead of alert-and-swallow) so AddMetricControl can keep the
+  // typed name + form open and show the error inline (review finding #61).
+  async function handleAddCount(ministryId: string, role: MetricRole, kindCode: KindCode, name: string) {
+    const result = await addCount({ ministryId, reportingTagCode: kindCode, name, role })
     if (result.ok && result.data) {
-      setMetrics(prev => [...prev, { ...result.data!, ministry_tag_id: ministryId }])
-    } else if (result.error) {
-      alert(result.error)
+      if (role === 'template') {
+        if (churchId) await load(churchId)   // pull in the new mirrors on every group
+      } else {
+        setMetrics(prev => [...prev, { ...result.data!, ministry_tag_id: ministryId }])
+      }
+    } else {
+      throw new Error(result.error ?? 'Could not add this count.')
     }
   }
   async function handleRenameMetric(metricId: string, name: string) {
-    await renameCount(metricId, name)
-    setMetrics(prev => prev.map(m => m.id === metricId ? { ...m, name } : m))
+    const result = await renameCount(metricId, name)
+    if (!result.ok) { alert(result.error ?? 'Could not rename this count.'); return }
+    // A template rename propagates to its mirrors server-side — reflect both.
+    setMetrics(prev => prev.map(m => {
+      if (m.id === metricId) return { ...m, name }
+      if (m.parent_metric_id === metricId && m.metric_role === 'mirror') return { ...m, name }
+      return m
+    }))
   }
+  // Remove = delete-or-archive server-side (and a template cascades to its
+  // mirrors). Either way the row disappears from the editor; reload to reflect
+  // the exact server outcome (deleted rows gone, archived rows filtered out).
   async function handleRemoveMetric(metricId: string) {
-    await deactivateCount(metricId)
-    // also unwire any children that pointed at it (mirror ON DELETE SET NULL intent)
-    setMetrics(prev => prev
-      .filter(m => m.id !== metricId)
-      .map(m => m.parent_metric_id === metricId ? { ...m, parent_metric_id: null } : m))
+    const result = await deactivateCount(metricId)
+    if (!result.ok) { alert(result.error ?? 'Could not remove this count.'); return }
+    if (churchId) await load(churchId)
   }
-  async function handleSetMode(metricId: string, mode: MetricMode, op?: RollupOp) {
-    const result = await setMetricMode(metricId, mode, op)
-    if (result.ok && result.data) {
-      setMetrics(prev => prev.map(m => m.id === metricId ? { ...m, ...result.data! } : m))
-    } else if (result.error) {
-      alert(result.error)
-    }
-  }
-  async function handleSetParent(metricId: string, parentId: string | null) {
-    const result = await setMetricParent(metricId, parentId)
-    if (result.ok && result.data) {
-      setMetrics(prev => prev.map(m => m.id === metricId ? { ...m, ...result.data! } : m))
-    } else if (result.error) {
-      alert(result.error)
-    }
-  }
-  async function handleSetOp(metricId: string, op: RollupOp) {
-    const result = await setRollupOp(metricId, op)
-    if (result.ok && result.data) {
-      setMetrics(prev => prev.map(m => m.id === metricId ? { ...m, ...result.data! } : m))
-    } else if (result.error) {
-      alert(result.error)
-    }
+  // Move a ministry count between "at the ministry" (ministry_only) and "every
+  // group" (template). The server blocks a count that already has data and
+  // handles the mirror creation — reload to reflect the new section + mirrors.
+  async function handleMoveSection(metricId: string) {
+    const current = metrics.find(m => m.id === metricId)
+    const target = current?.metric_role === 'template' ? 'ministry_only' : 'template'
+    const result = await setCountSection(metricId, target)
+    if (!result.ok) { alert(result.error ?? 'Could not move this count.'); return }
+    if (churchId) await load(churchId)
   }
   async function handleSetDemographic(metricId: string, demographic: TagRole | null) {
     const result = await setCountDemographic(metricId, demographic)
     if (result.ok && result.data) {
-      setMetrics(prev => prev.map(m => m.id === metricId ? { ...m, ...result.data! } : m))
+      // A template's demographic propagates to its mirrors server-side.
+      setMetrics(prev => prev.map(m => {
+        if (m.id === metricId) return { ...m, ...result.data! }
+        if (m.parent_metric_id === metricId && m.metric_role === 'mirror') return { ...m, counted_demographic: demographic }
+        return m
+      }))
     } else if (result.error) {
       alert(result.error)
     }
@@ -430,8 +436,20 @@ export function TrackPanel({ embedded = false }: { embedded?: boolean }) {
                   <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
                     {ministries.length === 0 ? (
                       <div className="px-6 py-10 text-center">
-                        <p className="text-[14px] font-semibold text-slate-600">Add your first ministry.</p>
-                        <p className="mt-1 text-[12px] text-slate-400">Use the button above to get started.</p>
+                        {write ? (
+                          <>
+                            <p className="text-[14px] font-semibold text-slate-600">Add your first ministry.</p>
+                            <p className="mt-1 text-[12px] text-slate-400">Use the button above to get started.</p>
+                          </>
+                        ) : (
+                          // Read-only roles (editor/viewer) can't add a ministry, so
+                          // the owner-only "use the button above" copy doesn't apply
+                          // to them — there is no button above (review finding #65).
+                          <>
+                            <p className="text-[14px] font-semibold text-slate-600">No ministries yet.</p>
+                            <p className="mt-1 text-[12px] text-slate-400">Ask an owner or admin to add one.</p>
+                          </>
+                        )}
                       </div>
                     ) : (
                       <>
@@ -446,7 +464,7 @@ export function TrackPanel({ embedded = false }: { embedded?: boolean }) {
                               childrenOf={childrenOf}
                               countSummary={countSummary}
                               colorForNode={colorForNode}
-                              hasUnreferenced={(id) => (metricsByMinistry.get(id) ?? []).some(m2 => unreferencedRollupIds.has(m2.id))}
+                              hasUnreferenced={() => false}
                               isOrphan={(id) => orphanIds.has(id)}
                               onFixOrphan={setFixTagId}
                             />
@@ -474,23 +492,18 @@ export function TrackPanel({ embedded = false }: { embedded?: boolean }) {
                       childNodes={childrenOf(selected.id)}
                       reportingTags={reportingTags}
                       color={colorForNode(selected.id)}
-                      eligibleParentsFor={eligibleParentsFor}
-                      parentLabel={parentLabel}
-                      unreferencedRollupIds={unreferencedRollupIds}
-                      childCountFor={(rollupId) => metrics.filter(m => m.parent_metric_id === rollupId && m.is_active).length}
+                      ministryNameById={ministryNameById}
                       onSelectChild={setSelectedId}
                       onAddGroupHere={(name, tag_role) => addMinistry(selected.id, name, tag_role)}
                       onRename={name => handleRenameMinistry(selected.id, name)}
                       onRoleChange={r => handleRoleChange(selected.id, r)}
                       onColorChange={c => handleColorChange(selected.id, c)}
                       onDeactivate={() => handleDeactivateMinistry(selected.id)}
-                      onAddMetric={(kind, name) => handleAddMetric(selected.id, kind, name)}
+                      onAddCount={(role, kind, name) => handleAddCount(selected.id, role, kind, name)}
                       onRenameMetric={handleRenameMetric}
                       onRemoveMetric={handleRemoveMetric}
-                      onSetMode={handleSetMode}
-                      onSetParent={handleSetParent}
-                      onSetOp={handleSetOp}
                       onSetDemographic={handleSetDemographic}
+                      onMoveSection={handleMoveSection}
                     />
                   )}
                 </div>

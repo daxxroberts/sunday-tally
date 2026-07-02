@@ -13,11 +13,21 @@ const data: ContextPackData = {
     { id: 't3', code: 'GROUPS',      name: 'Life Groups', tag_role: 'ADULT_SERVICE',  parent_tag_id: null },
     { id: 't4', code: 'TABORS',      name: 'Tabors',      tag_role: 'ADULT_SERVICE',  parent_tag_id: 't3' },
     { id: 't5', code: 'CHURCH_WIDE', name: 'Church-Wide', tag_role: 'OTHER',          parent_tag_id: null },
+    // Kids ministry with two child groups — the mirrored-metrics shape (0051).
+    { id: 'k0', code: 'KIDS',        name: 'Kids',        tag_role: 'KIDS_MINISTRY',  parent_tag_id: null },
+    { id: 'k1', code: 'CRAWLERS',    name: 'Crawlers',    tag_role: 'KIDS_MINISTRY',  parent_tag_id: 'k0' },
+    { id: 'k2', code: 'WALKERS',     name: 'Walkers',     tag_role: 'KIDS_MINISTRY',  parent_tag_id: 'k0' },
   ],
   metrics: [
-    { name: 'Experience Adult Attendance', ministry_tag_id: 't1', reporting_tag_code: 'ATTENDANCE',    scope: 'instance' },
-    { name: 'Baptisms',                    ministry_tag_id: 't1', reporting_tag_code: 'RESPONSE_STAT', scope: 'instance' },
-    { name: 'Offerings / Tithes',          ministry_tag_id: 't5', reporting_tag_code: 'GIVING',        scope: 'period' },
+    { name: 'Experience Adult Attendance', ministry_tag_id: 't1', reporting_tag_code: 'ATTENDANCE',    scope: 'instance', metric_role: 'ministry_only' },
+    { name: 'Baptisms',                    ministry_tag_id: 't1', reporting_tag_code: 'RESPONSE_STAT', scope: 'instance', metric_role: 'ministry_only' },
+    { name: 'Offerings / Tithes',          ministry_tag_id: 't5', reporting_tag_code: 'GIVING',        scope: 'period',   metric_role: 'ministry_only' },
+    // Template on Kids (legend), plus one mirror per group sharing its name.
+    { name: 'Kids Attendance', ministry_tag_id: 'k0', reporting_tag_code: 'ATTENDANCE', scope: 'instance', metric_role: 'template' },
+    { name: 'Kids Attendance', ministry_tag_id: 'k1', reporting_tag_code: 'ATTENDANCE', scope: 'instance', metric_role: 'mirror', parent_metric_id: 'kt' },
+    { name: 'Kids Attendance', ministry_tag_id: 'k2', reporting_tag_code: 'ATTENDANCE', scope: 'instance', metric_role: 'mirror', parent_metric_id: 'kt' },
+    // A count that lives only on one group and does NOT roll up.
+    { name: 'Snacks Served', ministry_tag_id: 'k1', reporting_tag_code: 'RESPONSE_STAT', scope: 'instance', metric_role: 'group_only' },
   ],
   excludedTagIds: ['t5'],
   givingCategories: ['Offerings / Tithes'],
@@ -59,5 +69,48 @@ describe('formatContextPack', () => {
 
   it('returns empty string when the church has no tags', () => {
     expect(formatContextPack({ tags: [], metrics: [], excludedTagIds: [], givingCategories: [] })).toBe('')
+  })
+
+  // ── mirrored-metrics role awareness (0051) ──────────────────────────────────
+
+  it('presents a template ONCE on the ministry, annotated as rolling up', () => {
+    // "Kids Attendance" appears once on the Kids line, flagged as a roll-up.
+    expect(out).toMatch(/Kids Attendance — rolls up across groups/)
+  })
+
+  it('suppresses the per-group mirror copies (no phantom N+1 metrics)', () => {
+    // The template's name must NOT reappear as a tracked count under a group.
+    const crawlers = out.split('\n').find(l => l.includes('Crawlers (code CRAWLERS)')) ?? ''
+    expect(crawlers).not.toContain('Kids Attendance')
+    // And it appears exactly once in the whole pack (on the Kids ministry line).
+    expect(out.match(/Kids Attendance/g)?.length ?? 0).toBe(1)
+  })
+
+  it('labels a group_only count as local (does not roll up)', () => {
+    const crawlers = out.split('\n').find(l => l.includes('Crawlers (code CRAWLERS)')) ?? ''
+    expect(crawlers).toMatch(/Snacks Served — local, does not roll up/)
+  })
+
+  it('treats a metric with no metric_role as ministry_only (pre-0051 rows)', () => {
+    const legacy = formatContextPack({
+      tags: [{ id: 'a', code: 'A', name: 'Alpha', tag_role: 'ADULT_SERVICE', parent_tag_id: null }],
+      metrics: [{ name: 'Head Count', ministry_tag_id: 'a', reporting_tag_code: 'ATTENDANCE', scope: 'instance' }],
+      excludedTagIds: [],
+      givingCategories: [],
+    })
+    // Rendered as a plain count — no roll-up / local annotation.
+    expect(legacy).toMatch(/Attendance \(Head Count\)/)
+    expect(legacy).not.toContain('rolls up')
+    expect(legacy).not.toContain('does not roll up')
+  })
+
+  it('annotates a per-count demographic override', () => {
+    const withDemo = formatContextPack({
+      tags: [{ id: 'a', code: 'A', name: 'Alpha', tag_role: 'ADULT_SERVICE', parent_tag_id: null }],
+      metrics: [{ name: 'Serve Team', ministry_tag_id: 'a', reporting_tag_code: 'VOLUNTEERS', scope: 'instance', metric_role: 'ministry_only', counted_demographic: 'YOUTH_MINISTRY' }],
+      excludedTagIds: [],
+      givingCategories: [],
+    })
+    expect(withDemo).toMatch(/Serve Team \[counts Youth\]/)
   })
 })

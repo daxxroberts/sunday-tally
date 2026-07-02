@@ -3,9 +3,19 @@
 // ── Zone D — TOTALS (E-10..E-13) — extracted from entries/page.tsx (P4d) ──
 
 import { useEffect, useState } from 'react'
-import { Ico, accentForRole, fmt, roleLabel, type GridPrefs, type Ministry } from '../ui'
+import type { GroupColor } from '@/components/history-grid/group-colors'
+import { Ico, fmt, roleLabel, type GridPrefs, type Ministry } from '../ui'
 
-export function TotalsView({ weekLabel, grandTotal, rollups, excluded, excludedMetrics, readOnly, onSavePrefs }: {
+// Same fallback the entry cards use (MinistryCard.tsx) when a ministry has no
+// church-chosen color yet — keeps this view consistent with the rest of the app
+// instead of introducing a new, separately-filtered color source (COLOR-PALETTE TRAP).
+const FALLBACK_HEX: Record<string, string> = {
+  KIDS_MINISTRY: '#8B5CF6',
+  YOUTH_MINISTRY: '#06B6D4',
+  ADULT_SERVICE: '#4F6EF7',
+}
+
+export function TotalsView({ weekLabel, grandTotal, rollups, excluded, excludedMetrics, readOnly, onSavePrefs, colorForNode }: {
   weekLabel: string
   grandTotal: number
   rollups: { ministry: Ministry; rows: { label: string; value: number; sub?: string; reporting_tag_code: string }[]; attTotal: number; attVal: number; volVal: number }[]
@@ -13,8 +23,13 @@ export function TotalsView({ weekLabel, grandTotal, rollups, excluded, excludedM
   excludedMetrics: Set<string>
   readOnly: boolean
   onSavePrefs: (next: GridPrefs) => void
+  /** Ministry accent color (0040) — same palette + lookup as Setup/History/entry cards. */
+  colorForNode?: (id: string) => GroupColor | undefined
 }) {
   const [editTotals, setEditTotals] = useState(false)
+
+  const hexForMinistry = (m: Ministry) =>
+    colorForNode?.(m.tag_id)?.strong ?? FALLBACK_HEX[m.tag_role ?? ''] ?? FALLBACK_HEX.ADULT_SERVICE
 
   return (
     <div>
@@ -84,7 +99,8 @@ export function TotalsView({ weekLabel, grandTotal, rollups, excluded, excludedM
                           {included && <Ico.check className="h-2.5 w-2.5 text-white" />}
                         </span>
                         <span
-                          className={`h-4 w-1.5 rounded-full ${accentForRole(r.ministry.tag_role)}`}
+                          className="h-4 w-1.5 rounded-full"
+                          style={{ background: hexForMinistry(r.ministry) }}
                           aria-hidden
                         />
                         <span className="text-[13px] font-semibold text-slate-800">{r.ministry.name}</span>
@@ -124,7 +140,8 @@ export function TotalsView({ weekLabel, grandTotal, rollups, excluded, excludedM
                           {included && <Ico.check className="h-2.5 w-2.5 text-white" />}
                         </span>
                         <span
-                          className={`h-4 w-1.5 rounded-full ${accentForRole(r.ministry.tag_role)}`}
+                          className="h-4 w-1.5 rounded-full"
+                          style={{ background: hexForMinistry(r.ministry) }}
                           aria-hidden
                         />
                         <span className="text-[13px] font-semibold text-slate-800">{r.ministry.name}</span>
@@ -157,7 +174,7 @@ export function TotalsView({ weekLabel, grandTotal, rollups, excluded, excludedM
             return (
               <div key={r.ministry.tag_id} className={`rounded-2xl border bg-white p-4 shadow-sm transition-all duration-200 hover:shadow-md ${isExcludedEntirely ? 'border-slate-200 opacity-60' : 'border-slate-200'}`}>
                 <div className="mb-3 flex flex-wrap items-center gap-2">
-                  <span className={`h-5 w-1.5 rounded-full ${accentForRole(r.ministry.tag_role)}`} aria-hidden />
+                  <span className="h-5 w-1.5 rounded-full" style={{ background: hexForMinistry(r.ministry) }} aria-hidden />
                   <h4 className="text-[15px] font-bold tracking-tight text-slate-900">{r.ministry.name}</h4>
                   <span className="text-[12px] font-medium text-slate-400">· {roleLabel(r.ministry.tag_role)}</span>
                   {isExcludedEntirely && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-400">Not in total</span>}

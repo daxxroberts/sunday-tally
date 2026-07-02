@@ -108,11 +108,20 @@ export async function computeRollups(
   }
 
   const descById = new Map<string, Set<string>>()
+  // sumIds = the entry descendants PLUS the roll-up's OWN id. A template that used
+  // to be a ministry_only count keeps its legacy ministry-level entries on itself,
+  // so its total = own legacy entries + its subgroups' entries (Builder-approved
+  // free move). No double-count: the entry screen only offers one level per count,
+  // so no occurrence ever has both a ministry and a subgroup number. A freshly-
+  // created template has no own entries, so this adds nothing there.
+  const sumById = new Map<string, Set<string>>()
   const allEntryIds = new Set<string>()
   for (const r of rollups) {
     const d = descendants(r.id)
     descById.set(r.id, new Set(d))
-    for (const id of d) allEntryIds.add(id)
+    const sum = new Set([...d, r.id])
+    sumById.set(r.id, sum)
+    for (const id of sum) allEntryIds.add(id)
   }
 
   const out: RollupComputed = { byRollupId: new Map() }
@@ -157,15 +166,26 @@ export async function computeRollups(
   for (const r of rollups) {
     const op = r.rollup_op ?? 'sum'
     const desc = descById.get(r.id) ?? new Set<string>()
+    const sum = sumById.get(r.id) ?? new Set<string>([r.id])
 
-    const perInstanceVals = new Map<string, number[]>()
-    const perPeriodVals = new Map<string, number[]>()
+    // Keep the roll-up's OWN legacy entries and its subgroup (descendant) entries
+    // in SEPARATE buckets per occurrence. Subgroup entries SUPERSEDE the own
+    // legacy entry for the same occurrence — we never sum both. This is the guard
+    // behind sumById: a "flip week" (a ministry_only count converted to a template
+    // mid-history) can legitimately have BOTH a ministry-level number and fresh
+    // subgroup numbers on the same still-open instance; summing them double-counts
+    // (e.g. 50 + 20 + 30 = 100 instead of 50). Prefer the subgroups when present.
+    const perInstanceOwn = new Map<string, number[]>()
+    const perInstanceDesc = new Map<string, number[]>()
+    const perPeriodOwn = new Map<string, number[]>()
+    const perPeriodDesc = new Map<string, number[]>()
     const instanceDate = new Map<string, string>()
     const contributingNodes = new Set<string>()
 
     for (const e of entries) {
-      if (!desc.has(e.metric_id) || e.value === null) continue
+      if (!sum.has(e.metric_id) || e.value === null) continue
       const val = Number(e.value)
+      const isDesc = desc.has(e.metric_id)
       const node = metricById.get(e.metric_id)?.ministry_tag_id ?? null
       if (e.service_instance_id) {
         const si = firstRelated(e.service_instances)
@@ -173,15 +193,31 @@ export async function computeRollups(
         const d = si.service_date
         if (d < fromDate || d > toDate) continue
         instanceDate.set(e.service_instance_id, d)
-        const arr = perInstanceVals.get(e.service_instance_id) ?? []
-        arr.push(val); perInstanceVals.set(e.service_instance_id, arr)
+        const bucket = isDesc ? perInstanceDesc : perInstanceOwn
+        const arr = bucket.get(e.service_instance_id) ?? []
+        arr.push(val); bucket.set(e.service_instance_id, arr)
       } else if (e.period_anchor) {
         if (e.period_anchor < fromDate || e.period_anchor > toDate) continue
-        const arr = perPeriodVals.get(e.period_anchor) ?? []
-        arr.push(val); perPeriodVals.set(e.period_anchor, arr)
+        const bucket = isDesc ? perPeriodDesc : perPeriodOwn
+        const arr = bucket.get(e.period_anchor) ?? []
+        arr.push(val); bucket.set(e.period_anchor, arr)
       } else continue
-      if (node) contributingNodes.add(node)
+      // Only subgroup (descendant) entries count toward "how many subgroups
+      // contribute" — the roll-up's own legacy entries don't add a subgroup.
+      if (node && isDesc) contributingNodes.add(node)
     }
+
+    // Merge per occurrence: descendants win when they exist, else the own legacy value.
+    const pickVals = (own: Map<string, number[]>, dsc: Map<string, number[]>) => {
+      const merged = new Map<string, number[]>()
+      for (const k of new Set([...own.keys(), ...dsc.keys()])) {
+        const d = dsc.get(k)
+        merged.set(k, d && d.length ? d : (own.get(k) ?? []))
+      }
+      return merged
+    }
+    const perInstanceVals = pickVals(perInstanceOwn, perInstanceDesc)
+    const perPeriodVals = pickVals(perPeriodOwn, perPeriodDesc)
 
     const perInstance = new Map<string, number>()
     for (const [k, vals] of perInstanceVals) perInstance.set(k, applyOp(op, vals))

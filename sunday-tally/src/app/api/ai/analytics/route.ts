@@ -5,6 +5,7 @@ import { runToolLoop, AiBudgetExhaustedError } from '@/lib/ai/anthropic'
 import { METRICS, runMetric, type MetricId } from '@/lib/ai/metrics'
 import { probeData, type ProbeInput } from '@/lib/ai/probe'
 import { getEntitlements } from '@/lib/billing/entitlements'
+import { dedupeByLogicalCount, type DimMetricRow } from '@/lib/ai/widgetTools'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -44,7 +45,7 @@ Reading run_metric results:
 
 const DIMENSIONS_TOOL: Anthropic.Messages.Tool = {
   name: 'list_dimensions',
-  description: 'Lists the church\'s dimensions — services, locations, volunteer metric definitions, response metric definitions, and ministry tags. Note: per-source giving breakdown is not available; giving_sources will always be an empty array.',
+  description: 'Lists the church\'s dimensions — services, locations, volunteer metric definitions, response metric definitions, and ministry tags. Note: per-source giving breakdown is not available; giving_sources will always be an empty array. Each volunteer/response category is listed ONCE per logical count — a count with "metric_role":"template" and "rolls_up":true is entered per group and TOTALLED on its ministry ("groups":N is how many groups feed it); its per-group mirror copies are not listed separately. A count with "local":true ("metric_role":"group_only") belongs to a single group and does not roll up church-wide.',
   input_schema: { type: 'object', properties: {} },
 }
 
@@ -214,18 +215,24 @@ export async function POST(req: Request) {
               // - service_tags.code/name replaces the old tag_code/tag_name columns.
               // metrics.reporting_tag_id is a FK to reporting_tags.id; filter by
               // code via PostgREST join (reporting_tags!inner(code)).
+              //
+              // Role-aware (0051, shared with the widget-builder's list_dimensions —
+              // see widgetTools.ts dedupeByLogicalCount): a ministry's per-group
+              // `mirror` copies of a template are collapsed to one logical row so
+              // this list doesn't show the same count N+1 times.
+              const metricCols = 'id, code, name, ministry_tag_id, metric_role, parent_metric_id, archived_at, reporting_tags!inner(code)'
               const [templates, locations, volMetrics, respMetrics, tags] = await Promise.all([
                 ctx.supabase.from('service_templates').select('id, display_name, service_code').eq('church_id', ctx.churchId).eq('is_active', true),
                 ctx.supabase.from('church_locations').select('id, name, code').eq('church_id', ctx.churchId).eq('is_active', true),
-                ctx.supabase.from('metrics').select('id, code, name, ministry_tag_id, reporting_tags!inner(code)').eq('church_id', ctx.churchId).eq('is_active', true).eq('reporting_tags.code', 'VOLUNTEERS'),
-                ctx.supabase.from('metrics').select('id, code, name, ministry_tag_id, reporting_tags!inner(code)').eq('church_id', ctx.churchId).eq('is_active', true).eq('reporting_tags.code', 'RESPONSE_STAT'),
+                ctx.supabase.from('metrics').select(metricCols).eq('church_id', ctx.churchId).eq('is_active', true).eq('reporting_tags.code', 'VOLUNTEERS'),
+                ctx.supabase.from('metrics').select(metricCols).eq('church_id', ctx.churchId).eq('is_active', true).eq('reporting_tags.code', 'RESPONSE_STAT'),
                 ctx.supabase.from('service_tags').select('id, code, name, tag_role').eq('church_id', ctx.churchId).eq('is_active', true).order('display_order', { ascending: true }),
               ])
               return {
                 service_templates:    templates.data   ?? [],
                 locations:            locations.data   ?? [],
-                volunteer_categories: volMetrics.data  ?? [],   // id, code, name, ministry_tag_id
-                response_categories:  respMetrics.data ?? [],   // id, code, name, ministry_tag_id
+                volunteer_categories: dedupeByLogicalCount((volMetrics.data ?? []) as unknown as DimMetricRow[]),
+                response_categories:  dedupeByLogicalCount((respMetrics.data ?? []) as unknown as DimMetricRow[]),
                 giving_sources:       [],                        // not available in unified schema
                 service_tags:         tags.data        ?? [],   // id, code, name, tag_role
               }

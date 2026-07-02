@@ -26,7 +26,43 @@ export interface Ministry {
   name: string
   tag_role: string | null
   sort_order: number
+  parent_tag_id: string | null
   metrics: Metric[]      // canonical instance metrics for this ministry
+}
+
+/** A ministry + the subgroups nested one level inside it (depth cap 2, mirrored-metrics). */
+export interface MinistryGroup {
+  root: Ministry
+  children: Ministry[]
+}
+
+/**
+ * Groups a flat `ministries` list (as fetched per occurrence/template) into
+ * root ministries with their subgroups nested underneath — so the entry screen
+ * can render one visually connected card per ministry instead of a flat list
+ * of disconnected cards. A ministry whose parent isn't present in this same
+ * list (parent not linked to this service) renders as its own root — this
+ * never loses a ministry, it just can't nest it.
+ */
+export function groupMinistryTree(ministries: Ministry[]): MinistryGroup[] {
+  const byId = new Set(ministries.map(m => m.tag_id))
+  const childrenOf = new Map<string, Ministry[]>()
+  const roots: Ministry[] = []
+  for (const m of ministries) {
+    if (m.parent_tag_id && byId.has(m.parent_tag_id)) {
+      const arr = childrenOf.get(m.parent_tag_id) ?? []
+      arr.push(m)
+      childrenOf.set(m.parent_tag_id, arr)
+    } else {
+      roots.push(m)
+    }
+  }
+  return roots
+    .sort((a, b) => a.sort_order - b.sort_order)
+    .map(root => ({
+      root,
+      children: (childrenOf.get(root.tag_id) ?? []).sort((a, b) => a.sort_order - b.sort_order),
+    }))
 }
 export interface Instance {
   id: string
@@ -56,18 +92,44 @@ export function toDateStr(d: Date) {
 }
 
 /* ── completion (N-6) ──────────────────────────────────────────────────── */
+// A ministry has enterable inputs only if it carries at least one metric here.
+// Template (rollup) counts and archived counts are already excluded upstream
+// (the metrics fetch filters `mode <> 'rollup'` and `archived_at IS NULL`), so a
+// node whose only counts are templates arrives with an EMPTY `metrics` array —
+// a rollup-only container. Such a node has nothing to type and must be EXCLUDED
+// from the completion tally (not vacuously "complete") and must not render a card.
+export function hasEnterableMetrics(m: Ministry): boolean {
+  return m.metrics.length > 0
+}
+
+export function groupHasEnterableMetrics(g: MinistryGroup): boolean {
+  return hasEnterableMetrics(g.root) || g.children.some(hasEnterableMetrics)
+}
+
+// Nothing is REQUIRED — a blank field just means "didn't happen" (rule: entry
+// is never required). Status is purely descriptive of how much is filled in:
+// gray = nothing yet, orange = some, green = every metric has a value OR is
+// explicitly marked N/A. Marking N/A is what moves a field from "still open"
+// to "reviewed, nothing here" so the ministry can reach green.
 export function ministryStatus(m: Ministry, instId: string, entries: EntryMap): Stat {
-  // completion is measured against REQUIRED (canonical) metrics only — non-canonical
-  // metrics still render for entry but don't gate "complete"
-  const canon = m.metrics.filter(x => x.is_canonical)
-  if (canon.length === 0) return 'complete'
+  if (m.metrics.length === 0) return 'complete'
   let done = 0
-  for (const metric of canon) {
+  for (const metric of m.metrics) {
     const e = entries[`${metric.id}|${instId}`]
     if (e && (e.is_not_applicable || e.value !== null)) done++
   }
   if (done === 0) return 'empty'
-  if (done === canon.length) return 'complete'
+  if (done === m.metrics.length) return 'complete'
+  return 'needs'
+}
+
+// Combined status across a ministry AND its subgroups — the card-level dot.
+export function groupStatus(g: MinistryGroup, instId: string, entries: EntryMap): Stat {
+  const nodes = [g.root, ...g.children].filter(hasEnterableMetrics)
+  if (nodes.length === 0) return 'complete'
+  const statuses = nodes.map(n => ministryStatus(n, instId, entries))
+  if (statuses.every(s => s === 'complete')) return 'complete'
+  if (statuses.every(s => s === 'empty')) return 'empty'
   return 'needs'
 }
 
@@ -139,9 +201,16 @@ export function roleLabel(role: string | null | undefined): string {
 /* ── autosave field (E-40 / DS-10) ───────────────────────────────────────
  * Controlled value lives in the parent; this component owns its own save
  * status and commits on blur via onCommit(value|null). Status indicator is
- * to the LEFT of the input so right edges align across rows. */
+ * to the LEFT of the input so right edges align across rows.
+ *
+ * Nothing here is required — a blank field just means "didn't happen this
+ * week", not an error. `onToggleNA` (when supplied) adds a tiny "not
+ * available" checkbox: checking it is the explicit version of leaving it
+ * blank — it clears the value AND marks the field reviewed, so the ministry's
+ * status dot can reach green instead of sitting on gray/orange forever. */
 export function Field({
-  fieldId, label, value, prefix, hint, indent, cadence, needs, readOnly,
+  fieldId, label, value, prefix, hint, indent, cadence, readOnly,
+  isNA, onToggleNA,
   onCommit,
 }: {
   fieldId: string
@@ -151,12 +220,16 @@ export function Field({
   hint?: string
   indent?: boolean
   cadence?: string
-  needs?: boolean        // required canonical metric → amber when empty
   readOnly?: boolean
+  /** This field has been explicitly marked "not available" this occurrence. */
+  isNA?: boolean
+  /** Supply to show the small N/A checkbox. Omit to hide it (e.g. read-only views). */
+  onToggleNA?: (na: boolean) => Promise<void>
   onCommit: (val: number | null) => Promise<void>
 }) {
   const [val, setVal] = useState<string>(value === null || value === undefined ? '' : String(value))
   const [saved, setSaved] = useState<Saved>('idle')
+  const [naBusy, setNaBusy] = useState(false)
 
   // keep in sync if parent prefill changes (e.g. week switch / N/A toggle clears)
   useEffect(() => {
@@ -165,7 +238,6 @@ export function Field({
   }, [value])
 
   const empty = val.trim() === ''
-  const showNeeds = empty && needs && saved !== 'saving'
 
   const commit = async () => {
     if (readOnly) return
@@ -183,6 +255,12 @@ export function Field({
     }
   }
 
+  const toggleNA = async () => {
+    if (readOnly || !onToggleNA || naBusy) return
+    setNaBusy(true)
+    try { await onToggleNA(!isNA) } finally { setNaBusy(false) }
+  }
+
   return (
     <div className={`group flex items-center justify-between gap-4 rounded-lg px-2 py-2 transition-colors duration-200 hover:bg-slate-50 ${indent ? 'pl-3' : ''}`}>
       <label htmlFor={fieldId} className="flex min-w-0 flex-col gap-0.5">
@@ -193,35 +271,48 @@ export function Field({
         {hint && <span className="text-[11px] text-slate-400">{hint}</span>}
       </label>
       <div className="flex items-center gap-2.5">
-        <span className="flex w-[88px] items-center justify-end gap-1 text-[11px]" aria-live="polite">
+        <span className="flex w-[70px] items-center justify-end gap-1 text-[11px]" aria-live="polite">
           {saved === 'error' ? (
             <button type="button" onClick={commit} className="inline-flex items-center gap-1 font-medium text-[#B45309] hover:underline" title="Retry save">
               <Ico.retry className="h-3 w-3" />Retry
             </button>
-          ) : showNeeds ? (
-            <span className="font-medium text-[#B45309]">Needs entry</span>
           ) : saved === 'saving' ? (
             <span className="text-slate-400">Saving…</span>
           ) : saved === 'saved' ? (
             <><Ico.check className="h-3 w-3 text-[#22C55E]" /><span className="font-medium text-[#15803D]">Saved</span></>
           ) : null}
         </span>
+        {onToggleNA && (
+          <button
+            type="button"
+            onClick={toggleNA}
+            disabled={readOnly || naBusy}
+            aria-pressed={!!isNA}
+            aria-label={isNA ? `${label}: marked not available — click to clear` : `Mark ${label} not available`}
+            title={isNA ? 'Not available this occurrence — click to clear' : 'Not available this occurrence (same as leaving it blank, but marks it reviewed)'}
+            className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border transition-colors ${
+              isNA
+                ? 'border-slate-400 bg-slate-400 text-white'
+                : 'border-slate-200 text-transparent hover:border-slate-300 hover:bg-slate-50'
+            } disabled:cursor-not-allowed`}
+          >
+            <Ico.ban className="h-3 w-3" />
+          </button>
+        )}
         <div className="relative">
           {prefix && <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 font-num text-sm text-slate-400">{prefix}</span>}
           <input
             id={fieldId}
             type="number"
             inputMode="numeric"
-            placeholder="—"
+            placeholder={isNA ? 'N/A' : '—'}
             value={val}
-            disabled={readOnly}
+            disabled={readOnly || isNA}
             onChange={(e) => { setVal(e.target.value); setSaved('idle') }}
             onBlur={commit}
             className={`font-num h-10 w-28 rounded-lg border bg-white text-right text-[15px] text-slate-900 shadow-sm outline-none transition placeholder:text-slate-300 focus-visible:ring-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500 ${
               saved === 'error'
                 ? 'border-[#F59E0B]/70 ring-1 ring-[#F59E0B]/25 focus-visible:border-[#4F6EF7] focus-visible:ring-[#4F6EF7]/25'
-                : showNeeds
-                ? 'border-[#F59E0B]/60 ring-1 ring-[#F59E0B]/20 focus-visible:border-[#4F6EF7] focus-visible:ring-[#4F6EF7]/25'
                 : 'border-slate-200 focus-visible:border-[#4F6EF7] focus-visible:ring-[#4F6EF7]/25'
             } ${prefix ? 'pl-7 pr-3' : 'px-3'}`}
           />

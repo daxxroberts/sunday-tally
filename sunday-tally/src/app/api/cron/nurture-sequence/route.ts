@@ -52,26 +52,25 @@ export async function GET(req: Request) {
     template: EmailTemplate,
     extra: Record<string, string> = {},
   ): Promise<boolean> {
-    // Atomic claim-first dedup (uq_notifications_church_kind, migration 0054):
-    // insert the dedup row BEFORE sending. If it conflicts, another run already
-    // owns this (church, kind) — skip. This closes the check-then-insert race
-    // where two overlapping runs both send. If we then can't actually send, we
-    // RELEASE the claim so a later run retries.
-    const { error: claimErr } = await supabase
-      .from('notifications_sent').insert({ church_id: churchId, kind })
-    if (claimErr) return false // duplicate claim (already sent) or transient error
-    const release = () =>
-      supabase.from('notifications_sent').delete().eq('church_id', churchId).eq('kind', kind)
+    // Dedup: skip if this (church, kind) was already sent. Check-then-record — no
+    // dependency on any migration, and correct for a once-daily cron (Vercel does
+    // not run overlapping invocations of the same job). Migration 0054's optional
+    // uq_notifications_church_kind index, once applied, makes the final insert
+    // race-proof too (a concurrent duplicate would 23505, tolerated below) — but
+    // this code does NOT require it, so the drip is safe to ship before 0054.
+    const { data: prior } = await supabase
+      .from('notifications_sent').select('id').eq('church_id', churchId).eq('kind', kind).maybeSingle()
+    if (prior) return false
 
     const { data: members } = await supabase
       .from('church_memberships').select('user_id')
       .eq('church_id', churchId).eq('role', 'owner').eq('is_active', true).limit(1)
     const ownerId = members?.[0]?.user_id
-    if (!ownerId) { await release(); return false }
+    if (!ownerId) return false
 
     const { data: userData } = await supabase.auth.admin.getUserById(ownerId)
     const email = userData?.user?.email
-    if (!email) { await release(); return false }
+    if (!email) return false
 
     const ed = await getChurchEmailData(supabase, churchId, ownerId)
     const res = await sendEmail(email, template, {
@@ -90,7 +89,12 @@ export async function GET(req: Request) {
       aiUrl: `${appUrl()}/dashboard/ai`,
       ...extra,
     })
-    if (res.error) { await release(); return false }
+    if (res.error) return false
+
+    // Record the send so it isn't repeated. A 23505 here (only possible once the
+    // 0054 unique index exists, under a rare concurrent run) means another run
+    // already recorded it — harmless, the email still went once.
+    await supabase.from('notifications_sent').insert({ church_id: churchId, kind })
     return true
   }
 

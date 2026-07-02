@@ -278,6 +278,29 @@ const GridBody: React.FC<GridBodyProps> = ({
     let svRows: Array<{ row: GridRow; idx: number }> = [];
     let moRows: Array<{ row: GridRow; idx: number }> = [];
 
+    // Resolve one column's numeric value on one row. A computed column
+    // (computedFrom set — e.g. the mirrored-metrics roll-up total) has no stored
+    // cell of its own, so sum its source columns live (same rule the READ_ONLY
+    // cell uses). Returns null when nothing counts toward the row.
+    function rowValue(col: FlatColumn, rowId: string): number | null {
+      if (col.computedFrom && col.computedFrom.length > 0) {
+        let sum: number | null = null;
+        for (const sibId of col.computedFrom) {
+          const sib = getCellValue(rowId, sibId);
+          if (sib == null || sib === '') continue;
+          const n = Number(String(sib).replace(/[$,\s]/g, ''));
+          if (Number.isFinite(n)) sum = (sum ?? 0) + n;
+        }
+        return sum;
+      }
+      const raw = getCellValue(rowId, col.id);
+      // null/undefined = never entered → skip (don't count the week).
+      // '' = cleared → skip. 0 (or "0") = intentional zero → count it.
+      if (raw == null || raw === '') return null;
+      const n = Number(String(raw).replace(/[$,\s]/g, ''));
+      return Number.isFinite(n) ? n : null;
+    }
+
     function flush() {
       if (!monthKey) return;
       const colMap = new Map<string, number | null>();
@@ -290,12 +313,8 @@ const GridBody: React.FC<GridBodyProps> = ({
         const vals: number[] = [];
         for (const { row, idx } of sourceRows) {
           const rowId = `${row.type}-${row.anchor.toISOString()}-${row.metricId ?? row.serviceTemplateId ?? idx}`;
-          const raw = getCellValue(rowId, col.id);
-          // null/undefined = never entered → skip (don't count the week).
-          // '' = cleared → skip. 0 (or "0") = intentional zero → count it.
-          if (raw == null || raw === '') continue;
-          const n = Number(String(raw).replace(/[$,\s]/g, ''));
-          if (Number.isFinite(n)) vals.push(n);
+          const v = rowValue(col, rowId);
+          if (v != null) vals.push(v);
         }
         colMap.set(col.id, vals.length > 0 ? vals.reduce((a, b) => a + b, 0) / vals.length : null);
       }

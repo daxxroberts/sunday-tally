@@ -858,6 +858,9 @@ export async function compileAndRun(args: {
   // 2b. Categorical filters — apply where the source supports them; decline clearly otherwise.
   const colFilters: { col: string; values: string[] }[] = []
   const ff = spec.filters
+  // Track the ministry filter so an empty result can be explained (a container
+  // ministry filtered by its own code alone returns nothing — see below).
+  let ministryFilter: { requested: string[]; containerCodes: string[] } | null = null
   if (ff?.ministry_tag_codes && ff.ministry_tag_codes.length > 0) {
     if (spec.source !== 'metric_entries_readable') {
       return {
@@ -867,7 +870,12 @@ export async function compileAndRun(args: {
         error: `Filtering by ministry needs source 'metric_entries_readable' (the ${spec.source} view has no ministry column).`,
       }
     }
-    colFilters.push({ col: 'ministry_tag_code', values: ff.ministry_tag_codes })
+    // Expand a container ministry (Kids) to its child groups (Crawlers, Walkers)
+    // so the rolled-up mirror entries — tagged to the child group in the view —
+    // are captured. Without this a filter on a container returns zero rows.
+    const resolvedMinistry = await resolveMinistryFilter(supabase, churchId, ff.ministry_tag_codes)
+    ministryFilter = { requested: ff.ministry_tag_codes, containerCodes: resolvedMinistry.containerCodes }
+    colFilters.push({ col: 'ministry_tag_code', values: resolvedMinistry.codes })
   }
   if (ff?.metric_names && ff.metric_names.length > 0) {
     if (spec.source !== 'metric_entries_readable') {
@@ -918,6 +926,48 @@ export async function compileAndRun(args: {
       resolved,
       shape: 'value: number',
       error: e instanceof Error ? e.message : 'query failed',
+    }
+  }
+
+  // 3b. Container-ministry hint (0051): a ministry filter that came back EMPTY and
+  //     targeted a container (a parent whose data lives only in its subgroups via a
+  //     rolled-up template) gets an explanatory error instead of silent "No data",
+  //     so the model can rephrase (e.g. build the ministry total by NAME, or filter
+  //     a subgroup) rather than presenting a blank widget. The child groups were
+  //     already folded into the query above, so a still-empty result means either
+  //     no data in-window or the wrong source — say so plainly.
+  if (raw.length === 0 && ministryFilter && ministryFilter.containerCodes.length > 0) {
+    const names = ministryFilter.containerCodes.join(', ')
+    return {
+      rows: [],
+      resolved,
+      shape: 'value: number',
+      error:
+        `No entries under ${names} in this window. ${names} is a parent ministry whose counts are ` +
+        `entered in its subgroups and totalled on the ministry (a roll-up "template"). This query already ` +
+        `included those subgroups' mirror entries (they share the template's name), so the window likely ` +
+        `has no logged data — widen the date range. If this still comes back empty, call list_dimensions, ` +
+        `find the row for ${names} with "metric_role":"template", and set filters.metric_names to its exact ` +
+        `NAME (keep filters.ministry_tag_codes set to ${names} too, not a subgroup's code, so the two ` +
+        `filters resolve to the same single roll-up rather than a name that might also match a metric on a ` +
+        `different ministry).`,
+    }
+  }
+
+  // 3c. Schema-drift guard (finding #35): a SAVED widget replays a spec written at
+  //     build time — it has no AI in the loop to notice when the church later
+  //     renames, moves, or archives the metric/ministry the spec still points at.
+  //     Without this, a drifted widget just goes quietly empty forever with no
+  //     explanation. When the query came back empty AND a metric_names and/or
+  //     ministry_tag_codes filter was set (and the empty result wasn't already
+  //     explained by the container hint above), check whether those filter values
+  //     still resolve to something LIVE for this church; if not, say so plainly
+  //     instead of a bare "no data" — this surfaces via the same `error` field the
+  //     UI already renders as a drift badge / flip-panel message for every widget.
+  if (raw.length === 0 && ff && ((ff.metric_names?.length ?? 0) > 0 || (ff.ministry_tag_codes?.length ?? 0) > 0)) {
+    const drift = await detectFilterDrift(supabase, churchId, ff)
+    if (drift) {
+      return { rows: [], resolved, shape: 'value: number', error: drift }
     }
   }
 
@@ -1051,6 +1101,236 @@ export async function compileAndRun(args: {
 function timeDimBucket(spec: WidgetSpec): 'week' | 'month' | 'year' | null {
   for (const d of spec.dimensions) if (d.field === 'time') return d.bucket
   return null
+}
+
+// ─── Container-ministry expansion (mirrored metrics, 0051) ─────────────────────
+
+export interface MinistryFilterResolution {
+  /** The codes to actually query — requested codes plus any child-group codes of a
+   *  container ministry, so the mirror entries (tagged to the child group in the
+   *  view) are captured. Equals the input when nothing was a container. */
+  codes: string[]
+  /** Requested codes that are a CONTAINER (a parent tag whose data lives entirely
+   *  in child groups — the ministry itself holds only a rolled-up template, no
+   *  entries of its own). Used to explain an empty result rather than say "No data". */
+  containerCodes: string[]
+  /** True when the requested codes matched no live tag at all (typo / archived). */
+  unknown: boolean
+}
+
+/** A service_tag row as the ministry-filter resolver reads it. */
+export interface MinistryTagRow {
+  id: string
+  code: string
+  parent_tag_id: string | null
+  archived_at: string | null
+}
+
+/**
+ * A metrics row as the ministry-filter resolver reads it (0051 role columns) —
+ * OPTIONAL input to planMinistryFilter. When supplied, it lets the expansion
+ * tell a child group's ROLLED-UP mirror entries (which should count toward the
+ * parent) apart from its group_only entries (which must NOT). When omitted,
+ * planMinistryFilter falls back to the old blanket per-child-tag expansion
+ * (kept for existing pure-function callers/tests that don't have metrics data).
+ */
+export interface MinistryMetricRow {
+  id: string
+  ministry_tag_id: string | null
+  metric_role: string | null
+  /** For a mirror, the template metric id it rolls up into. */
+  parent_metric_id: string | null
+}
+
+/**
+ * Expand a ministry_tag_codes filter so a parent ("container") ministry resolves
+ * to its child groups too. PURE — takes the church's tag rows, returns the plan.
+ *
+ * WHY: metric_entries_readable derives ministry_tag_code from the entry metric's
+ * OWN ministry tag. A container ministry (Kids) holds only a `template` roll-up
+ * with NO entries; the real data lives in `mirror` entries whose ministry tag is
+ * the CHILD group (Crawlers, Walkers). So a raw filter on ['KIDS'] matches zero
+ * rows → the widget shows "No data" even though Kids clearly has attendance. We
+ * add the child-group codes so the roll-up's data is included, and flag any
+ * requested code that is such a container so the caller can explain an empty
+ * result.
+ *
+ * ROLE-AWARE (0051 fix, finding #45): a child group can ALSO hold `group_only`
+ * metrics — counts entered on that one group that are explicitly NOT part of
+ * the parent's total. Blanket-adding every child CODE (rather than just the
+ * rows that actually roll up) would pull a child's group_only entries into a
+ * parent-ministry query alongside its legitimate mirror entries — over-counting
+ * the parent. When `metrics` rows are supplied, a child is only added to the
+ * filter if it has at least one `mirror` metric whose parent_metric_id is a
+ * `template` metric that lives on the parent tag (i.e. it genuinely feeds the
+ * parent's roll-up); a child whose only metrics are group_only is excluded.
+ */
+export function planMinistryFilter(
+  requested: string[],
+  tags: MinistryTagRow[],
+  metrics?: MinistryMetricRow[],
+): MinistryFilterResolution {
+  const byId = new Map(tags.map(t => [t.id, t]))
+  const childTagsOf = (parentId: string) =>
+    tags.filter(t => t.parent_tag_id === parentId && !t.archived_at)
+
+  // Template metric ids that live directly on a given ministry tag — a mirror
+  // pointing at one of THESE ids genuinely feeds that ministry's roll-up total.
+  const templateIdsByTag = new Map<string, Set<string>>()
+  for (const m of metrics ?? []) {
+    if (m.metric_role !== 'template' || !m.ministry_tag_id) continue
+    const set = templateIdsByTag.get(m.ministry_tag_id) ?? new Set<string>()
+    set.add(m.id)
+    templateIdsByTag.set(m.ministry_tag_id, set)
+  }
+  // True when the given child tag has a `mirror` metric whose parent_metric_id
+  // points at one of the PARENT tag's own template metrics.
+  const childFeedsParent = (childTagId: string, parentTagId: string) => {
+    const parentTemplateIds = templateIdsByTag.get(parentTagId)
+    if (!parentTemplateIds || parentTemplateIds.size === 0) return false
+    return (metrics ?? []).some(
+      m => m.metric_role === 'mirror'
+        && m.ministry_tag_id === childTagId
+        && m.parent_metric_id !== null
+        && parentTemplateIds.has(m.parent_metric_id),
+    )
+  }
+
+  const out = new Set<string>()
+  const containerCodes: string[] = []
+  let matchedAny = false
+  for (const code of requested) {
+    out.add(code) // always keep the requested code itself
+    const tag = tags.find(t => t.code === code)
+    if (!tag) continue
+    matchedAny = true
+    const children = childTagsOf(tag.id)
+    if (children.length > 0) {
+      // A parent ministry — pull in only the child groups that actually feed
+      // its roll-up (a mirror pointing at ITS template) when metrics data is
+      // available to check; with no metrics data, preserve the old blanket
+      // expansion (defensive default for callers that can't supply metrics).
+      for (const c of children) {
+        if (!metrics || childFeedsParent(c.id, tag.id)) out.add(c.code)
+      }
+      // It's a "container" (data lives only in the groups) when the parent tag
+      // itself is not a child of anything and has children — we surface it so an
+      // empty result after expansion can be explained. (If the parent ALSO holds
+      // its own entries they'll match by its own code; the hint only fires on a
+      // truly empty result at compile time.)
+      if (byId.get(tag.id)?.parent_tag_id == null) containerCodes.push(code)
+    }
+  }
+  return { codes: [...out], containerCodes, unknown: !matchedAny && requested.length > 0 }
+}
+
+/**
+ * Async wrapper: read the church's active tags + metrics, then apply
+ * planMinistryFilter. Defensive — on a read error, falls back to the raw filter
+ * (no expansion).
+ */
+async function resolveMinistryFilter(
+  supabase: SupabaseClient,
+  churchId: string,
+  requested: string[],
+): Promise<MinistryFilterResolution> {
+  const [{ data, error }, { data: metricsData, error: metricsError }] = await Promise.all([
+    supabase
+      .from('service_tags')
+      .select('id, code, parent_tag_id, archived_at')
+      .eq('church_id', churchId)
+      .eq('is_active', true),
+    supabase
+      .from('metrics')
+      .select('id, ministry_tag_id, metric_role, parent_metric_id')
+      .eq('church_id', churchId)
+      .eq('is_active', true),
+  ])
+  if (error || !data) {
+    return { codes: requested, containerCodes: [], unknown: false }
+  }
+  // A metrics read error still lets the ministry expansion proceed — just fall
+  // back to the blanket (pre-#45) behavior rather than dropping data.
+  const metrics = (!metricsError && metricsData) ? (metricsData as MinistryMetricRow[]) : undefined
+  return planMinistryFilter(requested, data as MinistryTagRow[], metrics)
+}
+
+/**
+ * Schema-drift guard for a saved widget's spec (finding #35). A widget spec is
+ * written once at build time and then replayed forever with zero AI in the
+ * loop — if the church later renames a metric, archives it, or moves it to a
+ * different ministry (setCountSection / renameCount / deactivateCount in
+ * settings/track/actions.ts), the OLD name/code baked into the spec quietly
+ * stops matching anything and the widget just goes empty with no explanation.
+ *
+ * Called only when the query already came back with zero rows (so it never
+ * costs anything on the common, successful path). Checks whether the spec's
+ * metric_names / ministry_tag_codes still resolve to a LIVE (is_active, not
+ * archived_at) metric/tag for this church; if not, names the drifted value(s)
+ * so the AI (build) or the dashboard flip-panel (replay) can explain it
+ * instead of silently showing "no data". Defensive: any read error yields no
+ * drift message (falls through to the generic empty-result path).
+ */
+async function detectFilterDrift(
+  supabase: SupabaseClient,
+  churchId: string,
+  ff: NonNullable<WidgetSpec['filters']>,
+): Promise<string | null> {
+  try {
+    const messages: string[] = []
+
+    if (ff.metric_names && ff.metric_names.length > 0) {
+      const { data, error } = await supabase
+        .from('metrics')
+        .select('name, archived_at')
+        .eq('church_id', churchId)
+        .eq('is_active', true)
+        .in('name', ff.metric_names)
+      if (!error) {
+        const liveNames = new Set(
+          ((data ?? []) as { name: string; archived_at: string | null }[])
+            .filter(m => !m.archived_at)
+            .map(m => m.name),
+        )
+        const missing = ff.metric_names.filter(n => !liveNames.has(n))
+        if (missing.length > 0) {
+          messages.push(
+            `This widget filters by metric name ${missing.map(n => `"${n}"`).join(', ')}, which no longer ` +
+            `matches a live metric for this church — it may have been renamed, archived, or moved. Call ` +
+            `list_dimensions to find its current name (or its replacement) and update filters.metric_names.`,
+          )
+        }
+      }
+    }
+
+    if (ff.ministry_tag_codes && ff.ministry_tag_codes.length > 0) {
+      const { data, error } = await supabase
+        .from('service_tags')
+        .select('code, archived_at')
+        .eq('church_id', churchId)
+        .eq('is_active', true)
+        .in('code', ff.ministry_tag_codes)
+      if (!error) {
+        const liveCodes = new Set(
+          ((data ?? []) as { code: string; archived_at: string | null }[])
+            .filter(t => !t.archived_at)
+            .map(t => t.code),
+        )
+        const missing = ff.ministry_tag_codes.filter(c => !liveCodes.has(c))
+        if (missing.length > 0) {
+          messages.push(
+            `This widget filters by ministry code ${missing.join(', ')}, which no longer matches a live ` +
+            `ministry for this church — it may have been archived or restructured. Call list_dimensions to ` +
+            `find the current ministry tag and update filters.ministry_tag_codes.`,
+          )
+        }
+      }
+    }
+
+    return messages.length > 0 ? messages.join(' ') : null
+  } catch {
+    return null
+  }
 }
 
 /** Page through a view, church + date scoped, ordered by the date column. */

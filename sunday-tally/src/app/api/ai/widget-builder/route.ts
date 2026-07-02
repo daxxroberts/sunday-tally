@@ -48,9 +48,16 @@ THE FOUR DATA SOURCES — pick the right one:
 SERVICE GROUPS (reporting groups — e.g. "Morning" vs "Evening", across campuses):
   • Churches may label services with a reporting group. Dimension { field:'service_group', by:'code' } groups by it; filters.service_group_codes restricts to specific groups. Get the EXACT codes from list_dimensions. Ungrouped services bucket as "—". "Compare our morning services to our evening services" → service_group. If the church has no groups yet, say so and suggest setting them on Settings → Services.
 
+HOW COUNTS ARE ORGANIZED (a ministry and its subgroups):
+  • A ministry can have SUBGROUPS (e.g. Kids → Crawlers, Walkers). Counts come in three kinds — the church structure and list_dimensions tell you which:
+    – TEMPLATE (the ministry TOTAL): a count entered in every subgroup and totalled on the ministry — shown once, marked "rolls up across groups" / "rolls_up":true with "groups":N. A request about the ministry as a whole ("Kids attendance") means this total. Filter it by its NAME on metric_entries_readable (its per-group copies share that name and are summed for you) OR filter by the ministry tag — do NOT try to add up the subgroups yourself.
+    – MINISTRY-ONLY: a plain count entered at the ministry, not per subgroup. Normal.
+    – GROUP-ONLY (marked "local" / "does not roll up"): a count that exists in ONE subgroup only and is NOT part of the ministry total. Report it only for that subgroup; NEVER sum it across the ministry or church-wide, and never fold it into a ministry total.
+  • You never see the per-group mirror copies as separate metrics — one count = one row. Build the ministry total from the template (by name or by ministry tag); build a subgroup view by filtering to that subgroup's ministry tag.
+
 CHOOSING source + measure:
   • attendance overall / by service / over time → attendance_per_occurrence, measure ATTENDANCE.
-  • attendance by ministry (Experience vs LifeKids) → metric_entries_readable, ATTENDANCE, dimension ministry_tag.
+  • attendance by ministry (Experience vs LifeKids) → metric_entries_readable, ATTENDANCE, dimension ministry_tag. ⚠ dimension ministry_tag groups by each row's OWN ministry tag — it does NOT roll a container ministry's subgroups up into one bar. If a ministry in the comparison has subgroups (a "rolls_up":true template, e.g. LifeKids → Crawlers/Walkers), this dimension will show its subgroups (Crawlers, Walkers) as their OWN bars instead of one "LifeKids" bar. Check list_dimensions/the church structure first: if every ministry you're comparing is a plain leaf (no subgroups), dimension ministry_tag is correct as-is. If one is a container, either (a) build it as a metric_names/ministry_tag_codes-filtered comparison of just the top-level totals (one call per ministry, or a small multi-widget set), or (b) tell the user plainly that the breakdown will show subgroups for that ministry rather than a single combined bar.
   • volunteers overall → volunteers_per_occurrence, VOLUNTEERS. volunteers by ministry/area → metric_entries_readable, VOLUNTEERS.
   • giving → giving_per_week, GIVING (church-wide weekly; no per-source split).
   • a SINGLE stat — salvations / baptisms / first-time decisions / hands raised / etc. → metric_entries_readable, measure RESPONSE_STAT, AND filters.metric_names = [that metric's exact name from list_dimensions]. ⚠ WITHOUT metric_names you sum EVERY stat (Hands Raised + Parking + Rooms + …) — that is WRONG. Always isolate the metric the user named.
@@ -285,8 +292,11 @@ export async function POST(req: Request) {
         if (err instanceof AiBudgetExhaustedError) {
           send('error', { code: 'ai_budget_exhausted' })
         } else {
-          const message = err instanceof Error ? err.message : 'widget_builder_failed'
-          send('error', { code: 'widget_builder_failed', message })
+          // Log the real detail server-side only — the raw error (which can carry
+          // Anthropic SDK/API internals, stack info, etc.) must never reach the
+          // client over the SSE payload. The client gets a generic, stable code.
+          console.error('[widget-builder]', err instanceof Error ? err.stack ?? err.message : err)
+          send('error', { code: 'widget_builder_failed' })
         }
       } finally {
         send('done', {})

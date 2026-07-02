@@ -23,6 +23,9 @@ export interface ActiveServiceTagRow {
   is_active: boolean
   /** null when the 0040 color column is unavailable (pre-migration fallback). */
   color: string | null
+  /** 0051 archive marker. Non-null = archived (hidden from editor + entry, but
+   *  History still shows its past). Callers that want only live tags filter this. */
+  archived_at: string | null
 }
 
 /**
@@ -39,7 +42,7 @@ export async function fetchActiveServiceTags(
 ): Promise<{ rows: ActiveServiceTagRow[]; error: { message: string } | null }> {
   const withColor = await supabase
     .from('service_tags')
-    .select('id, code, name, tag_role, parent_tag_id, display_order, is_active, color')
+    .select('id, code, name, tag_role, parent_tag_id, display_order, is_active, color, archived_at')
     .eq('church_id', churchId)
     .eq('is_active', true)
     .order('display_order', { ascending: true })
@@ -54,7 +57,7 @@ export async function fetchActiveServiceTags(
     .eq('is_active', true)
     .order('display_order', { ascending: true })
     .order('created_at', { ascending: true })
-  const rows = ((base.data ?? []) as Omit<ActiveServiceTagRow, 'color'>[])
-    .map(r => ({ ...r, color: null }))
+  const rows = ((base.data ?? []) as Omit<ActiveServiceTagRow, 'color' | 'archived_at'>[])
+    .map(r => ({ ...r, color: null, archived_at: null }))
   return { rows, error: base.error }
 }

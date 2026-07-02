@@ -5,12 +5,13 @@
 import { useState } from 'react'
 import { Field, Ico, type EntryMap, type Metric } from '../ui'
 
-export function VolunteersGroup({ vols, instId, entries, readOnly, onCommit }: {
+export function VolunteersGroup({ vols, instId, entries, readOnly, onCommit, onToggleNA }: {
   vols: Metric[]
   instId: string
   entries: EntryMap
   readOnly: boolean
   onCommit: (metric: Metric, instId: string, value: number | null) => Promise<void>
+  onToggleNA?: (metric: Metric, instId: string, na: boolean) => Promise<void>
 }) {
   const [open, setOpen] = useState(true)
   const total = vols.reduce((s, v) => {
@@ -30,10 +31,14 @@ export function VolunteersGroup({ vols, instId, entries, readOnly, onCommit }: {
       </button>
       {open && (
         <div className="mt-1 space-y-0.5 border-t border-slate-100 pt-1">
-          {vols.map(v => (
-            <Field key={v.id} fieldId={`f-${v.id}-${instId}`} indent label={v.name} value={entries[`${v.id}|${instId}`]?.value ?? null}
-              readOnly={readOnly} onCommit={(val) => onCommit(v, instId, val)} />
-          ))}
+          {vols.map(v => {
+            const e = entries[`${v.id}|${instId}`]
+            return (
+              <Field key={v.id} fieldId={`f-${v.id}-${instId}`} indent label={v.name} value={e?.value ?? null}
+                isNA={e?.is_not_applicable} readOnly={readOnly} onCommit={(val) => onCommit(v, instId, val)}
+                onToggleNA={readOnly || !onToggleNA ? undefined : (na) => onToggleNA(v, instId, na)} />
+            )
+          })}
         </div>
       )}
     </div>

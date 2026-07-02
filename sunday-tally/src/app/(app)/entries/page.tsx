@@ -16,14 +16,17 @@ import AppLayout from '@/components/layouts/AppLayout'
 import { createClient } from '@/lib/supabase/client'
 import { addDays, sundayOf } from '@/lib/date-window'
 import { readChurchPrefs, saveChurchPrefs } from '@/lib/churchPrefs'
+import { fetchActiveServiceTags } from '@/lib/service-tags'
+import { buildGroupColorMap, type GroupColor } from '@/components/history-grid/group-colors'
 import type { Church, UserRole } from '@/types'
 import {
-  Dot, Ico, ministryStatus, toDateStr,
+  Dot, Ico, hasEnterableMetrics, ministryStatus, toDateStr,
   type EntryMap, type GridPrefs, type Instance, type Metric, type Ministry, type Stat,
 } from './ui'
 import { TotalsView } from './components/TotalsView'
 import { OccurrenceView } from './components/OccurrenceView'
 import { StatEntriesView } from './components/StatEntriesView'
+import { MinistryFilterButton, type FilterableMinistry } from './components/MinistryFilterButton'
 
 const PAGE = 1000  // PostgREST cap — paginate past it (N-7)
 
@@ -33,9 +36,15 @@ function fmtWeek(d: Date) { return d.toLocaleDateString('en-US', { month: 'short
 function firstOfMonth(d: Date) { return toDateStr(new Date(d.getFullYear(), d.getMonth(), 1)) }
 
 /* ── completion (N-6) ──────────────────────────────────────────────────── */
-function instanceStatus(inst: Instance, entries: EntryMap): Stat {
-  if (inst.ministries.length === 0) return 'complete'
-  const statuses = inst.ministries.map(m => ministryStatus(m, inst.id, entries))
+// Returns null when the occurrence has NO enterable inputs (no ministries, or
+// only rollup-only container ministries) — such an occurrence is not a member of
+// the completion tally and its tab dot shows "not started" rather than a false
+// green "done". Otherwise it aggregates over the enterable ministries only.
+function instanceStatus(inst: Instance, entries: EntryMap, isVisible?: (tagId: string) => boolean): Stat | null {
+  const ministries = isVisible ? inst.ministries.filter(m => isVisible(m.tag_id)) : inst.ministries
+  const enterable = ministries.filter(hasEnterableMetrics)
+  if (enterable.length === 0) return null
+  const statuses = enterable.map(m => ministryStatus(m, inst.id, entries))
   if (statuses.every(s => s === 'complete')) return 'complete'
   if (statuses.every(s => s === 'empty')) return 'empty'
   return 'needs'
@@ -56,9 +65,22 @@ export default function EntriesPage() {
   const [churchWideTmpl, setChurchWideTmpl] = useState<Set<string>>(new Set())
   const [periodMetrics, setPeriodMetrics] = useState<Metric[]>([])
   const [entries, setEntries] = useState<EntryMap>({})
+  // Ministry accent colors (0040) — same positional-palette + override logic as
+  // Setup/History, so a ministry reads as the SAME color everywhere. Keyed by
+  // root-ancestor id; a subgroup inherits its ministry's color.
+  const [parentTagById, setParentTagById] = useState<Map<string, string | null>>(new Map())
+  const [colorMap, setColorMap] = useState<Map<string, GroupColor>>(new Map())
+  const [rootMinistries, setRootMinistries] = useState<FilterableMinistry[]>([])
+
+  // "Ministries" filter — which ministries THIS SCREEN shows (E-4b, iPad-station
+  // mode). null = show everything. Saved per church in localStorage so a station
+  // set up once (e.g. "only show Kids at the check-in table") stays set up.
+  const [visibleMinistryIds, setVisibleMinistryIdsState] = useState<Set<string> | null>(null)
 
   const [bootLoading, setBootLoading] = useState(true)
   const [weekLoading, setWeekLoading] = useState(true)
+  // #29 — a failed prefill query must not silently render as "no data entered".
+  const [weekLoadError, setWeekLoadError] = useState(false)
   const [tab, setTab] = useState<string>('')
   // Totals moved out of the entry tabs into a header toggle (2026-06 redesign).
   const [showTotals, setShowTotals] = useState(false)
@@ -126,6 +148,7 @@ export default function EntriesPage() {
         .eq('scope', 'period')
         .eq('is_active', true)
         .neq('mode', 'rollup')   // roll-ups are computed (Phase B), not typed here
+        .is('archived_at', null) // archived counts keep history but accept no new data (decision 9)
       if (cancelled) return
       const mapped: Metric[] = (data ?? []).map((m: any) => ({
         id: m.id, name: m.name, code: m.code, scope: 'period',
@@ -137,10 +160,70 @@ export default function EntriesPage() {
     return () => { cancelled = true }
   }, [supabase, churchId])
 
+  /* ── ministry accent colors (0040) — church-wide, load once church known ── */
+  useEffect(() => {
+    if (!churchId) return
+    let cancelled = false
+    ;(async () => {
+      const { rows } = await fetchActiveServiceTags(supabase, churchId)
+      if (cancelled) return
+      // Full root set feeds the color palette so positions match the dashboard/
+      // History (the palette invariant). Archived ministries are dropped only from
+      // the filter dropdown below — the entry cards already hide them (review #53).
+      const roots = rows.filter(r => r.parent_tag_id === null)
+      const overrides = new Map<string, string>()
+      for (const r of roots) if (r.color) overrides.set(r.id.toLowerCase(), r.color)
+      setParentTagById(new Map(rows.map(r => [r.id, r.parent_tag_id])))
+      const map = buildGroupColorMap(roots.map(r => `group_${r.id}`), overrides)
+      setColorMap(map)
+      setRootMinistries(roots.filter(r => !r.archived_at).map(r => ({ id: r.id, name: r.name, color: map.get(r.id.toLowerCase())?.strong })))
+    })()
+    return () => { cancelled = true }
+  }, [supabase, churchId])
+
+  const rootAncestorId = useCallback((id: string): string => {
+    let cur = id
+    let hops = 0
+    while (hops++ < 10) {
+      const parent = parentTagById.get(cur)
+      if (!parent) return cur
+      cur = parent
+    }
+    return cur
+  }, [parentTagById])
+
+  const colorForNode = useCallback((id: string): GroupColor | undefined =>
+    colorMap.get(rootAncestorId(id).toLowerCase()), [colorMap, rootAncestorId])
+
+  // Load the saved filter once the church is known; per-church so a shared
+  // device keeps separate filters if it's ever used for more than one church.
+  useEffect(() => {
+    if (!churchId) return
+    try {
+      const raw = localStorage.getItem(`st_entries_ministries:${churchId}`)
+      setVisibleMinistryIdsState(raw ? new Set(JSON.parse(raw) as string[]) : null)
+    } catch { setVisibleMinistryIdsState(null) }
+  }, [churchId])
+
+  const setVisibleMinistryIds = useCallback((next: Set<string> | null) => {
+    setVisibleMinistryIdsState(next)
+    if (!churchId) return
+    try {
+      if (next === null) localStorage.removeItem(`st_entries_ministries:${churchId}`)
+      else localStorage.setItem(`st_entries_ministries:${churchId}`, JSON.stringify(Array.from(next)))
+    } catch { /* localStorage unavailable — filter still works for this session */ }
+  }, [churchId])
+
+  // A ministry (root or subgroup) is visible when its ROOT is checked — a
+  // subgroup always follows its ministry's visibility, never set separately.
+  const isMinistryVisible = useCallback((tagId: string): boolean =>
+    !visibleMinistryIds || visibleMinistryIds.has(rootAncestorId(tagId)), [visibleMinistryIds, rootAncestorId])
+
   /* ── load a week: instances → ministries → canonical metrics → prefill ── */
   const loadWeek = useCallback(async () => {
     if (!churchId || !campus) return
     setWeekLoading(true)
+    setWeekLoadError(false)
     const start = weekStartStr
     const end = toDateStr(addDays(weekStart, 6))
 
@@ -226,7 +309,7 @@ export default function EntriesPage() {
     if (templateIds.length > 0) {
       const { data: sttRows } = await supabase
         .from('service_template_tags')
-        .select('service_template_id, ministry_tag_id, sort_order, service_tags(id, name, tag_role)')
+        .select('service_template_id, ministry_tag_id, sort_order, service_tags(id, name, tag_role, archived_at, parent_tag_id)')
         .in('service_template_id', templateIds)
         .order('sort_order', { ascending: true })
 
@@ -241,6 +324,7 @@ export default function EntriesPage() {
           .eq('scope', 'instance')
           .eq('is_active', true)
           .neq('mode', 'rollup')   // roll-ups are computed (Phase B), not typed here
+          .is('archived_at', null) // archived counts keep history but accept no new data (decision 9)
           .in('ministry_tag_id', tagIds)
         for (const m of (metricRows ?? []) as any[]) {
           const metric: Metric = {
@@ -258,12 +342,14 @@ export default function EntriesPage() {
       for (const r of (sttRows ?? []) as any[]) {
         const tag = Array.isArray(r.service_tags) ? r.service_tags[0] : r.service_tags
         if (!tag) continue
+        if (tag.archived_at) continue   // archived ministry/group: keep history, hide from entry (decision 9)
         const list = ministriesByTemplate.get(r.service_template_id) ?? []
         list.push({
           tag_id: tag.id,
           name: tag.name,
           tag_role: tag.tag_role ?? null,
           sort_order: r.sort_order ?? 0,
+          parent_tag_id: tag.parent_tag_id ?? null,
           metrics: metricsByTag.get(tag.id) ?? [],
         })
         ministriesByTemplate.set(r.service_template_id, list)
@@ -298,16 +384,20 @@ export default function EntriesPage() {
     const instIds = builtInstances.map(i => i.id)
     const nextEntries: EntryMap = {}
 
+    // #29 — a failed/partial prefill must not silently render as "no data entered".
+    let prefillFailed = false
+
     if (instIds.length > 0) {
       let from = 0
       // eslint-disable-next-line no-constant-condition
       while (true) {
-        const { data: rows } = await supabase
+        const { data: rows, error: prefillError } = await supabase
           .from('metric_entries')
           .select('metric_id, service_instance_id, value, is_not_applicable')
           .eq('church_id', churchId)
           .in('service_instance_id', instIds)
           .range(from, from + PAGE - 1)
+        if (prefillError) { prefillFailed = true; break }
         const batch = rows ?? []
         for (const r of batch as any[]) {
           nextEntries[`${r.metric_id}|${r.service_instance_id}`] = {
@@ -324,12 +414,13 @@ export default function EntriesPage() {
     const periodInWeek = periodMetrics
     if (periodInWeek.length > 0) {
       const anchors = Array.from(new Set(periodInWeek.map(m => m.cadence === 'month' ? firstOfMonth(weekStart) : start)))
-      const { data: pRows } = await supabase
+      const { data: pRows, error: periodPrefillError } = await supabase
         .from('metric_entries')
         .select('metric_id, period_anchor, value, is_not_applicable')
         .eq('church_id', churchId)
         .in('metric_id', periodInWeek.map(m => m.id))
         .in('period_anchor', anchors)
+      if (periodPrefillError) prefillFailed = true
       for (const r of (pRows ?? []) as any[]) {
         nextEntries[`${r.metric_id}|${r.period_anchor}`] = {
           value: r.value === null ? null : Number(r.value),
@@ -341,6 +432,7 @@ export default function EntriesPage() {
     setInstances(allInstances)
     setEntries(nextEntries)
     setWeekLoading(false)
+    setWeekLoadError(prefillFailed)
 
     // Default to entry (first occurrence), not a summary; keep the tab valid as
     // the week changes. Totals is now a header toggle, not a tab.
@@ -432,13 +524,62 @@ export default function EntriesPage() {
     }
   }, [supabase, churchId, entries])
 
+  // Per-metric "not available" — the explicit version of leaving a single field
+  // blank. Same meaning (didn't happen), but marks it reviewed so the ministry's
+  // status dot can reach green without every field needing a typed value.
+  const toggleFieldNAInstance = useCallback(async (metric: Metric, instId: string, na: boolean) => {
+    if (!churchId || readOnly) return
+    const realId = await materializeVirtual(instId)
+    const key = `${metric.id}|${realId}`
+    const prev = entries[key]
+    setEntries(e => ({ ...e, [key]: { value: null, is_not_applicable: na } }))
+    const { error } = await supabase.from('metric_entries').upsert({
+      church_id: churchId,
+      metric_id: metric.id,
+      service_instance_id: realId,
+      period_anchor: null,
+      value: null,
+      is_not_applicable: na,
+      reporting_tag_code: metric.reporting_tag_code,
+      location_id: locationForInst(instId),
+    }, { onConflict: 'metric_id,service_instance_id,period_anchor' })
+    if (error) {
+      setEntries(e => ({ ...e, [key]: prev ?? { value: null, is_not_applicable: false } }))
+      throw error
+    }
+  }, [supabase, churchId, entries, readOnly, materializeVirtual, locationForInst])
+
+  const toggleFieldNAPeriod = useCallback(async (metric: Metric, anchor: string, na: boolean) => {
+    if (!churchId || readOnly) return
+    const key = `${metric.id}|${anchor}`
+    const prev = entries[key]
+    setEntries(e => ({ ...e, [key]: { value: null, is_not_applicable: na } }))
+    const { error } = await supabase.from('metric_entries').upsert({
+      church_id: churchId,
+      metric_id: metric.id,
+      service_instance_id: null,
+      period_anchor: anchor,
+      value: null,
+      is_not_applicable: na,
+      reporting_tag_code: metric.reporting_tag_code,
+      location_id: null,
+    }, { onConflict: 'metric_id,service_instance_id,period_anchor' })
+    if (error) {
+      setEntries(e => ({ ...e, [key]: prev ?? { value: null, is_not_applicable: false } }))
+      throw error
+    }
+  }, [supabase, churchId, entries, readOnly])
+
   // E-24 "Didn't meet?" — set all this ministry's canonical metrics N/A on this occurrence
   const toggleDidntMeet = useCallback(async (m: Ministry, instId: string, na: boolean) => {
     if (!churchId || readOnly) return
     const realId = await materializeVirtual(instId)   // create the occurrence if scheduled (virtual)
+    const prior: EntryMap = {}
     const optimistic: EntryMap = {}
     for (const metric of m.metrics) {
-      optimistic[`${metric.id}|${realId}`] = { value: na ? null : (entries[`${metric.id}|${realId}`]?.value ?? null), is_not_applicable: na }
+      const key = `${metric.id}|${realId}`
+      prior[key] = entries[key] ?? { value: null, is_not_applicable: false }
+      optimistic[key] = { value: na ? null : (entries[key]?.value ?? null), is_not_applicable: na }
     }
     setEntries(e => ({ ...e, ...optimistic }))
     const payload = m.metrics.map(metric => ({
@@ -451,7 +592,11 @@ export default function EntriesPage() {
       reporting_tag_code: metric.reporting_tag_code,
       location_id: locationForInst(instId),
     }))
-    await supabase.from('metric_entries').upsert(payload, { onConflict: 'metric_id,service_instance_id,period_anchor' })
+    const { error } = await supabase.from('metric_entries').upsert(payload, { onConflict: 'metric_id,service_instance_id,period_anchor' })
+    if (error) {
+      setEntries(e => ({ ...e, ...prior }))
+      alert('Could not save — please try again.')
+    }
   }, [supabase, churchId, entries, readOnly, materializeVirtual, locationForInst])
 
   /* ── grid_config include-in-total prefs (E-12 / N-8) ────────────────────── */
@@ -468,11 +613,12 @@ export default function EntriesPage() {
   }, [supabase, churchId, gridPrefs])
 
   // ── derived: all ministries across the week (deduped by tag) for Totals ──
+  // Honors the "Ministries" screen filter — a hidden ministry's totals hide too.
   const weekMinistries = useMemo(() => {
     const byTag = new Map<string, Ministry>()
-    for (const inst of instances) for (const m of inst.ministries) if (!byTag.has(m.tag_id)) byTag.set(m.tag_id, m)
+    for (const inst of instances) for (const m of inst.ministries) if (!byTag.has(m.tag_id) && isMinistryVisible(m.tag_id)) byTag.set(m.tag_id, m)
     return Array.from(byTag.values()).sort((a, b) => a.sort_order - b.sort_order)
-  }, [instances])
+  }, [instances, isMinistryVisible])
 
   const excluded = new Set(gridPrefs.excludedTotalMinistries ?? [])
   const excludedMetrics = new Set(gridPrefs.excludedTotalMetrics ?? [])
@@ -516,26 +662,34 @@ export default function EntriesPage() {
   const grandTotal = rollups.reduce((s, r) => s + (excluded.has(r.ministry.tag_id) ? 0 : r.attTotal), 0)
 
   /* ── completion strip (E-4) ────────────────────────────────────────────── */
-  const sectionStatuses: Stat[] = useMemo(() => {
-    const occ = instances.map(i => instanceStatus(i, entries))
-    // stat entries section status
-    let stat: Stat = 'complete'
-    if (periodMetrics.length > 0) {
-      let done = 0
-      for (const m of periodMetrics) {
-        const anchor = m.cadence === 'month' ? firstOfMonth(weekStart) : weekStartStr
-        const e = entries[`${m.id}|${anchor}`]
-        if (e && (e.is_not_applicable || e.value !== null)) done++
-      }
-      stat = done === 0 ? 'empty' : done === periodMetrics.length ? 'complete' : 'needs'
+  // Occurrences with no enterable inputs (rollup-only containers) return null and
+  // are dropped from the tally entirely — they neither add to the denominator nor
+  // read as a false-green "complete".
+  // #31 — the "X of Y complete" strip is a truth surface for the WHOLE week, so it
+  // always counts every ministry regardless of the "Ministries" screen filter. A
+  // ministry hidden by the filter must not be able to silently drop out of the
+  // denominator and make an incomplete occurrence read as done. The per-tab Dot
+  // (below, in the tab strip) still honors the filter — that's "what's on this tab".
+  const occStatuses = useMemo(
+    () => instances.map(i => instanceStatus(i, entries)),
+    [instances, entries],
+  )
+
+  const statEntriesStatus: Stat | null = useMemo(() => {
+    if (periodMetrics.length === 0) return null   // nothing church-wide to enter → not a tally member
+    let done = 0
+    for (const m of periodMetrics) {
+      const anchor = m.cadence === 'month' ? firstOfMonth(weekStart) : weekStartStr
+      const e = entries[`${m.id}|${anchor}`]
+      if (e && (e.is_not_applicable || e.value !== null)) done++
     }
-    return [...occ, stat]
-  }, [instances, entries, periodMetrics, weekStart, weekStartStr])
+    return done === 0 ? 'empty' : done === periodMetrics.length ? 'complete' : 'needs'
+  }, [periodMetrics, entries, weekStart, weekStartStr])
 
-  const totalSections = instances.length + 1 // occurrences + Stat Entries
-  const completeSections = sectionStatuses.filter(s => s === 'complete').length
-
-  const statEntriesStatus = sectionStatuses[sectionStatuses.length - 1]
+  // Honest "X of Y": only sections that actually have something to enter count.
+  const tallyStatuses = [...occStatuses, statEntriesStatus].filter((s): s is Stat => s !== null)
+  const totalSections = tallyStatuses.length
+  const completeSections = tallyStatuses.filter(s => s === 'complete').length
 
   // Entry tabs grouped by WHEN they happen — dated services by day-of-week, and the
   // church-wide period things under a CADENCE label ("Weekly", or "Monthly" when the
@@ -621,17 +775,23 @@ export default function EntriesPage() {
         </header>
 
         <main className="mx-auto max-w-3xl px-4 py-6">
-          {/* ── Zone B — Week-totals toggle + completion strip ───────────── */}
-          <div className="mb-3 flex items-center justify-between gap-3 px-1">
-            <button
-              onClick={() => setShowTotals(s => !s)}
-              className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[12px] font-semibold text-slate-600 shadow-sm transition-colors duration-200 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/40"
-            >
-              {showTotals
-                ? (<><Ico.left className="h-4 w-4" />Back to entry</>)
-                : (<><Ico.grid className="h-4 w-4 text-slate-400" />Week totals</>)}
-            </button>
-            <span className="text-[12px] font-medium text-slate-500"><span className="font-num font-semibold text-slate-700">{completeSections} of {totalSections}</span> complete</span>
+          {/* ── Zone B — Week-totals toggle + ministry filter + completion strip ─ */}
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3 px-1">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowTotals(s => !s)}
+                className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[12px] font-semibold text-slate-600 shadow-sm transition-colors duration-200 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F6EF7]/40"
+              >
+                {showTotals
+                  ? (<><Ico.left className="h-4 w-4" />Back to entry</>)
+                  : (<><Ico.grid className="h-4 w-4 text-slate-400" />Week totals</>)}
+              </button>
+              <MinistryFilterButton ministries={rootMinistries} selected={visibleMinistryIds} onChange={setVisibleMinistryIds} />
+            </div>
+            <span className="text-[12px] font-medium text-slate-500">
+              <span className="font-num font-semibold text-slate-700">{completeSections} of {totalSections}</span> complete
+              {visibleMinistryIds !== null && <span className="text-slate-400"> · all ministries</span>}
+            </span>
           </div>
 
           {showTotals ? (
@@ -644,9 +804,16 @@ export default function EntriesPage() {
               excludedMetrics={excludedMetrics}
               readOnly={!canEditTotals}
               onSavePrefs={saveGridPrefs}
+              colorForNode={colorForNode}
             />
           ) : (
             <>
+              {weekLoadError && (
+                <div className="mb-4 flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[13px] font-medium text-amber-700">
+                  <Ico.info className="h-4 w-4 shrink-0" />
+                  Some of this week’s saved entries couldn’t be loaded — what you see below may be incomplete. Refresh to try again before entering new numbers.
+                </div>
+              )}
               {/* ── Zone C — entry tabs, grouped by WHEN they happen ───────── */}
               <div className="mb-6 space-y-3">
                 {tabGroups.map(group => (group.instances.length > 0 || group.includeStat) && (
@@ -659,7 +826,7 @@ export default function EntriesPage() {
                           <button key={inst.id} role="tab" aria-selected={active} onClick={() => setTab(inst.id)}
                             style={active ? { background: '#4F6EF7' } : undefined}
                             className={`flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-semibold transition-colors duration-200 ${active ? 'text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800'}`}>
-                            <Dot s={instanceStatus(inst, entries)} />
+                            <Dot s={instanceStatus(inst, entries, isMinistryVisible) ?? 'empty'} />
                             <span className="leading-none">{inst.template_name}</span>
                           </button>
                         )
@@ -668,7 +835,7 @@ export default function EntriesPage() {
                         <button role="tab" aria-selected={tab === 'Stat Entries'} onClick={() => setTab('Stat Entries')}
                           style={tab === 'Stat Entries' ? { background: '#4F6EF7' } : undefined}
                           className={`flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-semibold transition-colors duration-200 ${tab === 'Stat Entries' ? 'text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800'}`}>
-                          <Dot s={statEntriesStatus} />
+                          <Dot s={statEntriesStatus ?? 'empty'} />
                           <span className="leading-none">Stat Entries</span>
                         </button>
                       )}
@@ -684,13 +851,15 @@ export default function EntriesPage() {
                   {/* ── Zone E — OCCURRENCE (E-20..E-25) ──────────────────────── */}
                   {instances.map(inst => tab === inst.id && (
                     <OccurrenceView key={inst.id} inst={inst} entries={entries} readOnly={readOnly}
-                      onCommit={upsertInstance} onToggleDidntMeet={toggleDidntMeet} />
+                      onCommit={upsertInstance} onToggleDidntMeet={toggleDidntMeet} onToggleNA={toggleFieldNAInstance}
+                      colorForNode={colorForNode} isVisible={isMinistryVisible} />
                   ))}
 
                   {/* ── Zone F — STAT ENTRIES (E-30..E-32) ────────────────────── */}
                   {tab === 'Stat Entries' && (
                     <StatEntriesView metrics={periodMetrics} entries={entries} weekStart={weekStart}
-                      weekStartStr={weekStartStr} readOnly={readOnly} status={statEntriesStatus} onCommit={upsertPeriod} />
+                      weekStartStr={weekStartStr} readOnly={readOnly} status={statEntriesStatus ?? 'empty'}
+                      onCommit={upsertPeriod} onToggleNA={toggleFieldNAPeriod} />
                   )}
 
                   <div className="mt-6 flex items-center justify-center gap-1.5 text-[12px] text-slate-400">

@@ -4,7 +4,10 @@
 // ─────────────────────────────────────────────────────────────────────────
 
 import type { UserRole } from '@/types'
-import type { TagRole, MetricRow, RollupOp } from './actions'
+import type { TagRole, MetricRow, RollupOp, MetricRole } from './actions'
+
+// Re-export so the editor UI (page.tsx, components/*) has one import surface.
+export type { MetricRole }
 
 // ── Data shapes ────────────────────────────────────────────────────────────
 
@@ -20,6 +23,9 @@ export interface Ministry {
   is_active: boolean
   /** Church-chosen hex (0040); null/undefined = positional palette. */
   color?: string | null
+  /** 0051 archive marker; non-null = archived (hidden from the editor tree, but
+   *  kept in the color-palette input so positions stay consistent with other surfaces). */
+  archived_at?: string | null
 }
 
 /** A metric with its owning node id (flat list is the source of truth). */

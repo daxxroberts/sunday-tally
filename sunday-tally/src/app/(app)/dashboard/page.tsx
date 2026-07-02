@@ -417,8 +417,13 @@ function TagBlock({
 }) {
   const isUnassigned = section.tag_id === 'UNASSIGNED'
   // #69 — per-ministry attendance drillable via audience column.
+  // #47 — the 'attendance' source only knows how to open the CHURCH-WIDE
+  // role-column series (mirrors attendanceForRole). When this card's value is
+  // actually a roll-up of its subgroups (attendanceIsRollup), that source would
+  // open the wrong (church-wide) numbers, so leave it non-drillable here rather
+  // than show a mismatched drawer — same treatment as a rolled-up stat row.
   const attCol = role ? ROLE_TO_ATT_COLUMN[role] : undefined
-  const attSelector: MetricSelector | null = !isUnassigned && attCol
+  const attSelector: MetricSelector | null = !isUnassigned && attCol && !section.attendanceIsRollup
     ? { label: `${section.tag_name} · Attendance`, source: { kind: 'attendance', column: attCol } }
     : null
   // #73 — per-ministry volunteers drillable via 'volunteers-ministry' source.
@@ -480,11 +485,19 @@ function TagBlock({
         )}
         {tracks.tracks_responses && section.stats.map(s => (
           <FourColRow
-            key={s.category_id}
+            key={s.key}
             label={s.category_name}
+            // Mirrored-metrics cue: a rolled-up TEMPLATE stat sums its groups'
+            // mirror entries (the parent has none of its own). Label it so it never
+            // reads as a local number — mirrors the header's "N groups" pill.
+            sub={s.rolledUp ? (s.groupCount ? `rolled up · ${s.groupCount} group${s.groupCount === 1 ? '' : 's'}` : 'rolled up') : undefined}
             values={s.values}
             hideComparisons={hideComparisons}
-            selector={{ label: `${section.tag_name} · ${s.category_name}`, source: { kind: 'stat', metricId: s.category_id } }}
+            // A rolled-up TEMPLATE stat has no entries of its own (they live on the
+            // groups), so drilling its metricId returns nothing — leave it
+            // non-drillable, like the summary's First-Time Decisions aggregate. The
+            // per-group stats stay drillable on each child card.
+            selector={s.rolledUp ? null : { label: `${section.tag_name} · ${s.category_name}`, source: { kind: 'stat', metricId: s.category_id } }}
             onDrill={onDrill}
           />
         ))}
@@ -801,12 +814,30 @@ export default function DashboardPage() {
         total = subtractFourWin(total, data.summary[ROLE_TO_SUMMARY[role]])
       }
     }
+    // #8: a parent's `volunteers` can be a ROLL-UP that already includes its
+    // children's mirror entries. Subtracting both the parent and its children
+    // would remove the same entries twice — understating (even negating) the
+    // church-wide Grand Total that also feeds Key Metrics + AI. Subtract a section
+    // only when no excluded ancestor whose volunteers is a roll-up already covers
+    // it. (Depth is capped at 2, but the walk is ancestor-general + cycle-guarded.)
+    const sectionById = new Map(data.tagSections.map(s => [s.tag_id, s] as const))
+    const volExcludedOf = (s: TagSection) =>
+      excluded.has(s.tag_id) || excludedMetrics.has(`${s.tag_id}|VOLUNTEERS`)
+    const coveredByExcludedRollupAncestor = (s: TagSection): boolean => {
+      let cur = s.parent_tag_id ? sectionById.get(s.parent_tag_id) : undefined
+      const seen = new Set<string>()
+      while (cur && cur.tag_id !== 'UNASSIGNED' && !seen.has(cur.tag_id)) {
+        seen.add(cur.tag_id)
+        if (volExcludedOf(cur) && cur.volunteersIsRollup) return true
+        cur = cur.parent_tag_id ? sectionById.get(cur.parent_tag_id) : undefined
+      }
+      return false
+    }
     for (const s of data.tagSections) {
       if (s.tag_id === 'UNASSIGNED') continue
-      const volExcluded = excluded.has(s.tag_id) || excludedMetrics.has(`${s.tag_id}|VOLUNTEERS`)
-      if (volExcluded) {
-        total = subtractFourWin(total, s.volunteers)
-      }
+      if (!volExcludedOf(s)) continue
+      if (coveredByExcludedRollupAncestor(s)) continue  // parent roll-up already subtracted it
+      total = subtractFourWin(total, s.volunteers)
     }
     return total
   }, [data, excluded, excludedMetrics, roleByTag])
@@ -852,6 +883,11 @@ export default function DashboardPage() {
     const ministryAttMatch = key.match(/^ministry:([^:]+):attendance$/)
     if (ministryAttMatch) {
       const tagId = ministryAttMatch[1]
+      // #47 — same as the TagBlock card: the 'attendance' source only opens the
+      // church-wide role-column series. A roll-up-driven ministry's Key Metric
+      // card would open the wrong (church-wide) drawer, so leave it non-drillable.
+      const section = data?.tagSections.find(s => s.tag_id === tagId)
+      if (section?.attendanceIsRollup) return null
       const role = roleByTag.get(tagId) ?? null
       const col: AttendanceColumn = role ? (ROLE_TO_ATT_COLUMN[role] ?? 'total_attendance') : 'total_attendance'
       return { label, source: { kind: 'attendance', column: col } }

@@ -154,3 +154,57 @@ No text in the image.
     flourishing green hills around it. What is being tended is visibly growing —
     patient, faithful increase (Psalm 1's tree planted by flowing streams). Hopeful and
     calm. Subtle, not literal.
+
+---
+
+## Differentiation system — color family + shape signature (added 2026-07-01)
+
+**Problem:** all 15 covers share one identical, restrained palette applied evenly, so at
+list-thumbnail size (a 224px-wide crop, not a big grid) they read as "similar indigo/sage
+scene #N" rather than standing apart. Fix is **not** a YouTube-style overhaul (bold text,
+high-contrast reaction shots) — that breaks brand and reads as hype, which VOICE.md rules
+out. Fix is two added axes on top of the *same locked palette* — nothing new introduced,
+existing approved colors *reweighted* per category, plus a repeatable compositional device
+so each family reads as a distinct silhouette even before color registers.
+
+| Family | Content category | Color bias (same locked palette, different dominance) | Shape signature |
+|---|---|---|---|
+| **Cool / composition** | Attendance, demographics, who's-in-the-room pieces | Lean hard into deep indigo + charcoal blue + dusty sky blue; minimal gold | **Split flock** — the group visibly divides into two distinct clusters (near/far, or two directions) |
+| **Warm / concentration** | Giving, financial, budget-risk pieces | Lean hard into warm ivory + soft gold; indigo recedes to a small accent | **Concentration/dispersal** — one shared resource (haystack, water) with a visibly shrinking or lopsided ring of sheep around it |
+| **Dawn / threshold** | Guest, retention, assimilation, follow-up pieces | Soft dawn warmth — warm ivory + a touch of gold, cooler shadow tones at the edges (never red/blush) | **Threshold device** — a gate, fork, or narrowing gap the flock is crossing or about to miss |
+| **Dusk / burden** | Volunteer, serving, burnout pieces | Late-day gold + charcoal blue shadow, matches the existing volunteer-burnout-ratio mood | **Burden-bearing** — a small group visibly carrying load (hay bundles, water skins, a staff) while a larger group rests |
+| **Stone / structure** | Setup, systems, governance, reporting-format pieces | Stone gray + charcoal, minimal warmth | **Ordered structure** — pens, enclosures, cairns, markers; tidy geometric arrangement |
+| **Ivory / reassurance** | Myth-busting, affirming, comparison pieces (NEW) | Warm ivory-forward, soft gold, the gentlest palette in the system — this family is meant to feel warm, not clinical | **Scale contrast** — two differently-sized pastures or groupings shown side by side, with the smaller one visibly just as tended/full of activity as the larger |
+
+Apply the family's color bias and shape signature inside the existing prompt template — the
+boilerplate paragraph and hard rules (no text, no cliché, no red, 16:9) never change, only
+the `<SCENE>` paragraph gets the family's device and a color-bias sentence.
+
+### Round 2, batch 1 — scenes (not yet generated)
+
+17. `who-actually-filled-the-room` — *Your Attendance Total Can't Tell You Who Actually Filled the Room*
+    **Family: Cool / composition.** A single flock at first glance reads as one steady
+    group, but on a closer look it visibly splits into two clusters moving in different
+    directions across the same field — one drifting toward a far ridge, one settling
+    near the shepherd. Bias the palette hard toward deep indigo and dusty sky blue;
+    minimal gold. The split is the whole story.
+
+18. `giving-concentration-risk` — *The Giving Number That Actually Predicts a Crisis*
+    **Family: Warm / concentration.** A single haystack sits in a warm, gold-lit hollow.
+    Where once a wide ring of sheep gathered around it, now only a few remain close,
+    carrying the weight of the whole gathering while the rest of the field stands empty
+    around them. Bias the palette hard toward warm ivory and soft gold; indigo appears
+    only as a small distant accent.
+
+19. `guest-followup-48-hours` — *Your Best Shot at a Second Visit Closes in 48 Hours*
+    **Family: Dawn / threshold.** A new sheep pauses at a narrow gate at the field's
+    edge, caught in soft early light. The gate is visibly closing — its far edge already
+    in shadow — while the shepherd moves toward it, not yet arrived. Warm dawn tones at
+    the gate, cooling to shadow at the frame's edges. Urgency without alarm; no red.
+
+20. `small-church-commitment-myth` — *Small Churches Don't Need to Apologize for Their Size*
+    **Family: Ivory / reassurance.** Two pastures sit side by side, one modest in size
+    and one much larger. In the smaller pasture nearly every sheep is near the
+    shepherd, tended and active; in the larger pasture the flock is spread thin and
+    distant, unattended pockets visible. Size favors the larger field; care visibly
+    favors the smaller one. Warm ivory-forward, the gentlest palette in the system.

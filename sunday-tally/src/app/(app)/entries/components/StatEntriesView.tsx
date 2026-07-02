@@ -25,7 +25,7 @@ function dimLabel(code: string) {
     ?? (code ? code.replace(/_/g, ' ').toLowerCase().replace(/^./, c => c.toUpperCase()) : 'Other')
 }
 
-export function StatEntriesView({ metrics, entries, weekStart, weekStartStr, readOnly, status, onCommit }: {
+export function StatEntriesView({ metrics, entries, weekStart, weekStartStr, readOnly, status, onCommit, onToggleNA }: {
   metrics: Metric[]
   entries: EntryMap
   weekStart: Date
@@ -33,6 +33,7 @@ export function StatEntriesView({ metrics, entries, weekStart, weekStartStr, rea
   readOnly: boolean
   status: Stat
   onCommit: (metric: Metric, anchor: string, value: number | null) => Promise<void>
+  onToggleNA?: (metric: Metric, anchor: string, na: boolean) => Promise<void>
 }) {
   return (
     <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -78,8 +79,10 @@ export function StatEntriesView({ metrics, entries, weekStart, weekStartStr, rea
                     const isGiving = m.reporting_tag_code === 'GIVING'
                     return (
                       <Field key={m.id} fieldId={`p-${m.id}`} label={m.name} value={e?.value ?? null}
-                        cadence={cadenceLabel(m.cadence)} prefix={isGiving ? '$' : undefined} needs readOnly={readOnly}
-                        onCommit={(v) => onCommit(m, anchor, v)} />
+                        cadence={cadenceLabel(m.cadence)} prefix={isGiving ? '$' : undefined}
+                        isNA={e?.is_not_applicable} readOnly={readOnly}
+                        onCommit={(v) => onCommit(m, anchor, v)}
+                        onToggleNA={readOnly || !onToggleNA ? undefined : (na) => onToggleNA(m, anchor, na)} />
                     )
                   })}
                 </div>
