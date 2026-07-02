@@ -699,6 +699,9 @@ export default function EntriesPage() {
     const byDay = new Map<number, Instance[]>()
     const weekly: Instance[] = []
     for (const inst of instances) {
+      // The Ministries filter also filters OCCURRENCES: hide a service whose
+      // ministries are all filtered out — its tab would just open an empty screen.
+      if (visibleMinistryIds && !inst.ministries.some(m => isMinistryVisible(m.tag_id))) continue
       if (inst.church_wide) { weekly.push(inst); continue }
       const dow = fromDateStr(inst.service_date).getDay()
       const arr = byDay.get(dow) ?? []
@@ -718,7 +721,15 @@ export default function EntriesPage() {
       : 'Weekly'
     groups.push({ label: periodLabel, instances: weekly, includeStat: true })
     return groups
-  }, [instances, periodMetrics])
+  }, [instances, periodMetrics, visibleMinistryIds, isMinistryVisible])
+
+  // If the ministry filter hides the occurrence that's currently open, jump to the
+  // first still-visible one (or Stat Entries) so the body always matches the strip.
+  useEffect(() => {
+    if (tab === 'Stat Entries') return
+    const shown = tabGroups.flatMap(g => g.instances)
+    if (!shown.some(i => i.id === tab)) setTab(shown[0]?.id ?? 'Stat Entries')
+  }, [tabGroups, tab])
 
   if (bootLoading) {
     return (

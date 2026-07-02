@@ -123,6 +123,31 @@ export function MinistryCard({ group, instId, entries, readOnly, accent, onCommi
   const rootNA = rootHasMetrics && root.metrics.every(mt => entries[`${mt.id}|${instId}`]?.is_not_applicable)
   const cardStatus = groupStatus(group, instId, entries)
 
+  // Parent roll-up totals (mirrored metrics): for a ministry that counts a kind
+  // by SUBGROUP, the parent doesn't type that number — its groups do. Show the
+  // parent's total as a READ-ONLY auto-sum of its subgroups so the card isn't
+  // blank, and because it can't be typed into, the same people can never be
+  // counted at both levels. Only the aggregate kinds roll up cleanly; stats keep
+  // their own per-group fields. Gated on "the parent doesn't count this itself"
+  // so a ministry with its own number (independent of its groups) is untouched.
+  const ROLLUP_KINDS: { code: string; label: string }[] = [
+    { code: 'ATTENDANCE', label: 'Attendance' },
+    { code: 'VOLUNTEERS', label: 'Volunteers' },
+  ]
+  const rootKinds = new Set(root.metrics.map(m => m.reporting_tag_code))
+  const rollupTotals = children.length === 0 ? [] : ROLLUP_KINDS.flatMap(({ code, label }) => {
+    if (rootKinds.has(code)) return []
+    if (!children.some(c => c.metrics.some(m => m.reporting_tag_code === code))) return []
+    const vals: number[] = []
+    const contributing = new Set<string>()
+    for (const c of children) for (const m of c.metrics) {
+      if (m.reporting_tag_code !== code) continue
+      const e = entries[`${m.id}|${instId}`]
+      if (e && !e.is_not_applicable && e.value !== null) { vals.push(e.value); contributing.add(c.tag_id) }
+    }
+    return [{ code, label, total: vals.length ? vals.reduce((a, b) => a + b, 0) : null, groupCount: contributing.size }]
+  })
+
   return (
     <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
       <div className="flex items-center justify-between gap-3 px-4 py-3" style={{ backgroundColor: hex }}>
@@ -139,6 +164,23 @@ export function MinistryCard({ group, instId, entries, readOnly, accent, onCommi
           <Dot s={cardStatus} />
         </div>
       </div>
+
+      {rollupTotals.length > 0 && (
+        <div className="divide-y divide-slate-100 border-b border-slate-100">
+          {rollupTotals.map(rt => (
+            <div key={rt.code} className="flex items-center justify-between gap-3 bg-slate-50/70 px-4 py-2.5">
+              <div className="flex items-center gap-2.5">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true"><rect width="18" height="11" x="3" y="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
+                <div>
+                  <div className="text-[14px] font-medium text-slate-700">{rt.label}</div>
+                  <div className="text-[11px] text-slate-400">Adds up from {rt.groupCount || children.length} {(rt.groupCount || children.length) === 1 ? 'group' : 'groups'} — nothing to type here</div>
+                </div>
+              </div>
+              <div className="font-num text-[18px] font-bold text-slate-900" aria-label={`${rt.label} total`}>{rt.total ?? '—'}</div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {rootHasMetrics && (
         rootNA ? (
